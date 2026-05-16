@@ -1,0 +1,288 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Sales Tracker Pricing</title>
+    <link rel="icon" href="img/sales-logo.png" type="image/x-icon">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+    <link rel="stylesheet" href="public.css">
+</head>
+<body>
+    <nav class="site-nav">
+        <a class="brand" href="index.html">
+            <span><i class="fa-solid fa-chart-line"></i></span>
+            Sales Tracker
+        </a>
+
+        <div class="nav-links">
+            <a href="demo.html">Demo</a>
+            <a href="signin.html">Sign In</a>
+        </div>
+    </nav>
+
+    <main class="pricing-section">
+        <div class="section-title reveal-up">
+            <span>Simple pricing</span>
+            <h2>Choose a plan before accessing Sales Tracker.</h2>
+            <p>Prices are starter suggestions. Visitors can switch monthly or yearly billing and choose a currency.</p>
+        </div>
+
+        <div class="pricing-controls reveal-up" aria-label="Pricing options">
+            <div class="billing-toggle">
+                <button class="active" type="button" data-billing="monthly" onclick="setBilling('monthly')">Monthly</button>
+                <button type="button" data-billing="yearly" onclick="setBilling('yearly')">Yearly <span>Save 15%</span></button>
+            </div>
+
+            <label class="currency-control">
+                <span>Currency</span>
+                <select id="currencySelect" onchange="setCurrency(this.value)">
+                    <option value="NGN">NGN</option>
+                    <option value="USD">USD</option>
+                    <option value="GBP">GBP</option>
+                    <option value="EUR">EUR</option>
+                    <option value="GHS">GHS</option>
+                    <option value="KES">KES</option>
+                    <option value="ZAR">ZAR</option>
+                </select>
+            </label>
+        </div>
+
+        <div class="pricing-grid">
+            <article class="pricing-card reveal-up">
+                <span class="plan-badge">Starter</span>
+                <h3>Starter</h3>
+                <div class="price" data-plan="starter"></div>
+                <p>For one person tracking daily sales.</p>
+                <ul>
+                    <li>1 user</li>
+                    <li>Sales dashboard</li>
+                    <li>Receipts</li>
+                    <li>Basic history</li>
+                </ul>
+                <button class="plan-btn" onclick="startCheckout('starter')">Starter</button>
+            </article>
+
+            <article class="pricing-card featured reveal-up">
+                <span class="plan-badge">Recommended</span>
+                <h3>Business</h3>
+                <div class="price" data-plan="business"></div>
+                <p>For shops with reps and admin oversight.</p>
+                <ul>
+                    <li>Up to 5 users</li>
+                    <li>Admin dashboard</li>
+                    <li>Live sales feed</li>
+                    <li>Exports and rep stats</li>
+                </ul>
+                <button class="plan-btn" onclick="startCheckout('business')">Business</button>
+            </article>
+
+            <article class="pricing-card reveal-up">
+                <span class="plan-badge">Scale</span>
+                <h3>Pro</h3>
+                <div class="price" data-plan="pro"></div>
+                <p>For teams that need deeper controls.</p>
+                <ul>
+                    <li>More users</li>
+                    <li>Offline sync</li>
+                    <li>Priority support</li>
+                    <li>Advanced reporting path</li>
+                </ul>
+                <button class="plan-btn" onclick="startCheckout('pro')">Pro</button>
+            </article>
+        </div>
+
+        <p class="pricing-note reveal-up">
+            Currency display is estimated from fixed starter rates. For production, connect live exchange rates and verify payment on a backend webhook.
+        </p>
+    </main>
+
+    <div id="toast" class="pricing-toast"></div>
+
+    <script src="https://js.paystack.co/v1/inline.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <script>
+        const supabaseUrl = "https://nihqmpimzvhjglwkmhfl.supabase.co";
+        const supabaseKey = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im5paHFtcGltenZoamdsd2ttaGZsIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Nzc5MzM4MjgsImV4cCI6MjA5MzUwOTgyOH0.PU0egVoNGXsloErw5hGwb9JrLHnn02F1nh6jsudsJ8w";
+        const supabaseClient = supabase.createClient(supabaseUrl, supabaseKey);
+
+        const PAYSTACK_PUBLIC_KEY = "pk_test_bcd511868107873df36260c48d50fcb860844c91";
+        const PAYMENT_API_URL = "http://localhost:4242";
+        const YEARLY_DISCOUNT = 0.85;
+        const plans = {
+            starter: { name: "Starter", monthlyNgn: 5000 },
+            business: { name: "Business", monthlyNgn: 12000 },
+            pro: { name: "Pro", monthlyNgn: 25000 }
+        };
+        const currencies = {
+            NGN: { locale: "en-NG", rate: 1 },
+            USD: { locale: "en-US", rate: 0.00064 },
+            GBP: { locale: "en-GB", rate: 0.0005 },
+            EUR: { locale: "de-DE", rate: 0.00059 },
+            GHS: { locale: "en-GH", rate: 0.0086 },
+            KES: { locale: "en-KE", rate: 0.083 },
+            ZAR: { locale: "en-ZA", rate: 0.011 }
+        };
+        const regionCurrency = {
+            NG: "NGN",
+            US: "USD",
+            GB: "GBP",
+            GH: "GHS",
+            KE: "KES",
+            ZA: "ZAR"
+        };
+        let billingCycle = "monthly";
+        let selectedCurrency = "NGN";
+
+        function showToast(message) {
+            const toast = document.getElementById("toast");
+            toast.textContent = message;
+            toast.classList.add("show");
+            setTimeout(() => toast.classList.remove("show"), 2800);
+        }
+
+        async function getSessionUser() {
+            const { data: { user } } = await supabaseClient.auth.getUser();
+            return user;
+        }
+
+        function detectCurrency() {
+            const locale = navigator.language || "en-NG";
+            const region = locale.split("-")[1]?.toUpperCase();
+            return regionCurrency[region] || "NGN";
+        }
+
+        function formatPlanMoney(value, currency) {
+            const config = currencies[currency] || currencies.NGN;
+
+            return new Intl.NumberFormat(config.locale, {
+                style: "currency",
+                currency,
+                maximumFractionDigits: currency === "NGN" ? 0 : 2
+            }).format(value);
+        }
+
+        function getPlanPrice(plan) {
+            const base = plans[plan].monthlyNgn;
+            const billingAmount = billingCycle === "yearly"
+                ? Math.round(base * 12 * YEARLY_DISCOUNT)
+                : base;
+            const converted = billingAmount * (currencies[selectedCurrency]?.rate || 1);
+
+            return Math.max(1, Math.round(converted));
+        }
+
+        function getPlanPriceNgn(plan) {
+            const base = plans[plan].monthlyNgn;
+
+            return billingCycle === "yearly"
+                ? Math.round(base * 12 * YEARLY_DISCOUNT)
+                : base;
+        }
+
+        function renderPrices() {
+            document.querySelectorAll(".price[data-plan]").forEach(priceEl => {
+                const plan = priceEl.dataset.plan;
+                const price = getPlanPrice(plan);
+                const suffix = billingCycle === "yearly" ? "/yr" : "/mo";
+
+                priceEl.innerHTML = `${formatPlanMoney(price, selectedCurrency)}<span>${suffix}</span>`;
+            });
+        }
+
+        function setBilling(value) {
+            billingCycle = value;
+
+            document.querySelectorAll("[data-billing]").forEach(button => {
+                button.classList.toggle("active", button.dataset.billing === value);
+            });
+
+            renderPrices();
+        }
+
+        function setCurrency(value) {
+            selectedCurrency = value;
+            renderPrices();
+        }
+
+        async function activateSubscription(plan, reference) {
+            const user = await getSessionUser();
+
+            if (!user) {
+                window.location.href = "signin.html";
+                return;
+            }
+
+            let response;
+            let result;
+
+            try {
+                response = await fetch(`${PAYMENT_API_URL}/api/verify-payment`, {
+                    method: "POST",
+                    headers: {
+                        "Content-Type": "application/json"
+                    },
+                    body: JSON.stringify({ reference })
+                });
+
+                result = await response.json();
+            } catch (error) {
+                showToast("Payment backend is not reachable");
+                return;
+            }
+
+            if (!response.ok) {
+                showToast(result.error || "Could not verify payment yet");
+                return;
+            }
+
+            showToast("Subscription activated");
+
+            setTimeout(() => {
+                const role = result.profile?.role;
+
+                window.location.href = role === "admin"
+                    ? "admin.html"
+                    : "dashboard.html";
+            }, 1000);
+        }
+
+        async function startCheckout(plan) {
+            const user = await getSessionUser();
+
+            if (!user) {
+                localStorage.setItem("pendingPlan", plan);
+                window.location.href = "signin.html";
+                return;
+            }
+
+            if (PAYSTACK_PUBLIC_KEY.includes("REPLACE")) {
+                showToast("Add your Paystack public key in pricing.html first");
+                return;
+            }
+
+            const handler = PaystackPop.setup({
+                key: PAYSTACK_PUBLIC_KEY,
+                email: user.email,
+                amount: getPlanPriceNgn(plan) * 100,
+                currency: "NGN",
+                ref: `ST-${Date.now()}`,
+                metadata: {
+                    plan,
+                    billing_cycle: billingCycle,
+                    currency: selectedCurrency,
+                    user_id: user.id
+                },
+                callback: response => activateSubscription(plan, response.reference),
+                onClose: () => showToast("Payment window closed")
+            });
+
+            handler.openIframe();
+        }
+
+        selectedCurrency = detectCurrency();
+        document.getElementById("currencySelect").value = selectedCurrency;
+        renderPrices();
+    </script>
+</body>
+</html>

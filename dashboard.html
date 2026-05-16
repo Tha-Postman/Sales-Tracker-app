@@ -1,0 +1,2669 @@
+<!DOCTYPE html>
+<html lang="en">
+    <head>
+        <meta charset="UTF-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+        <!-- <meta http-equiv="refresh" content="2"> -->
+        <link rel="stylesheet" href="dashboard.css">
+
+        <link type="image/x-icon" rel="icon" href="img/sales-logo.png">
+
+        <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/choices.js/public/assets/styles/choices.min.css">
+
+        <link
+        rel="stylesheet"
+        href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css"
+        />
+
+        <title>Sales Tracker</title>
+
+    </head>
+    <body>
+        <!-- BACKGROUND GLOWS -->
+
+        <!-- <div class="glow glow1"></div>
+        <div class="glow glow2"></div> -->
+
+        <div id="network-status"></div>
+
+        <div class="intro">
+            <h2>Sales Tracker</h2>
+            <img src="img/sales-logo.png" alt="" class="logo">
+        </div>
+
+        <button onclick="logout()" class="logout-btn">Logout</button>
+
+        <div class="top-bar">
+        <h2 id="welcomeName"></h2>
+        </div>
+
+        <input id="search" placeholder="Search by Product name or Customer ID..." oninput="searchCustomer()">
+
+
+    <div class="sale-wrapper">    
+        <div class="sale-entry">
+
+        <div class="sale-header">
+            <h1>New Sale</h1>
+            <input
+                type="text"
+                id="customer_id"
+                readonly
+                placeholder="Customer ID"
+            />
+        </div>
+
+        <div class="sale-grid">
+
+            <!-- PRODUCT -->
+            <div class="field">
+                <label>Product</label>
+
+                
+
+                <select title="Select product" id="product" onchange="setPrice()"></select>
+            </div>
+
+            <!-- QUANTITY -->
+            <div class="field">
+                <label>Quantity</label>
+                <input id="quantity" type="number" value="1" min="1" oninput="calculateTotal()">
+            </div>
+
+            <!-- UNIT PRICE -->
+            <div class="field">
+                <label>Unit Price</label>
+                <input id="price" type="number" readonly>
+            </div>
+
+            <!-- TOTAL -->
+            <div class="field highlight">
+                <label>Total Price</label>
+                <input id="total_price" type="number" readonly>
+            </div>
+
+            <!-- DISCOUNT -->
+            <div class="field">
+                <label>Discount</label>
+                <input id="discount" type="number" value="0" oninput="calculateTotal()">
+            </div>
+
+            <!-- STATUS -->
+            <div class="field">
+                <label>Status</label>
+                <select id="status">
+                    <option>Pending</option>
+                    <option>Paid</option>
+                    <option>Cancelled</option>
+                    <option>Refunded</option>
+                </select>
+            </div>
+
+            <!-- SOURCE -->
+            <div class="field">
+                <label>Source</label>
+                <select id="source">
+                    <option>Walk-in</option>
+                    <option>WhatsApp</option>
+                    <option>Instagram</option>
+                    <option>Call</option>
+                </select>
+            </div>
+
+            <!-- PAYMENT -->
+            <div class="field">
+                <label>Payment Mode</label>
+                <select id="payment_mode">
+                    <option>Cash</option>
+                    <option>Transfer</option>
+                    <option>POS</option>
+                </select>
+            </div>
+
+            <!-- CART -->
+            <button onclick="addToCart()" class="add-cart">Add to Cart</button>
+        </div>
+        </div>
+    </div>
+
+    <div class="cart-div">
+
+        <h2><i class="fa-solid fa-cart-plus"></i> Cart</h2>
+        <div id="cartList"></div>
+        <h4>Total: ₦<span id="cartTotal">0</span></h4>
+
+    </div>
+
+
+    <!-- SAVE -->
+    <button onclick="addCustomer()" class="add-sale" id="addSaleBtn" >Add Sale</button>
+
+
+
+        <!-- DASHBOARD -->
+        <div class="dashboard-section-title">
+            <p>Sales Overview</p>
+            <h3>Dashboard</h3>
+        </div>
+        <div id="stats" class="stats-grid"></div>
+
+        <!-- CUSTOMERS -->
+        <div class="dashboard-section-title">
+            <p>History</p>
+            <h3>Customers</h3>
+        </div>
+
+        <div class="tabs">
+        <button class="filter-tab" data-status="All" onclick="filterStatus('All')">All</button>
+
+        <button class="filter-tab" data-status="Paid" onclick="filterStatus('Paid')">Paid</button>
+
+        <button class="filter-tab" data-status="Pending" onclick="filterStatus('Pending')">Pending</button>
+
+        <button class="filter-tab" data-status="Refunded" onclick="filterStatus('Refunded')">Refunded</button>
+
+        <button class="filter-tab" data-status="Cancelled" onclick="filterStatus('Cancelled')">Cancelled</button>
+        <!-- <button onclick="filterStatus('Ghosted')">Ghosted</button> -->
+        </div>
+
+        <div class="history-toolbar" aria-label="Sales history view">
+            <button class="history-tab active" data-history="recent" onclick="setHistoryView('recent')">Recent</button>
+            <button class="history-tab" data-history="weekly" onclick="setHistoryView('weekly')">Weekly</button>
+            <button class="history-tab" data-history="monthly" onclick="setHistoryView('monthly')">Monthly</button>
+            <button class="history-tab" data-history="annual" onclick="setHistoryView('annual')">Annual</button>
+        </div>
+
+        <div id="list"></div>
+
+        <!-- TOAST -->
+        <div id="toast" class="toast"></div>
+
+
+        <!-- RECEIPT  -->
+        <div id="receipt" style="display:none;"></div>
+
+
+        <script src="https://cdn.jsdelivr.net/npm/choices.js/public/assets/scripts/choices.min.js"></script>
+
+        <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
+        
+        
+        <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+        
+<script>
+const supabaseUrl = "https://nihqmpimzvhjglwkmhfl.supabase.co";
+const supabaseKey = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im5paHFtcGltenZoamdsd2ttaGZsIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Nzc5MzM4MjgsImV4cCI6MjA5MzUwOTgyOH0.PU0egVoNGXsloErw5hGwb9JrLHnn02F1nh6jsudsJ8w";
+
+// const supabaseClient = supabase.createClient(supabaseUrl, supabaseKey);
+
+const supabaseClient =
+supabase.createClient(
+
+    supabaseUrl,
+
+    supabaseKey,
+
+    {
+        auth: {
+
+            persistSession: true,
+
+            autoRefreshToken: true,
+
+            detectSessionInUrl: true
+        },
+
+        realtime: {
+
+            params: {
+
+                eventsPerSecond: 2
+            }
+        }
+    }
+);
+
+// =======================
+// STATE
+// =======================
+let allCustomers = [];
+let currentFilter = "All";
+let currentHistoryView = "recent";
+const RECENT_SALES_LIMIT = 12;
+let cart = [];
+let basePrice = 0;
+
+let currentUserRole = "rep";
+let currentProfile = null;
+
+let products = [];
+let productsMap = {};
+
+let productChoices;
+
+let customerChannel = null;
+let productChannel = null;
+
+let realtimeStarted = false;
+let realtimeRefreshTimer = null;
+
+
+// OFFLINE SALES
+let offlineSales =
+JSON.parse(
+    localStorage.getItem(
+        "offlineSales"
+    )
+) || [];
+
+
+
+async function isOnline(){
+
+    if(!navigator.onLine){
+
+        return false;
+    }
+
+    try {
+
+        const timeout =
+        new Promise((_, reject) => {
+
+            setTimeout(
+                () => reject(new Error("Connection check timed out")),
+                3500
+            );
+        });
+
+        await Promise.race([
+            supabaseClient
+            .from("products")
+            .select("id")
+            .limit(1),
+
+            timeout
+        ]);
+
+        return true;
+
+    } catch(err) {
+
+        return false;
+    }
+}
+
+// OFFLINE QUEUE
+let offlineQueue =
+JSON.parse(localStorage.getItem("offlineQueue")) || [];
+
+
+async function updateNetworkStatus(){
+
+    const status =
+    document.getElementById(
+        "network-status"
+    );
+
+    if(!status) return;
+
+    const online =
+    await isOnline();
+
+    if(online){
+
+        status.innerHTML =
+        "<span class='connection-dot'></span><span>Online Mode</span>";
+
+        status.className =
+        "online";
+
+    } else {
+
+        status.innerHTML =
+        "<span class='connection-dot'></span><span>Offline Mode</span>";
+
+        status.className =
+        "offline";
+
+        // STOP REALTIME
+        if(customerChannel){
+
+            supabaseClient.removeChannel(
+                customerChannel
+            );
+        }
+
+        if(productChannel){
+
+            supabaseClient.removeChannel(
+                productChannel
+            );
+        }
+
+        customerChannel = null;
+        productChannel = null;
+        realtimeStarted = false;
+
+        showToast(
+            "Offline mode active"
+        );
+    }
+}
+// Get User Role After Login
+async function getUserRole(){
+
+    // const user = await getUser();
+
+    const { data: { user } } = await supabaseClient.auth.getUser();
+    if(!user) return null;
+
+    const { data, error } =
+    await supabaseClient
+    .from("profiles")
+    .select("*")
+    .eq("id", user.id)
+    .single();
+
+    if(error){
+
+        console.log(error);
+
+        return null;
+    }
+
+    return data?.role || "rep";
+}
+
+// Redirect Based on Role
+async function redirectUser(){
+
+    const role = await getUserRole();
+
+    if(role === "admin"){
+
+        window.location.href = "admin.html";
+
+    } else {
+
+        window.location.href = "dashboard.html";
+    }
+}
+
+
+// =======================
+// AUTH HELPERS (FIXED)
+// =======================
+
+let currentUser = null;
+
+async function initAuth() {
+
+    try {
+
+        const {
+            data: { session },
+            error
+        } =
+        await supabaseClient.auth.getSession();
+
+        if(error){
+
+            console.log(error);
+
+            return false;
+        }
+
+        if(!session){
+
+    const offlineUser =
+    JSON.parse(
+        localStorage.getItem("offlineUser")
+    );
+
+    if(offlineUser){
+
+        currentUser = offlineUser;
+
+        return true;
+    }
+
+    window.location.href =
+    "signin.html";
+
+    return false;
+}
+        currentUser = session.user;
+
+localStorage.setItem(
+    "offlineUser",
+    JSON.stringify(session.user)
+);
+        return true;
+
+    } catch(err){
+
+        console.log(
+            "AUTH INIT ERROR:",
+            err
+        );
+
+        showToast(
+            "Offline mode active"
+        );
+
+        return false;
+    }
+}
+
+async function getUser(){
+
+    // ONLINE
+    const online = await isOnline();
+
+if(online){
+
+        try{
+
+            const {
+                data: { user }
+            } = await supabaseClient.auth.getUser();
+
+            if(user){
+
+                currentUser = user;
+
+                localStorage.setItem(
+                    "offlineUser",
+                    JSON.stringify(user)
+                );
+
+                return user;
+            }
+
+        }catch(err){
+
+            console.log("ONLINE USER ERROR:", err);
+        }
+    }
+
+    // OFFLINE FALLBACK
+    const savedUser =
+    JSON.parse(
+        localStorage.getItem("offlineUser")
+    );
+
+    if(savedUser){
+
+        currentUser = savedUser;
+
+        return savedUser;
+    }
+
+    return null;
+}
+
+
+// GET PROFILE
+async function getProfile(){
+
+    const user = await getUser();
+
+    if(!user) return null;
+
+    const online =
+    await isOnline();
+
+    if(!online){
+
+        return JSON.parse(
+            localStorage.getItem("offlineProfile")
+        ) || {
+            full_name: user.email || "User",
+            role: "rep"
+        };
+    }
+
+    const { data, error } =
+    await supabaseClient
+    .from("profiles")
+    .select("*")
+    .eq("id", user.id)
+    .single();
+
+    if(error){
+
+        console.log(error);
+
+        return null;
+    }
+
+    localStorage.setItem(
+        "offlineProfile",
+        JSON.stringify(data)
+    );
+
+    return data;
+}
+
+// APPLY PERMISSIONS
+function applyPermissions(role){
+
+    if(role !== "admin"){
+
+        document
+        .querySelectorAll(".admin-only")
+        .forEach(btn => {
+
+            btn.style.display = "none";
+        });
+    }
+}
+
+function hasActiveSubscription(profile){
+
+    if(!profile) return false;
+
+    if(profile.subscription_status !== "active") return false;
+
+    if(!profile.subscription_expires_at) return true;
+
+    return new Date(profile.subscription_expires_at) > new Date();
+}
+
+// loadProfileUI
+async function loadProfileUI(){
+
+    const profile =
+    await getProfile();
+
+    if(!profile) return false;
+
+    currentProfile = profile;
+
+    currentUserRole = profile.role || "rep";
+
+    if(!hasActiveSubscription(profile)){
+
+        window.location.href =
+        "pricing.html";
+
+        return false;
+    }
+
+    const welcome = document.getElementById("welcomeName");
+if (welcome) welcome.innerText = `Welcome, ${profile.full_name}`;
+    applyPermissions(currentUserRole);
+
+    return true;
+}
+
+// GENERATE CUSTOMER ID
+
+function generateCustomerID() {
+
+    const timestamp =
+        Date.now().toString().slice(-6);
+
+    const random =
+        Math.floor(Math.random() * 999);
+
+    const id =
+        `OVY-${timestamp}${random}`;
+
+    document.getElementById("customer_id").value = id;
+}
+
+// =======================
+// LOAD CUSTOMERS
+// =======================
+async function loadCustomers() {
+
+    generateCustomerID();
+
+    // ======================
+    // OFFLINE MODE
+    // ======================
+    const online = await isOnline();
+
+if(!online){
+
+    console.log("OFFLINE CUSTOMERS");
+
+
+        const offlineCustomers =
+        JSON.parse(
+            localStorage.getItem("offlineCustomers")
+        ) || [];
+
+        const offlineSales =
+        JSON.parse(
+            localStorage.getItem("offlineSales")
+        ) || [];
+
+        allCustomers = [
+            ...offlineSales,
+            ...offlineCustomers
+        ];
+
+        renderCustomers(allCustomers);
+
+        updateStats(allCustomers);
+
+        return;
+    }
+
+    // ======================
+    // ONLINE MODE
+    // ======================
+
+    const user = await getUser();
+
+    if(!user){
+
+        console.log("NO USER");
+
+        return;
+    }
+
+    const { data, error } =
+    await supabaseClient
+    .from("customers")
+    .select("*")
+    .eq("user_id", user.id)
+    .order("id", { ascending: false });
+
+    if(error){
+
+        console.log("LOAD CUSTOMER ERROR:", error);
+
+        return;
+    }
+
+    allCustomers = data || [];
+
+    localStorage.setItem(
+        "offlineCustomers",
+        JSON.stringify(allCustomers)
+    );
+
+    renderCustomers(allCustomers);
+
+    updateStats(allCustomers);
+
+    console.log(
+        "CUSTOMERS LOADED:",
+        allCustomers
+    );
+}
+
+// =======================
+// ADD CUSTOMER
+// =======================
+
+function saveSaleOffline(saleData){
+
+    const offlineSale = {
+        ...saleData,
+        id: Date.now(),
+        offline: true
+    };
+
+    const savedOffline =
+    JSON.parse(
+        localStorage.getItem("offlineSales")
+    ) || [];
+
+    savedOffline.unshift(offlineSale);
+
+    localStorage.setItem(
+        "offlineSales",
+        JSON.stringify(savedOffline)
+    );
+
+    allCustomers.unshift(offlineSale);
+
+    renderCustomers(allCustomers);
+
+    updateStats(allCustomers);
+
+    cart = [];
+
+    renderCart();
+
+    clearForm();
+
+    showToast("Saved offline");
+}
+
+async function addCustomer(){
+
+    const btn =
+    document.getElementById("addSaleBtn");
+
+    if(btn.disabled) return;
+
+    if(cart.length === 0){
+
+        showToast("Cart is empty");
+
+        return;
+    }
+
+    btn.disabled = true;
+
+    btn.innerText = "Processing...";
+
+    try {
+
+        const customer_id =
+        document.getElementById("customer_id").value;
+
+        const status =
+        document.getElementById("status").value;
+
+        const source =
+        document.getElementById("source").value;
+
+        const payment_mode =
+        document.getElementById("payment_mode").value;
+
+        const totalPrice =
+        cart.reduce((sum, item) =>
+            sum + item.total, 0
+        );
+
+        const totalDiscount =
+        cart.reduce((sum, item) =>
+            sum + (item.discount || 0), 0
+        );
+
+        const offlineUser =
+        JSON.parse(
+            localStorage.getItem("offlineUser")
+        );
+
+        const saleData = {
+
+            customer_id,
+
+            cart: cart.map(item => ({ ...item })),
+
+            price: totalPrice,
+
+            discount: totalDiscount,
+
+            final_price: totalPrice,
+
+            status,
+
+            source,
+
+            payment_mode,
+
+            user_id: offlineUser?.id || currentUser?.id || null,
+
+            created_by: currentProfile?.full_name || offlineUser?.email || currentUser?.email || "Sales Rep",
+
+            created_at:
+            new Date().toISOString()
+        };
+
+        // =========================
+        // OFFLINE MODE
+        // =========================
+
+        const online =
+await isOnline();
+
+if(!online){
+
+            const offlineUser =
+            JSON.parse(
+                localStorage.getItem("offlineUser")
+            );
+
+            const offlineSale = {
+
+                id: Date.now(),
+
+                customer_id,
+
+                cart,
+
+                price: totalPrice,
+
+                discount: totalDiscount,
+
+                final_price: totalPrice,
+
+                status,
+
+                source,
+
+                payment_mode,
+
+                user_id: offlineUser?.id || null,
+
+                created_by: currentProfile?.full_name || offlineUser?.email || "Sales Rep",
+
+                offline: true,
+
+                created_at:
+                new Date().toISOString()
+            };
+
+            const savedOffline =
+            JSON.parse(
+                localStorage.getItem("offlineSales")
+            ) || [];
+
+            savedOffline.unshift(offlineSale);
+
+            localStorage.setItem(
+                "offlineSales",
+                JSON.stringify(savedOffline)
+            );
+
+            allCustomers.unshift(offlineSale);
+
+            renderCustomers(allCustomers);
+
+            updateStats(allCustomers);
+
+            cart = [];
+
+            renderCart();
+
+            clearForm();
+
+            showToast("📴 Saved Offline");
+
+            return;
+        }
+
+        // =========================
+        // ONLINE MODE
+        // =========================
+
+        const user = await getUser();
+
+        if(!user){
+
+            showToast("Login required");
+
+            return;
+        }
+
+        saleData.user_id = user.id;
+
+        const { error } =
+        await supabaseClient
+        .from("customers")
+        .insert([saleData]);
+
+        if(error){
+
+            console.log(error);
+
+            const stillOnline =
+            await isOnline();
+
+            if(!stillOnline){
+
+                saveSaleOffline(saleData);
+
+                return;
+            }
+
+            showToast(error.message);
+
+            return;
+        }
+
+        cart = [];
+
+        renderCart();
+
+        clearForm();
+
+        await loadCustomers();
+
+        showToast("Sale recorded and synced to admin", "success");
+
+    } catch(err){
+
+        console.log(
+            "ADD CUSTOMER ERROR:",
+            err
+        );
+
+        const stillOnline =
+        await isOnline();
+
+        if(!stillOnline){
+
+            const offlineUser =
+            JSON.parse(
+                localStorage.getItem("offlineUser")
+            );
+
+            const totalPrice =
+            cart.reduce((sum, item) => sum + item.total, 0);
+
+            const totalDiscount =
+            cart.reduce((sum, item) => sum + (item.discount || 0), 0);
+
+            saveSaleOffline({
+                customer_id:
+                document.getElementById("customer_id").value,
+
+                cart:
+                cart.map(item => ({ ...item })),
+
+                price:
+                totalPrice,
+
+                discount:
+                totalDiscount,
+
+                final_price:
+                totalPrice,
+
+                status:
+                document.getElementById("status").value,
+
+                source:
+                document.getElementById("source").value,
+
+                payment_mode:
+                document.getElementById("payment_mode").value,
+
+                user_id:
+                offlineUser?.id || currentUser?.id || null,
+
+                created_at:
+                new Date().toISOString()
+            });
+
+            return;
+        }
+
+        showToast("Network Error");
+
+    } finally {
+
+        btn.disabled = false;
+
+        btn.innerText = "Add Sale";
+    }
+}
+
+// LOAD PRODUCT
+
+async function loadProducts(){
+
+    // =====================
+    // OFFLINE MODE
+    // =====================
+
+    const online =
+    await isOnline();
+
+    if(!online){
+
+        console.log("OFFLINE PRODUCTS");
+
+        const savedProducts =
+        JSON.parse(
+            localStorage.getItem("offlineProducts")
+        ) || [];
+
+        products = savedProducts;
+
+        // rebuild map
+        productsMap = {};
+
+        products.forEach(p => {
+
+            productsMap[p.id] = p;
+        });
+
+        populateProductDropdown();
+
+        updateCartPrices();
+
+        return;
+    }
+
+    // =====================
+    // ONLINE MODE
+    // =====================
+
+    const { data, error } =
+    await supabaseClient
+    .from("products")
+    .select("*");
+
+    if(error){
+
+        console.log(error);
+
+        // FALLBACK TO OFFLINE CACHE
+        const savedProducts =
+        JSON.parse(
+            localStorage.getItem("offlineProducts")
+        ) || [];
+
+        products = savedProducts;
+
+    } else {
+
+        products = data || [];
+
+        // SAVE OFFLINE CACHE
+        localStorage.setItem(
+            "offlineProducts",
+            JSON.stringify(products)
+        );
+    }
+
+    // build fast lookup map
+    productsMap = {};
+
+    products.forEach(p => {
+
+        productsMap[p.id] = p;
+    });
+
+    populateProductDropdown();
+
+    updateCartPrices();
+}
+
+
+// UPDATE CART PRICES
+function updateCartPrices(){
+
+    cart = cart.map(item => {
+
+        const product =
+        productsMap[item.productId] ||
+        products.find(p => p.name === item.product);
+
+        if(!product) return item;
+
+        const price = Number(product.price || 0);
+
+        const total =
+            (item.quantity * price) - (item.discount || 0);
+
+        return {
+            ...item,
+            productId: product.id,
+            price,
+            total: Math.max(0, total)
+        };
+    });
+
+    renderCart();
+}
+
+
+function populateProductDropdown(){
+
+    const select =
+    document.getElementById("product");
+
+    if(!select) return;
+
+    if(productChoices){
+
+        productChoices.destroy();
+
+        productChoices = null;
+    }
+
+    select.innerHTML = "";
+
+    const placeholder =
+    document.createElement("option");
+
+    placeholder.value = "";
+
+    placeholder.textContent =
+    "-- Select Product --";
+
+    select.appendChild(placeholder);
+
+    products.forEach(product => {
+
+        const option =
+        document.createElement("option");
+
+        option.value = String(product.id);
+
+        option.textContent =
+        `${product.name} - ${formatMoney(product.price)}`;
+
+        option.dataset.id =
+        product.id;
+
+        option.dataset.name =
+        product.name;
+
+        option.dataset.price =
+        product.price;
+
+        select.appendChild(option);
+    });
+
+    // wait till Choices loads
+    setTimeout(() => {
+
+        if(typeof Choices === "undefined"){
+
+            console.log("Choices.js failed to load");
+
+            return;
+        }
+
+        productChoices =
+        new Choices(select, {
+
+            searchEnabled: true,
+
+            itemSelectText: "",
+
+            shouldSort: false
+        });
+
+    }, 100);
+}
+
+// AUTO SYNC
+async function syncOfflineSales(){
+
+    const online =
+    await isOnline();
+
+    if(!online) return;
+
+    const offlineSales =
+    JSON.parse(
+        localStorage.getItem("offlineSales")
+    ) || [];
+
+    if(offlineSales.length === 0){
+
+        return;
+    }
+
+    showToast("🔄 Syncing offline sales...");
+
+    const user =
+    await getUser();
+
+    if(!user){
+
+        showToast("Login required to sync offline sales");
+
+        return;
+    }
+
+    for(const sale of offlineSales){
+
+        const cleanSale = {
+
+            customer_id: sale.customer_id,
+
+            cart: sale.cart,
+
+            price: sale.price,
+
+            discount: sale.discount,
+
+            final_price: sale.final_price,
+
+            status: sale.status,
+
+            source: sale.source,
+
+            payment_mode: sale.payment_mode,
+
+            user_id: sale.user_id || user.id,
+
+            created_by: sale.created_by || currentProfile?.full_name || user.email || "Sales Rep",
+
+            created_at: sale.created_at
+        };
+
+        const { error } =
+        await supabaseClient
+        .from("customers")
+        .insert([cleanSale]);
+
+        if(error){
+
+            console.log(
+                "SYNC ERROR:",
+                error
+            );
+
+            return;
+        }
+    }
+
+    localStorage.removeItem(
+        "offlineSales"
+    );
+
+    showToast(
+        "✅ Offline sales synced"
+    );
+
+    await loadCustomers();
+}
+window.addEventListener(
+    "online",
+    async () => {
+
+        await updateNetworkStatus();
+
+        const online =
+        await isOnline();
+
+        if(!online){
+
+            return;
+        }
+
+        await syncOfflineSales();
+
+        await syncOfflineQueue();
+
+        await loadCustomers();
+
+        await loadProducts();
+
+        await startRealtime();
+
+        showToast(
+            "🟢 Back Online"
+        );
+    }
+);
+
+window.addEventListener(
+    "offline",
+    () => {
+
+        const status =
+        document.getElementById(
+            "network-status"
+        );
+
+        if(status){
+
+            status.innerHTML =
+            "<span class='connection-dot'></span><span>Offline Mode</span>";
+
+            status.className =
+            "offline";
+        }
+
+        showToast(
+            "📴 Offline Mode Active"
+        );
+
+        // STOP REALTIME
+        if(customerChannel){
+
+            supabaseClient.removeChannel(
+                customerChannel
+            );
+        }
+
+        if(productChannel){
+
+            supabaseClient.removeChannel(
+                productChannel
+            );
+        }
+
+        customerChannel = null;
+        productChannel = null;
+        realtimeStarted = false;
+    }
+);
+
+// =======================
+// DELETE
+// =======================
+async function deleteCustomer(id) {
+    if (!confirm("Delete this customer?")) return;
+
+    const { error } = await supabaseClient
+        .from("customers")
+        .delete()
+        .eq("id", id);
+
+    if (error) {
+        console.log(error);
+        showToast("Error deleting customer");
+        return;
+    }
+    showToast("❌Customer deleted", "success");
+    loadCustomers();
+}
+
+
+// CANCEL SALE
+async function cancelSale(id){
+
+    const confirmCancel =
+    confirm("Cancel this sale?");
+
+    if(!confirmCancel) return;
+
+    // ======================
+    // OFFLINE MODE
+    // ======================
+    const online =
+    await isOnline();
+
+    if(!online){
+
+        // update UI instantly
+        allCustomers = allCustomers.map(c => {
+
+            if(c.id === id){
+
+                return {
+                    ...c,
+                    status: "Cancelled"
+                };
+            }
+
+            return c;
+        });
+
+        renderCustomers(allCustomers);
+        updateStats(allCustomers);
+
+        // store for sync later
+        offlineQueue.push({
+            id,
+            status: "Cancelled"
+        });
+
+        localStorage.setItem(
+            "offlineQueue",
+            JSON.stringify(offlineQueue)
+        );
+
+        showToast("📴 Cancelled offline (queued)");
+
+        return;
+    }
+
+    // ======================
+    // ONLINE MODE
+    // ======================
+    const { error } =
+    await supabaseClient
+    .from("customers")
+    .update({
+        status: "Cancelled"
+    })
+    .eq("id", id);
+
+    if(error){
+
+        showToast(error.message);
+
+        return;
+    }
+
+    showToast("❌ Sale cancelled");
+
+    await loadCustomers();
+}
+
+// =======================
+// RENDER
+// =======================
+
+function getCartItems(cartData){
+
+    if(!cartData) return [];
+
+    if(typeof cartData === "string"){
+
+        try {
+
+            cartData = JSON.parse(cartData);
+
+        } catch(err) {
+
+            console.log("Cart parse error:", err);
+
+            return [];
+        }
+    }
+
+    return Array.isArray(cartData) ? cartData : [];
+}
+
+function formatMoney(amount){
+
+    return `\u20a6${Number(amount || 0).toLocaleString()}`;
+}
+
+function getSaleAmount(sale){
+
+    return Number(sale.final_price || sale.price || 0);
+}
+
+function getSaleDate(sale){
+
+    const date = sale.created_at ? new Date(sale.created_at) : null;
+
+    return date && !Number.isNaN(date.getTime()) ? date : null;
+}
+
+function getSaleProducts(sale){
+
+    const cartItems = getCartItems(sale.cart);
+
+    if(cartItems.length === 0){
+
+        return sale.product || "-";
+    }
+
+    const visibleItems =
+    cartItems.slice(0, 2).map(item =>
+        `${item.product || "Unknown"} x${item.quantity || 1}`
+    );
+
+    const moreCount = cartItems.length - visibleItems.length;
+
+    return moreCount > 0
+        ? `${visibleItems.join(", ")} +${moreCount} more`
+        : visibleItems.join(", ");
+}
+
+function startOfWeek(date){
+
+    const start = new Date(date);
+
+    const day = start.getDay();
+
+    start.setHours(0, 0, 0, 0);
+
+    start.setDate(start.getDate() - day);
+
+    return start;
+}
+
+function isSameWeek(date, now){
+
+    return startOfWeek(date).getTime() === startOfWeek(now).getTime();
+}
+
+function getPeriodKey(date, view){
+
+    if(!date) return "No date";
+
+    if(view === "weekly"){
+
+        return date.toLocaleDateString(undefined, {
+            weekday: "long",
+            month: "short",
+            day: "numeric"
+        });
+    }
+
+    if(view === "monthly"){
+
+        const weekNumber =
+        Math.floor((date.getDate() - 1) / 7) + 1;
+
+        return `Week ${weekNumber}`;
+    }
+
+    return date.toLocaleDateString(undefined, {
+        month: "long",
+        year: "numeric"
+    });
+}
+
+function getHistoryData(data){
+
+    const now = new Date();
+
+    let filtered = [...data];
+
+    if(currentHistoryView === "weekly"){
+
+        filtered = filtered.filter(c => {
+
+            const date = getSaleDate(c);
+
+            return date && isSameWeek(date, now);
+        });
+    }
+
+    if(currentHistoryView === "monthly"){
+
+        filtered = filtered.filter(c => {
+
+            const date = getSaleDate(c);
+
+            return date &&
+            date.getMonth() === now.getMonth() &&
+            date.getFullYear() === now.getFullYear();
+        });
+    }
+
+    if(currentHistoryView === "annual"){
+
+        filtered = filtered.filter(c => {
+
+            const date = getSaleDate(c);
+
+            return date && date.getFullYear() === now.getFullYear();
+        });
+    }
+
+    filtered.sort((a, b) => {
+
+        const dateA = getSaleDate(a)?.getTime() || 0;
+        const dateB = getSaleDate(b)?.getTime() || 0;
+
+        return dateB - dateA;
+    });
+
+    if(currentHistoryView === "recent"){
+
+        return filtered.slice(0, RECENT_SALES_LIMIT);
+    }
+
+    return filtered;
+}
+
+function buildHistoryGroups(data){
+
+    if(currentHistoryView === "recent"){
+
+        return [{
+            title: "Recent Sales",
+            sales: data
+        }];
+    }
+
+    return data.reduce((groups, sale) => {
+
+        const date = getSaleDate(sale);
+
+        const key = getPeriodKey(date, currentHistoryView);
+
+        if(!groups[key]){
+
+            groups[key] = {
+                title: key,
+                sales: []
+            };
+        }
+
+        groups[key].sales.push(sale);
+
+        return groups;
+
+    }, {});
+}
+
+function renderSaleCard(sale, index){
+
+    const div = document.createElement("div");
+
+    div.className = `card compact-card ${sale.status?.toLowerCase() || "unknown"}`;
+
+    div.style.animationDelay = `${Math.min(index * 0.035, 0.35)}s`;
+
+    const date =
+    getSaleDate(sale)?.toLocaleString() || "-";
+
+    div.innerHTML = `
+        <div class="sale-card-top">
+            <div>
+                <strong>${sale.customer_id || "No ID"}</strong>
+                <p>${getSaleProducts(sale)}</p>
+            </div>
+            <span class="status-pill">${sale.status || "-"}</span>
+        </div>
+
+        <div class="sale-card-meta">
+            <span>Total: <strong>${formatMoney(getSaleAmount(sale))}</strong></span>
+            <span>Discount: ${formatMoney(sale.discount || 0)}</span>
+            <span>Payment: ${sale.payment_mode || "-"}</span>
+            <span>${date}</span>
+        </div>
+
+        <div class="sale-card-actions">
+            ${sale.status !== "Paid"
+                ? `<button onclick="markPaid(${sale.id})">Mark Paid</button>`
+                : `<span class="paid-tag">PAID</span>`
+            }
+
+            <button onclick="printReceipt(${sale.id})">Print Receipt</button>
+
+            ${sale.status === "Cancelled"
+            ? `<span class="cancelled-tag">Cancelled</span>`
+            : `<button class="cancel" onclick="cancelSale(${sale.id})">Cancel Sale</button>`
+            }
+
+            <button class="delete admin-only" onclick="deleteCustomer(${sale.id})">
+                Delete
+            </button>
+        </div>
+    `;
+
+    if(currentUserRole !== "admin"){
+
+        div.querySelectorAll(".admin-only").forEach(btn => {
+
+            btn.style.display = "none";
+        });
+    }
+
+    return div;
+}
+
+function renderCustomers(data) {
+
+    const list = document.getElementById("list");
+
+    if (!list) {
+        console.log("List container missing");
+        return;
+    }
+
+    list.innerHTML = "";
+
+    if (!Array.isArray(data)) {
+        console.log("Data is not array");
+        return;
+    }
+
+    let filtered = data;
+
+    if(currentFilter !== "All"){
+
+        filtered = data.filter(c =>
+            (c.status || "")
+            .toLowerCase()
+            .trim()
+            === currentFilter.toLowerCase()
+        );
+    }
+
+    const historyData = getHistoryData(filtered);
+
+    if(historyData.length === 0){
+
+        list.innerHTML = `
+            <div class="empty-state">
+                No sales found for this view.
+            </div>
+        `;
+
+        return;
+    }
+
+    const groups = buildHistoryGroups(historyData);
+
+    Object.values(groups).forEach((group, groupIndex) => {
+
+        const total = group.sales.reduce((sum, sale) =>
+            sum + getSaleAmount(sale), 0
+        );
+
+        const section = document.createElement("details");
+
+        section.className = "history-group";
+
+        section.open = groupIndex === 0;
+
+        section.innerHTML = `
+            <summary>
+                <span>${group.title}</span>
+                <small>${group.sales.length} sales - ${formatMoney(total)}</small>
+            </summary>
+        `;
+
+        const grid = document.createElement("div");
+
+        grid.className = "history-list";
+
+        group.sales.forEach((sale, index) => {
+
+            grid.appendChild(
+                renderSaleCard(sale, index)
+            );
+        });
+
+        section.appendChild(grid);
+
+        list.appendChild(section);
+    });
+
+    console.log("Customers rendered");
+}
+
+
+// RECEIPT
+function printReceipt(id) {
+    const c = allCustomers.find(x => x.id === id);
+    if (!c) return;
+
+    let items = "";
+    let cartItems = c.cart;
+
+    if (typeof cartItems === "string") {
+        try {
+            cartItems = JSON.parse(cartItems);
+        } catch (err) {
+            cartItems = [];
+        }
+    }
+
+    if (Array.isArray(cartItems)) {
+        items = cartItems.map(item => `
+            <li>
+                ${item.product} x${item.quantity} - ${formatMoney(item.total)}
+            </li>
+        `).join("");
+    }
+
+    const receiptDiv = document.getElementById("receipt");
+
+    receiptDiv.innerHTML = `
+        <div class="receipt-box">
+            <img src="img/sales-logo.png" style="width:60px; display:block; margin:auto;">
+            
+            <h2 style="text-align:center;">Receipt</h2>
+
+            <p>Customer ID:${c.customer_id || "-"}</p>
+
+            <ul>${items}</ul>
+
+            <p><strong>Total:</strong> ${formatMoney(c.final_price || c.price)}</p>
+            <p><strong>Discount:</strong> ${formatMoney(c.discount || 0)}</p>
+            <p><strong>Payment:</strong> ${c.payment_mode}</p>
+
+            <hr>
+            <p style="text-align:center;">Thank you!</p>
+        </div>
+    `;
+
+    const printWindow = window.open('', '', 'width=400,height=600');
+    printWindow.document.write(receiptDiv.innerHTML);
+    printWindow.document.close();
+    printWindow.print();
+}
+
+
+// =======================
+// SEARCH
+// =======================
+function searchCustomer() {
+
+    const value =
+    document.getElementById("search")
+    .value
+    .toLowerCase();
+
+    const filtered =
+    allCustomers.filter(c => {
+
+        const idMatch =
+        (c.customer_id || "")
+        .toLowerCase()
+        .includes(value);
+
+        let cartItems = c.cart;
+
+        if(typeof cartItems === "string"){
+
+            try {
+
+                cartItems = JSON.parse(cartItems);
+
+            } catch(err) {
+
+                cartItems = [];
+            }
+        }
+
+        const cartMatch =
+        Array.isArray(cartItems) &&
+        cartItems.some(item =>
+            (item.product || "")
+            .toLowerCase()
+            .includes(value)
+        );
+
+        return idMatch || cartMatch;
+
+    });
+
+    renderCustomers(filtered);
+}
+
+
+// MARK PAID
+
+async function markPaid(id){
+
+    const user = await getUser();
+
+    if(!user){
+
+        showToast("Login required");
+
+        return;
+    }
+
+    // ======================
+    // OFFLINE MODE
+    // ======================
+
+    const online =
+    await isOnline();
+
+    if(!online){
+
+    // update UI instantly
+    allCustomers = allCustomers.map(c => {
+
+        if(c.id === id){
+            return { ...c, status: "Paid" };
+        }
+
+        return c;
+    });
+
+    renderCustomers(allCustomers);
+    updateStats(allCustomers);
+
+    // SAVE TO QUEUE
+    offlineQueue.push({
+        id,
+        status: "Paid"
+    });
+
+    localStorage.setItem(
+        "offlineQueue",
+        JSON.stringify(offlineQueue)
+    );
+
+    showToast("📴 Saved offline (will sync later)");
+
+    return;
+}
+
+    // ======================
+    // ONLINE MODE
+    // ======================
+
+    const { error } =
+    await supabaseClient
+    .from("customers")
+    .update({ status: "Paid" })
+    .eq("id", id);
+
+    if(error){
+
+        showToast(error.message);
+
+        return;
+    }
+
+    showToast("✅ Paid successfully");
+
+    await loadCustomers();
+}
+
+
+// SYNC OFFLINE STATUS CHANGES
+async function syncOfflineQueue(){
+
+    const queue =
+    JSON.parse(localStorage.getItem("offlineQueue")) || [];
+
+    if(queue.length === 0) return;
+
+    const remaining = [];
+
+    for(const item of queue){
+
+        const { error } =
+        await supabaseClient
+        .from("customers")
+        .update({
+            status: item.status
+        })
+        .eq("id", item.id);
+
+        if(error){
+
+            console.log("QUEUE SYNC ERROR:", error);
+
+            remaining.push(item);
+        }
+    }
+
+    offlineQueue = remaining;
+
+    if(remaining.length === 0){
+
+        localStorage.removeItem("offlineQueue");
+
+        showToast("🔄 Offline status changes synced");
+
+        return;
+    }
+
+    localStorage.setItem(
+        "offlineQueue",
+        JSON.stringify(remaining)
+    );
+}
+
+// =======================
+// PRICE SYSTEM
+// =======================
+function setPrice(){
+
+    const select =
+    document.getElementById("product");
+
+    const selectedId =
+    select.value;
+
+    const selected =
+    products.find(p => String(p.id) === String(selectedId));
+
+    if(!selected){
+        document.getElementById("price").value = "";
+        calculateTotal();
+        return;
+    }
+
+    document.getElementById("price").value =
+    Number(selected.price || 0);
+
+    calculateTotal();
+}
+
+function calculateTotal(){
+
+    const quantity =
+    Number(
+        document.getElementById("quantity").value
+    ) || 0;
+
+    const price =
+    Number(
+        document.getElementById("price").value
+    ) || 0;
+
+    const discount =
+    Number(
+        document.getElementById("discount").value
+    ) || 0;
+
+    const total =
+    (quantity * price) - discount;
+
+    document.getElementById(
+        "total_price"
+    ).value =
+    Math.max(0, total);
+}
+
+// =======================
+// CART
+// =======================
+function addToCart() {
+
+    const select =
+    document.getElementById("product");
+
+    const selectedOption =
+    select.options[select.selectedIndex];
+
+    const product =
+    selectedOption?.dataset.name || "";
+
+    const productId =
+    selectedOption?.dataset.id || "";
+
+    const quantity =
+    Number(
+        document.getElementById("quantity").value
+    );
+
+    const discount =
+    Number(
+        document.getElementById("discount").value
+    ) || 0;
+
+    const price =
+    Number(
+        document.getElementById("price").value
+    );
+
+    if (!productId || !product) {
+
+        showToast("Select a valid product");
+
+        return;
+    }
+
+    const total =
+    (quantity * price) - discount;
+
+    // CHECK IF PRODUCT ALREADY EXISTS
+const existingItem = cart.find(
+    item => String(item.productId) === String(productId)
+);
+
+if(existingItem){
+
+    // UPDATE EXISTING ITEM
+    existingItem.quantity += quantity;
+
+    existingItem.discount += discount;
+
+    existingItem.total =
+    (existingItem.quantity * existingItem.price)
+    - existingItem.discount;
+
+} else {
+
+    // ADD NEW ITEM
+    cart.push({
+
+        productId,
+
+        product,
+
+        quantity,
+
+        price,
+
+        discount,
+
+        total: Math.max(0, total)
+    });
+}
+
+    renderCart();
+
+    // updateAddButtonState();
+
+    // RESET INPUTS AFTER ADDING TO CART
+    resetProductSelect();
+
+    document.getElementById("quantity").value = 1;
+
+    document.getElementById("price").value = "";
+
+    document.getElementById("discount").value = 0;
+
+    document.getElementById("total_price").value = "";
+}
+
+
+// ENABLE/DISABLE ADD SALE BUTTON
+function updateAddButtonState() {
+
+    const btn =
+    document.getElementById("addSaleBtn");
+
+    if(!btn) return;
+
+    if(cart.length === 0){
+
+        btn.disabled = true;
+
+        btn.style.opacity = "0.5";
+
+        btn.style.cursor = "not-allowed";
+
+    } else {
+
+        btn.disabled = false;
+
+        btn.style.opacity = "1";
+
+        btn.style.cursor = "pointer";
+    }
+}
+
+function renderCart() {
+    const cartList = document.getElementById("cartList");
+    cartList.innerHTML = "";
+
+    let total = 0;
+
+    if(cart.length === 0){
+
+        document.getElementById("cartTotal").innerText = "0";
+
+        cartList.innerHTML = `
+            <div class="cart-empty">
+                Cart is empty
+            </div>
+        `;
+
+        updateAddButtonState();
+
+        return;
+    }
+
+    cart.forEach((item, i) => {
+        total += item.total;
+
+        const div = document.createElement("div");
+
+        div.className = "cart-item";
+
+        div.innerHTML = `
+            <div class="cart-item-main">
+                <strong>${item.product}</strong>
+                <span>Qty ${item.quantity}</span>
+            </div>
+
+            <div class="cart-item-details">
+                <span>Price ${formatMoney(item.price * item.quantity)}</span>
+                <span>Discount ${formatMoney(item.discount || 0)}</span>
+                <strong>${formatMoney(item.total)}</strong>
+            </div>
+
+            <button class="cart-remove" onclick="removeItem(${i})" title="Remove item">
+                Remove
+            </button>
+        `;
+        cartList.appendChild(div);
+    });
+
+    document.getElementById("cartTotal").innerText =
+    Number(total || 0).toLocaleString();
+
+    updateAddButtonState();
+}
+
+function removeItem(i) {
+    cart.splice(i, 1);
+    renderCart();
+    // updateAddButtonState();
+}
+
+function resetProductSelect() {
+
+    const select =
+    document.getElementById("product");
+
+    if(!select) return;
+
+    select.value = "";
+
+    if(productChoices){
+
+        productChoices.removeActiveItems();
+
+        productChoices.setChoiceByValue("");
+    }
+}
+
+
+
+
+
+function updateStats(data) {
+
+    let paidRevenue = 0;
+    let pendingRevenue = 0;
+
+    let paidCount = 0;
+    let pendingCount = 0;
+
+    let cashTotal = 0;
+    let transferTotal = 0;
+    let posTotal = 0;
+
+    data.forEach(c => {
+
+        const amount = Number(c.final_price || c.price || 0);
+
+        if (c.status === "Paid") {
+            paidRevenue += amount;
+            paidCount++;
+        }
+
+        if (c.status === "Pending") {
+            pendingRevenue += amount;
+            pendingCount++;
+        }
+
+        if (c.status === "Paid") {
+
+        if (c.payment_mode === "Cash") {
+        cashTotal += amount;
+        }
+
+        if (c.payment_mode === "Transfer") {
+        transferTotal += amount;
+        }
+
+        if (c.payment_mode === "POS") {
+        posTotal += amount;
+        }
+}
+    });
+
+    const totalCustomers = data.length;
+
+    document.getElementById("stats").innerHTML = `
+        <div class="stat-card">
+            <div class="stat-icon blue"><i class="fa-solid fa-users"></i></div>
+            <p>Total Customers</p>
+            <h2>${totalCustomers}</h2>
+        </div>
+
+        <div class="stat-card paid-rev">
+            <div class="stat-icon green"><i class="fa-solid fa-wallet"></i></div>
+            <p>Paid Revenue</p>
+            <h2>${formatMoney(paidRevenue)}</h2>
+        </div>
+
+        <div class="stat-card pending-rev">
+            <div class="stat-icon amber"><i class="fa-solid fa-hourglass-half"></i></div>
+            <p>Pending Revenue</p>
+            <h2>${formatMoney(pendingRevenue)}</h2>
+        </div>
+
+        <div class="stat-card">
+            <div class="stat-icon green"><i class="fa-solid fa-circle-check"></i></div>
+            <p>Paid Customers</p>
+            <h2>${paidCount}</h2>
+        </div>
+
+        <div class="stat-card">
+            <div class="stat-icon amber"><i class="fa-solid fa-clock"></i></div>
+            <p>Pending Customers</p>
+            <h2>${pendingCount}</h2>
+        </div>
+
+        <div class="stat-card">
+            <div class="stat-icon green"><i class="fa-solid fa-money-bill-wave"></i></div>
+            <p>Cash Received</p>
+            <h2>${formatMoney(cashTotal)}</h2>
+        </div>
+
+        <div class="stat-card">
+            <div class="stat-icon blue"><i class="fa-solid fa-building-columns"></i></div>
+            <p>Transfer Received</p>
+            <h2>${formatMoney(transferTotal)}</h2>
+        </div>
+
+        <div class="stat-card">
+            <div class="stat-icon purple"><i class="fa-solid fa-credit-card"></i></div>
+            <p>POS Received</p>
+            <h2>${formatMoney(posTotal)}</h2>
+        </div>
+        
+    `;
+}
+
+// FILTER STATUS
+function filterStatus(status){
+
+    currentFilter = status;
+
+    renderCustomers(allCustomers);
+
+    updateActiveTab(status);
+}
+
+function setHistoryView(view){
+
+    currentHistoryView = view;
+
+    renderCustomers(allCustomers);
+
+    updateHistoryTab(view);
+}
+
+// ACTIVE TAB
+function updateActiveTab(status){
+
+    const buttons =
+    document.querySelectorAll(".filter-tab");
+
+    buttons.forEach(btn => {
+
+        if(btn.dataset.status === status){
+
+            btn.classList.add("active");
+
+        } else {
+
+            btn.classList.remove("active");
+        }
+    });
+}
+
+function updateHistoryTab(view){
+
+    const buttons =
+    document.querySelectorAll(".history-tab");
+
+    buttons.forEach(btn => {
+
+        if(btn.dataset.history === view){
+
+            btn.classList.add("active");
+
+        } else {
+
+            btn.classList.remove("active");
+        }
+    });
+}
+
+
+// =======================
+// TOAST
+// =======================
+function showToast(msg, type = "info") {
+    const t = document.getElementById("toast");
+
+    const normalized = String(msg).toLowerCase();
+
+    if(type === "info"){
+        if(normalized.includes("error") || normalized.includes("failed") || normalized.includes("required")){
+            type = "error";
+        } else if(normalized.includes("success") || normalized.includes("added") || normalized.includes("paid") || normalized.includes("synced") || normalized.includes("online")){
+            type = "success";
+        }
+    }
+
+    t.textContent = msg;
+    t.className = `toast ${type}`;
+    t.classList.add("show");
+
+    setTimeout(() => t.classList.remove("show"), 2000);
+}
+
+function refreshSalesDashboardSoon(message = "") {
+    clearTimeout(realtimeRefreshTimer);
+
+    realtimeRefreshTimer = setTimeout(async () => {
+        await loadCustomers();
+
+        if(message){
+            showToast(message, "success");
+        }
+    }, 250);
+}
+
+
+
+// =======================
+// CLEAR FORM
+// =======================
+function clearForm() {
+
+    // RESET SELECTS
+    resetProductSelect();
+
+    document.getElementById("status").selectedIndex = 0;
+
+    document.getElementById("source").selectedIndex = 0;
+
+    document.getElementById("payment_mode").selectedIndex = 0;
+
+    // RESET INPUTS
+    document.getElementById("quantity").value = 1;
+
+    document.getElementById("price").value = "";
+
+    document.getElementById("discount").value = 0;
+
+    document.getElementById("total_price").value = "";
+
+    // RESET TOTAL
+    basePrice = 0;
+
+    // NEW CUSTOMER ID
+    generateCustomerID();
+    
+}
+
+// LOGOUT FUNCTION
+async function logout(){
+
+    showToast("👋 Logged out");
+
+    setTimeout(async () => {
+
+        await supabaseClient.auth.signOut();
+
+        // localStorage.clear();
+
+        // sessionStorage.clear();
+
+        window.location.href =
+        "signin.html";
+
+    }, 1000);
+}
+
+document.addEventListener("click", event => {
+
+    const logoutButton =
+    document.querySelector(".logout-btn");
+
+    if(!logoutButton) return;
+
+    if(logoutButton.contains(event.target)) return;
+
+    const rect =
+    logoutButton.getBoundingClientRect();
+
+    const clickedLogoutArea =
+    event.clientX >= rect.left
+    &&
+    event.clientX <= rect.right
+    &&
+    event.clientY >= rect.top
+    &&
+    event.clientY <= rect.bottom;
+
+    if(clickedLogoutArea){
+        event.preventDefault();
+        event.stopPropagation();
+        logout();
+    }
+}, true);
+
+// RECHECK AUTH ON RELOAD
+window.addEventListener("pageshow", async () => {
+
+    if(!navigator.onLine) return;
+
+    try {
+
+        const {
+            data: { user }
+        } =
+        await supabaseClient.auth.getUser();
+
+        if (!user) {
+
+            window.location.replace("signin.html");
+        }
+
+    } catch(err){
+
+        console.log(err);
+    }
+});
+// =======================
+// INIT
+// =======================
+async function init(){
+
+    await updateNetworkStatus();
+
+    const ok = await initAuth();
+
+    const online =
+    await isOnline();
+
+    if(!ok && online){
+
+        return;
+    }
+
+    const hasAccess =
+    await loadProfileUI();
+
+    if(!hasAccess){
+        return;
+    }
+
+    await loadProducts();
+
+    await loadCustomers();
+
+    renderCustomers(allCustomers);
+
+    updateStats(allCustomers);
+
+if(online){
+
+    startRealtime();
+}
+}
+
+
+// REALTIME PRODUCTS UPDATE
+
+function startRealtime(){
+
+    if(!navigator.onLine) return;
+
+    if(realtimeStarted) return;
+
+    // REMOVE OLD CHANNELS
+    if(customerChannel){
+
+        supabaseClient.removeChannel(
+            customerChannel
+        );
+    }
+
+    if(productChannel){
+
+        supabaseClient.removeChannel(
+            productChannel
+        );
+    }
+
+    // ======================
+    // CUSTOMERS
+    // ======================
+
+    customerChannel =
+    supabaseClient
+    .channel("customers-live")
+    .on(
+        "postgres_changes",
+        {
+            event: "*",
+            schema: "public",
+            table: "customers"
+        },
+        async (payload) => {
+
+            console.log(
+                "🔥 Customers updated"
+            );
+
+            const user = await getUser();
+            const row = payload.new || payload.old || {};
+            const isOwnSale = !user || row.user_id === user.id;
+
+            if(isOwnSale){
+                refreshSalesDashboardSoon("Sales history updated live");
+            }
+        }
+    )
+    .subscribe(status => {
+
+        console.log(
+            "CUSTOMER CHANNEL:",
+            status
+        );
+    });
+
+    // ======================
+    // PRODUCTS
+    // ======================
+
+    productChannel =
+    supabaseClient
+    .channel("products-live")
+    .on(
+        "postgres_changes",
+        {
+            event: "*",
+            schema: "public",
+            table: "products"
+        },
+        async () => {
+
+            console.log(
+                "🔥 Products updated"
+            );
+
+            await loadProducts();
+
+            setPrice();
+
+            updateCartPrices();
+
+            renderCart();
+        }
+    )
+    .subscribe(status => {
+
+        console.log(
+            "PRODUCT CHANNEL:",
+            status
+        );
+    });
+
+    realtimeStarted = true;
+}
+
+init();
+// loadCustomers();
+</script>
+</body>
+</html>

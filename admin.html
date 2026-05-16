@@ -1,0 +1,1994 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+<title>Admin Dashboard</title>
+
+<link rel="stylesheet" href="admin.css">
+
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
+
+</head>
+
+<body class="sidebar-collapsed">
+
+<!-- NOTIFICATION -->
+    <div id="notificationContainer"></div>
+
+<!-- SIDEBAR -->
+
+<div>
+    
+    <div class="sidebar" id="sidebar">
+        
+        
+        <div class="sidebar-brand">
+            <div class="sidebar-logo"><i class="fa-solid fa-chart-line"></i></div>
+            <div>
+                <h2>Admin Panel</h2>
+                <span>Sales Tracker</span>
+            </div>
+            <button class="sidebar-close" type="button" onclick="toggleSidebar()" aria-label="Close sidebar">
+                <i class="fa-solid fa-xmark"></i>
+            </button>
+        </div>
+        
+        <button onclick="goTo('admin.html')">
+            <i class="fa-solid fa-table-columns"></i>
+            <span>Dashboard</span>
+        </button>
+        
+        <button onclick="goTo('dashboard.html')">
+            <i class="fa-solid fa-cash-register"></i>
+            <span>Sales Dashboard</span>
+        </button>
+        
+        
+        <div class="topbar-actions">
+            
+            <button class="export-btn" onclick="exportExcel()">
+                <i class="fas fa-file-excel logo-btn"></i>
+               <span>Export Excel</span>
+            </button>
+            
+            <button onclick="exportDOCX()" class="export-btn docx-btn"><i class="fa-solid fa-file-word logo-btn"></i> <span>Export DOCX</span></button>
+            
+            <button onclick="logout()">
+                <i class="fa-solid fa-right-from-bracket"></i>
+                <span>Logout</span>
+            </button>
+
+</div>
+        
+    </div>
+    
+</div>
+
+<!-- MAIN -->
+
+
+<div class="main">
+    <div class="topbar">
+        
+     <button type="button" class="toggle-btn" onclick="toggleSidebar()" aria-label="Open sidebar" aria-expanded="false"><i class="fas fa-bars"></i></button>
+     <h1 class="admin-d">Admin Dashboard</h1>
+     <h3 id="welcomeName" class="welcome"></h3>
+
+    </div>
+    <!-- TOPBAR -->
+    
+    <div class="product-form" >
+        
+        <div>
+            <h2>Add new product</h2>
+
+        </div><br>
+
+        <form action="" id="productForm">
+
+
+            <input
+            type="text"
+            id="productName"
+            placeholder="Product Name"
+             required>
+            
+            <input
+            type="number"
+            id="productPrice"
+            placeholder="Product Price"
+            required>
+            
+            <input type="number" id="productStock" placeholder="Stock Quantity" required>
+                
+            <button type="button" onclick="addProduct()">Add Product</button>
+        </form>
+            
+    </div>
+
+    <div class="product-panel">
+           
+        <div class="panel-header"           id="productPanelHeader">
+                
+            <h3>Products</h3>
+            <input type="text" id="productSearch" placeholder="Search products..." oninput="filterProducts()" class="product-search">
+                
+            <button id="toggleBtn" type="button" aria-expanded="false">▼</button>
+                
+        </div>
+    
+            <!-- <div id="productList"></div> -->
+            <div id="productList" class="panel-body"></div>
+            
+    </div>
+
+    <div class="charts-container">
+        
+        <div class="chart-box">
+            <h3>Revenue Overview</h3>
+            <canvas id="revenueChart"></canvas>
+        </div>
+        
+        <div class="chart-box">
+            <h3>Payment Methods</h3>
+            <canvas id="paymentChart"></canvas>
+        </div>
+        
+    </div>
+    
+    <!-- STATS -->
+    
+    <div id="topStaffTicker" class="top-staff-news"></div>
+
+    <div id="stats" class="stats-grid"></div>
+    
+    <!-- REP SECTION -->
+    
+    <div class="section">
+        
+        <div class="section-header">
+            
+            <div>
+                <p class="section-kicker">Team Performance</p>
+                <h2>Sales Reps</h2>
+            </div>
+
+            <span id="repCountBadge" class="section-badge">0 reps</span>
+            
+        </div>
+        
+        <div id="repStats" class="rep-grid"></div>
+        
+    </div>
+    
+    <div class="live-feed">
+    
+        <h2>Live Sales Feed</h2>
+    
+        <div id="liveSalesFeed"></div>
+    
+    </div>
+</div>
+
+<!-- MODAL -->
+
+<div id="repModal" class="modal">
+    
+    <div class="modal-content">
+        <div class="close-rep-div">
+            
+            <button onclick="closeRepModal()" class="close-rep" type="button">×</button>
+            
+        </div>
+        <div class="modal-top">
+
+            <div>
+                <p class="modal-kicker">Sales Detail</p>
+                <h3 id="repModalTitle">Rep Sales</h3>
+                <div id="repModalSummary" class="rep-modal-summary"></div>
+            </div>
+
+            <input 
+            type="text" 
+            id="repSearchInput"
+            placeholder="Search customer or status..."
+            oninput="filterRepSales()"
+            class="rep-search"
+            />
+            
+            
+        </div>
+        
+        <div id="repSalesList"></div>
+        
+    </div>
+    
+
+</div>
+
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+
+
+<script src="https://unpkg.com/docx@8.5.0/build/index.umd.js"></script>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/FileSaver.js/2.0.5/FileSaver.min.js"></script>
+
+<script>
+
+const supabaseUrl =
+"https://nihqmpimzvhjglwkmhfl.supabase.co";
+
+const supabaseKey =
+"eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im5paHFtcGltenZoamdsd2ttaGZsIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Nzc5MzM4MjgsImV4cCI6MjA5MzUwOTgyOH0.PU0egVoNGXsloErw5hGwb9JrLHnn02F1nh6jsudsJ8w";
+
+const supabaseClient =
+supabase.createClient(
+    supabaseUrl,
+    supabaseKey
+);
+
+let allCustomers = [];
+
+let profiles = [];
+
+let revenueChart;
+let paymentChart;
+
+let currentRepSales = [];
+
+let products = [];
+
+let productOpen = false;
+let refreshTimer = null;
+let adminSalesChannel = null;
+let adminProductsChannel = null;
+let adminPollingTimer = null;
+
+const currencyFormatter = new Intl.NumberFormat("en-NG", {
+    style: "currency",
+    currency: "NGN",
+    maximumFractionDigits: 0
+});
+
+function formatCurrency(value) {
+    return currencyFormatter.format(Number(value || 0));
+}
+
+function escapeHtml(value = "") {
+    return String(value)
+        .replaceAll("&", "&amp;")
+        .replaceAll("<", "&lt;")
+        .replaceAll(">", "&gt;")
+        .replaceAll('"', "&quot;")
+        .replaceAll("'", "&#039;");
+}
+
+function formatDate(value) {
+    if (!value) return "-";
+
+    const date = new Date(value);
+    if (Number.isNaN(date.getTime())) return "-";
+
+    return date.toLocaleDateString(undefined, {
+        month: "short",
+        day: "numeric",
+        year: "numeric"
+    });
+}
+
+function getInitials(name = "") {
+    return String(name)
+        .split(" ")
+        .filter(Boolean)
+        .slice(0, 2)
+        .map(part => part[0].toUpperCase())
+        .join("") || "U";
+}
+
+function getProfileForSale(sale) {
+    return profiles.find(profile =>
+        sale.user_id === profile.id
+        ||
+        sale.created_by === profile.full_name
+        ||
+        sale.created_by === profile.email
+    );
+}
+
+function getRepNameForSale(sale) {
+    const profile = getProfileForSale(sale);
+
+    return profile?.full_name
+        || sale.created_by
+        || sale.rep_name
+        || sale.email
+        || "Unassigned";
+}
+
+function getSaleCartItems(sale) {
+    if (!sale.cart) return [];
+
+    if (Array.isArray(sale.cart)) return sale.cart;
+
+    try {
+        const parsed = JSON.parse(sale.cart);
+        return Array.isArray(parsed) ? parsed : [];
+    } catch(err) {
+        return [];
+    }
+}
+
+function getSaleProductsText(sale) {
+    const items = getSaleCartItems(sale);
+
+    if (items.length === 0) return sale.product || "No product listed";
+
+    const visible = items.slice(0, 2).map(item =>
+        `${item.product || "Product"} x${item.quantity || 1}`
+    );
+
+    const more = items.length - visible.length;
+
+    return more > 0
+        ? `${visible.join(", ")} +${more} more`
+        : visible.join(", ");
+}
+
+// TOGGLE
+function toggleSidebar() {
+    document.body.classList.toggle("sidebar-collapsed");
+    updateSidebarState();
+}
+
+function updateSidebarState() {
+    const collapsed = document.body.classList.contains("sidebar-collapsed");
+    const toggle = document.querySelector(".toggle-btn");
+
+    if (!toggle) return;
+
+    toggle.setAttribute("aria-expanded", String(!collapsed));
+    toggle.setAttribute("aria-label", collapsed ? "Open sidebar" : "Close sidebar");
+    toggle.innerHTML = collapsed
+        ? `<i class="fas fa-bars"></i>`
+        : `<i class="fa-solid fa-arrow-left"></i>`;
+}
+
+function setProductsOpen(open) {
+    const body = document.getElementById("productList");
+    const btn = document.getElementById("toggleBtn");
+
+    if (!body || !btn) return;
+
+    productOpen = open;
+    body.classList.toggle("hidden", !productOpen);
+    btn.innerText = productOpen ? "▲" : "▼";
+    btn.setAttribute("aria-expanded", String(productOpen));
+}
+
+function toggleProducts() {
+    setProductsOpen(!productOpen);
+}
+
+
+// ========================
+// USER
+// ========================
+
+async function getUser(){
+
+    const {
+        data: { user }
+    } =
+    await supabaseClient.auth.getUser();
+
+    return user;
+}
+
+// ========================
+// PROFILE
+// ========================
+
+async function getProfile(){
+
+    const user =
+    await getUser();
+
+    if(!user) return null;
+
+    const { data, error } =
+    await supabaseClient
+    .from("profiles")
+    .select("*")
+    .eq("id", user.id)
+    .single();
+
+    if(error){
+
+        console.log(error);
+
+        return null;
+    }
+
+    return data;
+}
+
+function hasActiveSubscription(profile){
+
+    if(!profile) return false;
+
+    if(profile.subscription_status !== "active") return false;
+
+    if(!profile.subscription_expires_at) return true;
+
+    return new Date(profile.subscription_expires_at) > new Date();
+}
+
+// LOAD PRODUCT
+
+async function loadProducts(){
+
+    const { data, error } =
+    await supabaseClient
+    .from("products")
+    .select("*")
+    .order("id", {
+        ascending: false
+    });
+
+    if(error){
+
+        console.log(error);
+
+        return;
+    }
+
+    products = data || [];
+
+    filterProducts();
+
+    populateProductDropdown();
+
+}
+
+// PRODUCT DROPDOWN
+
+function populateProductDropdown() {
+
+    const select = document.getElementById("product");
+
+    if (!select) return;
+
+    select.innerHTML = "";
+
+    // ✅ DEFAULT OPTION (prevents auto-select bug)
+    // const placeholder = document.createElement("option");
+    // placeholder.textContent = "Select Product";
+    // placeholder.value = "";
+    // placeholder.disabled = true;
+    // placeholder.selected = true;
+    // select.appendChild(placeholder);
+
+    products.forEach(p => {
+
+        const opt = document.createElement("option");
+        opt.value = p.name;
+        opt.textContent = `${p.name} - ₦${p.price}`;
+        opt.dataset.price = p.price;
+
+        select.appendChild(opt);
+    });
+}
+
+// RENDER PRODUCT
+
+function renderProducts(list = products){
+
+    const container = document.getElementById("productList");
+
+    if (!container) return;
+
+    container.innerHTML = "";
+
+    if (list.length === 0) {
+        container.innerHTML = `<p class="empty-state">No products found</p>`;
+        return;
+    }
+
+    list.forEach(p => {
+
+        const div = document.createElement("div");
+        div.className = "product-card";
+
+        div.innerHTML = `
+            <h4>${escapeHtml(p.name)}</h4>
+            <p>${formatCurrency(p.price)}</p>
+            <p>Stock: ${Number(p.stock_quantity || 0).toLocaleString()}</p>
+
+           <div class="product-actions">
+
+    <button
+        class="edit-btn"
+        onclick="editProduct('${p.id}')">
+        <i class="fas fa-pen"></i>
+        Edit
+    </button>
+
+    <button
+        class="delete-btn"
+        onclick="deleteProduct('${p.id}')">
+        <i class="fas fa-trash"></i>
+        Delete
+    </button>
+
+</div>
+        `;
+
+        container.appendChild(div);
+    });
+}
+
+// ADD PRODUCT
+
+async function addProduct(){
+
+    const name =
+    document.getElementById("productName").value.trim();
+
+    const price =
+    Number(
+        document.getElementById("productPrice").value
+    );
+
+    const stock =
+    Number(
+        document.getElementById("productStock").value
+    );
+
+    if(!name || Number.isNaN(price) || Number.isNaN(stock) || price < 0 || stock < 0){
+
+        showNotification("Enter a valid product name, price, and stock");
+
+        return;
+    }
+    
+
+    const { error } =
+    await supabaseClient
+    .from("products")
+    .insert([{
+
+        name,
+
+        price,
+
+        stock_quantity: stock
+
+    }]);
+
+    if(error){
+
+    console.log(error);
+
+    // DUPLICATE PRODUCT
+    if(error.code === "23505"){
+
+        showNotification("Product already exists");
+
+        return;
+    }
+
+    showNotification("Failed to add product");
+
+    return;
+}
+    
+
+    showNotification("Product added");
+
+    clearProductForm();
+
+    await loadProducts();
+}
+
+function clearProductForm(){
+
+    const form = document.getElementById("productForm");
+
+    if(form){
+        form.reset();
+    }
+
+}
+
+// FILTER PRODUCT
+
+function filterProducts(){
+
+    const search =
+    document.getElementById("productSearch")
+    .value
+    .toLowerCase();
+
+    const filtered =
+    products.filter(product =>
+
+        product.name
+        .toLowerCase()
+        .includes(search)
+    );
+
+    renderProducts(filtered);
+}
+
+// EDIT PRODUCT
+
+async function editProduct(id){
+
+    const product =
+    products.find(p => p.id == id);
+
+    if(!product) return;
+
+    const newName =
+    prompt("Edit product name:", product.name);
+
+    if(newName === null) return;
+
+    const newPrice =
+    prompt("Edit product price:", product.price);
+
+    if(newPrice === null) return;
+
+    const newStock =
+    prompt("Edit stock quantity:", product.stock_quantity);
+
+    if(newStock === null) return;
+
+    const { error } =
+    await supabaseClient
+    .from("products")
+    .update({
+
+        name: newName,
+
+        price: Number(newPrice),
+
+        stock_quantity: Number(newStock),
+
+        available: Number(newStock) > 0
+    })
+
+    .eq("id", id);
+
+    if(error){
+
+        console.log(error);
+
+        showNotification("Failed to update");
+
+        return;
+    }
+
+        showNotification("Product updated");
+
+    await loadProducts();
+}
+
+// EXPORT EXCEL
+
+function exportExcel(){
+
+    const rows = [];
+
+    allCustomers.forEach(customer => {
+
+        const base = {
+
+            "Customer": customer.customer_id || "-",
+
+            "Created By": customer.created_by || "System",
+
+            "Payment Method": customer.payment_mode || "-",
+
+            "Status": customer.status || "-",
+
+            "Total Amount": customer.final_price || 0,
+
+            "Date": customer.created_at
+                ? new Date(customer.created_at).toLocaleDateString()
+                : "-"
+        };
+
+        // IF CART EXISTS → EXPAND ITEMS
+        if(Array.isArray(customer.cart) && customer.cart.length > 0){
+
+            customer.cart.forEach(item => {
+
+                rows.push({
+
+                    ...base,
+
+                    "Product": item.product || "-",
+
+                    "Quantity": item.quantity || 0,
+
+                    "Unit Price": item.price || 0,
+
+                    "Line Total": item.total || 0
+                });
+            });
+
+        } else {
+
+            rows.push({
+
+                ...base,
+
+                "Product": "-",
+
+                "Quantity": 0,
+
+                "Unit Price": 0,
+
+                "Line Total": 0
+            });
+        }
+    });
+
+    const worksheet =
+    XLSX.utils.json_to_sheet(rows);
+
+    const workbook =
+    XLSX.utils.book_new();
+
+    XLSX.utils.book_append_sheet(
+        workbook,
+        worksheet,
+        "Sales Report"
+    );
+
+    XLSX.writeFile(
+        workbook,
+        "sales-report.xlsx"
+    );
+}
+
+// EXPORT DOCX
+
+async function exportDOCX(){
+
+    const {
+        Document,
+        Packer,
+        Paragraph,
+        Table,
+        TableRow,
+        TableCell,
+        WidthType,
+        TextRun
+    } = window.docx;
+
+    const rows = [];
+
+    // HEADER ROW
+    rows.push(
+        new TableRow({
+            children: [
+                "Customer",
+                "Created By",
+                "Product",
+                "Qty",
+                "Price",
+                "Total",
+                "Status",
+                "Payment",
+                "Date"
+            ].map(text =>
+                new TableCell({
+                    children: [
+                        new Paragraph({
+                            children: [new TextRun({ text, bold: true })]
+                        })
+                    ]
+                })
+            )
+        })
+    );
+
+    // DATA ROWS
+    allCustomers.forEach(customer => {
+
+        const cart = Array.isArray(customer.cart) && customer.cart.length > 0
+            ? customer.cart
+            : [{ product: "-", quantity: 0, price: 0, total: 0 }];
+
+        cart.forEach(item => {
+
+            rows.push(
+                new TableRow({
+                    children: [
+
+                        customer.customer_id || "-",
+                        customer.created_by || "System",
+                        item.product || "-",
+                        String(item.quantity || 0),
+                        String(item.price || 0),
+                        String(item.total || 0),
+                        customer.status || "-",
+                        customer.payment_mode || "-",
+                        customer.created_at
+                            ? new Date(customer.created_at).toLocaleDateString()
+                            : "-"
+                    ].map(text =>
+                        new TableCell({
+                            children: [
+                                new Paragraph(text)
+                            ]
+                        })
+                    )
+                })
+            );
+        });
+    });
+
+    const doc = new Document({
+        sections: [{
+            children: [
+
+                new Paragraph({
+                    text: "Sales Report",
+                    heading: "Heading1"
+                }),
+
+                new Table({
+                    width: {
+                        size: 100,
+                        type: WidthType.PERCENTAGE
+                    },
+                    rows
+                })
+            ]
+        }]
+    });
+
+    const blob =
+    await Packer.toBlob(doc);
+
+    saveAs(blob, "sales-report.docx");
+}
+
+
+// ========================
+// INIT ON START
+// ========================
+
+async function init(){
+
+    const user =
+    await getUser();
+
+    if(!user){
+
+        window.location.href =
+        "signin.html";
+
+        return;
+    }
+
+    const profile =
+    await getProfile();
+
+    if(!profile){
+
+        alert("Profile not found");
+
+        return;
+    }
+
+    if(!hasActiveSubscription(profile)){
+
+        window.location.href =
+        "pricing.html";
+
+        return;
+    }
+
+    if(profile.role !== "admin"){
+
+        alert("Admins only");
+
+        window.location.href =
+        "dashboard.html";
+
+        return;
+    }
+
+    document.getElementById(
+        "welcomeName"
+    ).innerText =
+    `Welcome, ${profile.full_name}`;
+
+    setProductsOpen(false);
+
+    await loadProducts();
+
+    checkStockAlert(products);
+
+    await loadProfiles();
+    await loadCustomers();
+
+    renderLiveFeed();
+
+    updateStats();
+    loadRepStats();
+
+    renderRevenueChart();
+    renderPaymentChart();
+
+    startAdminRealtime();
+}
+
+// ========================
+// LOAD PROFILES
+// ========================
+
+async function loadProfiles(){
+
+    const { data } =
+    await supabaseClient
+    .from("profiles")
+    .select("*");
+
+    profiles = data || [];
+}
+
+// ========================
+// LOAD CUSTOMERS
+// ========================
+
+async function loadCustomers(){
+
+    const { data, error } =
+    await supabaseClient
+    .from("customers")
+    .select("*")
+    .order("id", {
+        ascending:false
+    });
+
+    if(error){
+
+        console.log(error);
+
+        return;
+    }
+
+    allCustomers = data || [];
+}
+
+// ========================
+// STATS
+// ========================
+
+function updateStats(){
+
+    let totalRevenue = 0;
+
+    let paidRevenue = 0;
+
+    let pendingRevenue = 0;
+
+    let cancelledRevenue = 0;
+
+    let paid = 0;
+
+    let pending = 0;
+
+    let cancelled = 0;
+
+    // STAFF TRACKER
+    const repSalesMap = {};
+
+    allCustomers.forEach(c => {
+
+        const amount =
+        Number(c.final_price || 0);
+
+        totalRevenue += amount;
+
+        // TRACK STAFF SALES
+        const repName =
+        getRepNameForSale(c);
+
+        if(!repSalesMap[repName]){
+
+            repSalesMap[repName] = {
+                sales: 0,
+                revenue: 0
+            };
+        }
+
+        repSalesMap[repName].sales += 1;
+
+        repSalesMap[repName].revenue += amount;
+
+        // STATUS COUNTS
+        if(c.status === "Paid"){
+
+            paid++;
+
+            paidRevenue += amount;
+        }
+
+        if(c.status === "Pending"){
+
+            pending++;
+
+            pendingRevenue += amount;
+        }
+
+        if(c.status === "Cancelled"){
+
+            cancelled++;
+
+            cancelledRevenue += amount;
+        }
+    });
+
+    // ========================
+// TOP STAFF TRACKERS
+// ========================
+
+const weeklyMap = {};
+const monthlyMap = {};
+const yearlyMap = {};
+
+const now = new Date();
+
+allCustomers.forEach(c => {
+
+    const amount =
+    Number(c.final_price || 0);
+
+    const rep =
+    getRepNameForSale(c);
+
+    const saleDate =
+    new Date(c.created_at);
+
+    // WEEK CHECK
+    const diffDays =
+    Math.floor(
+        (now - saleDate) /
+        (1000 * 60 * 60 * 24)
+    );
+
+    if(diffDays <= 7){
+
+        if(!weeklyMap[rep]){
+            weeklyMap[rep] = 0;
+        }
+
+        weeklyMap[rep] += amount;
+    }
+
+    // MONTH CHECK
+    if(
+        saleDate.getMonth() === now.getMonth()
+        &&
+        saleDate.getFullYear() === now.getFullYear()
+    ){
+
+        if(!monthlyMap[rep]){
+            monthlyMap[rep] = 0;
+        }
+
+        monthlyMap[rep] += amount;
+    }
+
+    // YEAR CHECK
+    if(
+        saleDate.getFullYear() ===
+        now.getFullYear()
+    ){
+
+        if(!yearlyMap[rep]){
+            yearlyMap[rep] = 0;
+        }
+
+        yearlyMap[rep] += amount;
+    }
+});
+
+// FIND TOP FUNCTION
+function findTopStaff(map){
+
+    let topName = "-";
+    let topRevenue = 0;
+
+    Object.keys(map).forEach(rep => {
+
+        if(map[rep] > topRevenue){
+
+            topRevenue = map[rep];
+            topName = rep;
+        }
+    });
+
+    return {
+        name: topName,
+        revenue: topRevenue
+    };
+}
+
+        const weeklyTop =
+        findTopStaff(weeklyMap);
+
+        const monthlyTop =
+        findTopStaff(monthlyMap);
+
+        const yearlyTop =
+        findTopStaff(yearlyMap);
+
+    document.getElementById(
+        "stats"
+    ).innerHTML = `
+
+    <div class="stat-card">
+        <p>Total Revenue</p>
+        <h2>${formatCurrency(totalRevenue)}</h2>
+    </div>
+
+    <div class="stat-card">
+        <p>Paid Revenue</p>
+        <h2 class="s-paid" >${formatCurrency(paidRevenue)}</h2>
+    </div>
+
+    <div class="stat-card">
+        <p>Pending Revenue</p>
+        <h2 class="s-pending" >${formatCurrency(pendingRevenue)}</h2>
+    </div>
+
+    <div class="stat-card">
+        <p>Cancelled Revenue</p>
+        <h2 class="s-cancelled">${formatCurrency(cancelledRevenue)}</h2>
+    </div>
+
+    <div class="stat-card">
+        <p>Total Sales</p>
+        <h2>${allCustomers.length}</h2>
+    </div>
+
+    <div class="stat-card">
+        <p>Paid Sales</p>
+        <h2>${paid}</h2>
+    </div>
+
+    <div class="stat-card">
+        <p>Pending Sales</p>
+        <h2>${pending}</h2>
+    </div>
+
+    <div class="stat-card">
+        <p>Cancelled Sales</p>
+        <h2>${cancelled}</h2>
+    </div>
+
+    <div class="stat-card top-staff-card">
+
+        <div class="top-staff-slider">
+
+            <div class="top-staff-track">
+
+                <div class="top-item">
+                    🏆 Weekly Top Staff:
+                    <strong>${weeklyTop.name}</strong>
+                    - ${formatCurrency(weeklyTop.revenue)}
+                </div>
+
+                <div class="top-item">
+                    📅 Monthly Top Staff:
+                    <strong>${monthlyTop.name}</strong>
+                    - ${formatCurrency(monthlyTop.revenue)}
+                </div>
+
+                <div class="top-item">
+                    👑 Yearly Top Staff:
+                    <strong>${yearlyTop.name}</strong>
+                    - ${formatCurrency(yearlyTop.revenue)}
+                </div>
+
+            </div>
+
+        </div>
+
+    </div>
+    `;
+
+    renderTopStaffTicker(weeklyTop, monthlyTop, yearlyTop);
+}
+
+function renderTopStaffTicker(weeklyTop, monthlyTop, yearlyTop) {
+    const container = document.getElementById("topStaffTicker");
+
+    if (!container) return;
+
+    const items = [
+        {
+            label: "Weekly top staff",
+            icon: "fa-solid fa-trophy",
+            name: weeklyTop.name,
+            revenue: weeklyTop.revenue,
+            tone: "gold"
+        },
+        {
+            label: "Monthly top staff",
+            icon: "fa-solid fa-calendar-check",
+            name: monthlyTop.name,
+            revenue: monthlyTop.revenue,
+            tone: "green"
+        },
+        {
+            label: "Yearly top staff",
+            icon: "fa-solid fa-crown",
+            name: yearlyTop.name,
+            revenue: yearlyTop.revenue,
+            tone: "pink"
+        }
+    ];
+
+    const tickerItems = [...items, ...items]
+        .map(item => `
+            <div class="top-news-item ${item.tone}">
+                <span class="top-news-icon"><i class="${item.icon}"></i></span>
+                <span>${item.label}</span>
+                <strong>${escapeHtml(item.name)}</strong>
+                <span>${formatCurrency(item.revenue)}</span>
+            </div>
+        `)
+        .join("");
+
+    container.innerHTML = `
+        <div class="top-news-label">
+            <span>Performance News</span>
+            <strong>Top Staff Board</strong>
+        </div>
+
+        <div class="top-news-slider">
+            <div class="top-news-track">
+                ${tickerItems}
+            </div>
+        </div>
+    `;
+}
+
+// NOTIFICATION
+function showNotification(message, type = "info"){
+
+    const container =
+    document.getElementById("notificationContainer");
+
+    const div =
+    document.createElement("div");
+
+    const normalized = String(message).toLowerCase();
+
+    if (type === "info") {
+        if (normalized.includes("failed") || normalized.includes("error")) {
+            type = "error";
+        } else if (normalized.includes("low stock") || normalized.includes("out of stock")) {
+            type = "warning";
+        } else if (normalized.includes("added") || normalized.includes("updated") || normalized.includes("deleted") || normalized.includes("live")) {
+            type = "success";
+        }
+    }
+
+    const icons = {
+        success: "fa-circle-check",
+        error: "fa-circle-xmark",
+        warning: "fa-triangle-exclamation",
+        info: "fa-circle-info"
+    };
+
+    div.className = `notification ${type}`;
+
+    div.innerHTML = `
+        <span class="notification-icon"><i class="fa-solid ${icons[type] || icons.info}"></i></span>
+        <span class="notification-message">${escapeHtml(message)}</span>
+        <button type="button" class="notification-close" aria-label="Dismiss notification">
+            <i class="fa-solid fa-xmark"></i>
+        </button>
+        <span class="notification-progress"></span>
+    `;
+
+    container.appendChild(div);
+
+    div.querySelector(".notification-close").addEventListener("click", () => {
+        div.classList.add("leaving");
+        setTimeout(() => div.remove(), 220);
+    });
+
+    setTimeout(() => {
+        div.classList.add("leaving");
+        setTimeout(() => div.remove(), 220);
+    }, 4500);
+}
+
+
+// RENDER LIVE FEED
+
+function renderLiveFeed(){
+
+    const container =
+    document.getElementById("liveSalesFeed");
+
+    container.innerHTML = "";
+
+    const latest =
+    [...allCustomers]
+    .sort((a, b) => new Date(b.created_at || 0) - new Date(a.created_at || 0))
+    .slice(0, 10);
+
+    const html = latest.map((sale, index) => {
+        const status = (sale.status || "Pending").toLowerCase();
+        const repName = getRepNameForSale(sale);
+        const date = sale.created_at ? new Date(sale.created_at) : null;
+        const time = date && !Number.isNaN(date.getTime())
+            ? date.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })
+            : "-";
+
+        return `
+        <div class="feed-item ${status}" style="animation-delay:${Math.min(index * 0.045, 0.35)}s">
+            <div class="feed-pulse"></div>
+
+            <div class="feed-main">
+                <div class="feed-line">
+                    <strong>${escapeHtml(sale.customer_id || "Customer")}</strong>
+                    <span class="feed-status ${status}">${escapeHtml(sale.status || "Pending")}</span>
+                </div>
+
+                <p>${escapeHtml(getSaleProductsText(sale))}</p>
+
+                <div class="feed-meta">
+                    <span><i class="fa-regular fa-user"></i> ${escapeHtml(repName)}</span>
+                    <span><i class="fa-regular fa-clock"></i> ${time}</span>
+                    <span><i class="fa-solid fa-credit-card"></i> ${escapeHtml(sale.payment_mode || "-")}</span>
+                </div>
+            </div>
+
+            <strong class="feed-amount">${formatCurrency(sale.final_price)}</strong>
+        </div>
+        `;
+    }).join("");
+
+    container.innerHTML = html || `<p class="empty-state">No sales yet</p>`;
+}
+
+// ========================
+// REP CARDS
+// ========================
+
+function loadRepStats(){
+
+    const container =
+    document.getElementById(
+        "repStats"
+    );
+
+    container.innerHTML = "";
+
+    // SHOW ADMINS + REPS
+    const reps =
+    profiles.filter(p =>
+
+        p.role === "rep"
+
+        ||
+
+        p.role === "admin"
+    );
+
+    const repCountBadge = document.getElementById("repCountBadge");
+
+    if (repCountBadge) {
+        repCountBadge.textContent = `${reps.length} team members`;
+    }
+
+    reps.sort((a, b) => {
+        const getRepRevenue = rep => allCustomers
+            .filter(c => c.user_id === rep.id || c.created_by === rep.full_name)
+            .reduce((sum, sale) => sum + Number(sale.final_price || 0), 0);
+
+        return getRepRevenue(b) - getRepRevenue(a);
+    });
+
+    if (reps.length === 0) {
+        container.innerHTML = `<p class="empty-state">No reps found</p>`;
+        return;
+    }
+
+    reps.forEach(rep => {
+
+        // MATCH SALES
+        const sales =
+        allCustomers.filter(c =>
+
+            c.user_id === rep.id
+
+            ||
+
+            c.created_by === rep.full_name
+        );
+
+        // TOTALS
+        let totalRevenue = 0;
+
+        let paidSales = 0;
+
+        let pendingSales = 0;
+
+        let cancelledSales = 0;
+
+        sales.forEach(sale => {
+
+            totalRevenue +=
+            Number(sale.final_price || 0);
+
+            if(sale.status === "Paid"){
+                paidSales++;
+            }
+
+            if(sale.status === "Pending"){
+                pendingSales++;
+            }
+
+            if(sale.status === "Cancelled"){
+                cancelledSales++;
+            }
+        });
+
+        const paidRevenue = sales
+            .filter(sale => sale.status === "Paid")
+            .reduce((sum, sale) => sum + Number(sale.final_price || 0), 0);
+
+        const averageSale = sales.length
+            ? totalRevenue / sales.length
+            : 0;
+
+        const conversionRate = sales.length
+            ? Math.round((paidSales / sales.length) * 100)
+            : 0;
+
+        const lastSaleDate = sales
+            .map(sale => new Date(sale.created_at))
+            .filter(date => !Number.isNaN(date.getTime()))
+            .sort((a, b) => b - a)[0];
+
+        const roleLabel = rep.role === "admin" ? "Admin" : "Sales Rep";
+
+        // CARD
+        const card =
+        document.createElement("div");
+
+        card.className =
+        "rep-card";
+
+        card.innerHTML = `
+        <div class="rep-card-top">
+            <div class="rep-avatar">${escapeHtml(getInitials(rep.full_name))}</div>
+
+            <div class="rep-title">
+                <h3>${escapeHtml(rep.full_name || "Unnamed")}</h3>
+                <p>${escapeHtml(roleLabel)}</p>
+            </div>
+
+            <span class="rep-score">${conversionRate}% paid</span>
+        </div>
+
+        <div class="rep-highlight">
+            <span>Total Revenue</span>
+            <strong>${formatCurrency(totalRevenue)}</strong>
+            <small>${sales.length} total sales · ${formatCurrency(averageSale)} avg sale</small>
+        </div>
+
+        <div class="rep-progress">
+            <div class="rep-progress-bar" style="width:${conversionRate}%"></div>
+        </div>
+
+        <div class="rep-status-grid">
+            <div class="rep-status paid">
+                <strong>${paidSales}</strong>
+                <span>Paid</span>
+            </div>
+
+            <div class="rep-status pending">
+                <strong>${pendingSales}</strong>
+                <span>Pending</span>
+            </div>
+
+            <div class="rep-status cancelled">
+                <strong>${cancelledSales}</strong>
+                <span>Cancelled</span>
+            </div>
+        </div>
+
+        <div class="rep-meta">
+            <span><i class="fa-solid fa-coins"></i> Paid revenue: ${formatCurrency(paidRevenue)}</span>
+            <span><i class="fa-regular fa-clock"></i> Last sale: ${formatDate(lastSaleDate)}</span>
+        </div>
+
+        <button
+        class="rep-action"
+        onclick="viewRepSales('${rep.id}')">
+            <span>View Sales</span>
+            <i class="fa-solid fa-arrow-right"></i>
+        </button>
+        `;
+
+        container.appendChild(card);
+    });
+}
+
+// ========================
+// VIEW REP SALES
+// ========================
+
+function viewRepSales(repId){
+
+    const modal = document.getElementById("repModal");
+
+    const rep = profiles.find(profile => profile.id === repId);
+
+    const sales = allCustomers.filter(c =>
+        c.user_id === repId
+        ||
+        (rep && c.created_by === rep.full_name)
+    );
+
+    // 🔥 STORE DATA FOR SEARCH
+    currentRepSales = sales
+        .sort((a, b) => new Date(b.created_at || 0) - new Date(a.created_at || 0));
+
+    const totalRevenue = currentRepSales
+        .reduce((sum, sale) => sum + Number(sale.final_price || 0), 0);
+
+    const paidSales = currentRepSales
+        .filter(sale => sale.status === "Paid").length;
+
+    const avgSale = currentRepSales.length
+        ? totalRevenue / currentRepSales.length
+        : 0;
+
+    const title = document.getElementById("repModalTitle");
+    const summary = document.getElementById("repModalSummary");
+
+    if (title) {
+        title.textContent = rep?.full_name || "Rep Sales";
+    }
+
+    if (summary) {
+        summary.innerHTML = `
+            <span>${currentRepSales.length} sales</span>
+            <span>${paidSales} paid</span>
+            <span>${formatCurrency(totalRevenue)} revenue</span>
+            <span>${formatCurrency(avgSale)} avg</span>
+        `;
+    }
+
+    // render once initially
+    renderRepSales(currentRepSales);
+
+    modal.style.display = "flex";
+
+    document.getElementById("repSearchInput").value = "";
+}
+
+// ========================
+// CLOSE MODAL
+// ========================
+
+function closeRepModal(){
+
+    document.getElementById(
+        "repModal"
+    ).style.display = "none";
+}
+
+// CHART/REVENUE
+
+function getRevenueData() {
+
+    const daily = {};
+
+    allCustomers.forEach(t => {
+
+        if ((t.status || "").toLowerCase() !== "paid") return;
+
+        const amount = Number(t.final_price || 0);
+        const date = new Date(t.created_at);
+
+        if (Number.isNaN(date.getTime())) return;
+
+        const dayKey = date.toISOString().slice(0, 10);
+        daily[dayKey] = (daily[dayKey] || 0) + amount;
+    });
+
+    const labels = Object.keys(daily).sort();
+    const values = labels.map(label => daily[label]);
+
+    return { labels, values };
+}
+
+// let revenueChart;
+
+function renderRevenueChart() {
+
+    const { labels, values } = getRevenueData();
+
+    const canvas = document.getElementById("revenueChart");
+
+    if (!canvas) return;
+
+    if (revenueChart) revenueChart.destroy();
+
+    revenueChart = new Chart(canvas.getContext("2d"), {
+        type: "bar",
+        data: {
+            labels,
+
+            datasets: [
+                {
+                    label: "Daily Revenue",
+                    data: values,
+                    borderWidth: 1,
+                    backgroundColor: "rgba(37, 99, 235, 0.65)",
+                    borderColor: "rgba(96, 165, 250, 1)",
+                    borderRadius: 6
+                }
+            ]
+        },
+        options: {
+        responsive: true,
+        maintainAspectRatio: false,
+        animation: {
+        duration: 450,
+        easing: "easeOutQuart"
+    },
+        scales: {
+            y: {
+                beginAtZero: true
+            }
+        },
+        plugins: {
+            legend: {
+                display: false
+            }
+        }
+}
+        
+    });
+}
+
+
+// RENDER FUNCTION
+
+function renderRepSales(sales){
+
+    const container =
+    document.getElementById("repSalesList");
+
+    container.innerHTML = "";
+
+    if(sales.length === 0){
+        container.innerHTML = `<p class="empty-state">No sales found</p>`;
+        return;
+    }
+
+    container.innerHTML = sales.map((sale, index) => {
+        const status = (sale.status || "-").toLowerCase();
+        const date = sale.created_at ? new Date(sale.created_at) : null;
+        const dateText = date && !Number.isNaN(date.getTime())
+            ? date.toLocaleString()
+            : "-";
+
+        return `
+        <div class="sale-card-modern ${escapeHtml(status)}" style="animation-delay:${Math.min(index * 0.035, 0.3)}s">
+
+            <div class="sale-header">
+                <div>
+                    <span>${escapeHtml(sale.customer_id || "Unknown Customer")}</span>
+                    <p>${escapeHtml(getSaleProductsText(sale))}</p>
+                </div>
+                <strong>${formatCurrency(sale.final_price)}</strong>
+            </div>
+
+            <div class="sale-body">
+                <span class="status-badge ${escapeHtml(status)}">
+                    ${escapeHtml(sale.status || "-")}
+                </span>
+                <span><i class="fa-regular fa-calendar"></i> ${dateText}</span>
+                <span><i class="fa-solid fa-credit-card"></i> ${escapeHtml(sale.payment_mode || "-")}</span>
+                <span><i class="fa-solid fa-store"></i> ${escapeHtml(sale.source || "-")}</span>
+            </div>
+
+        </div>
+        `;
+    }).join("");
+}
+
+// SEARCH FUNCTION
+
+function filterRepSales(){
+
+    const input = document.getElementById("repSearchInput");
+
+    if (!input) return;
+
+    const query = input.value.toLowerCase().trim();
+
+    const filtered = currentRepSales.filter(sale => {
+
+        return (
+            (sale.customer_id || "").toLowerCase().includes(query) ||
+            (sale.status || "").toLowerCase().includes(query) ||
+            (sale.payment_mode || "").toLowerCase().includes(query) ||
+            (sale.source || "").toLowerCase().includes(query) ||
+            getSaleProductsText(sale).toLowerCase().includes(query) ||
+            String(sale.final_price || "").includes(query)
+        );
+    });
+
+    renderRepSales(filtered);
+}
+
+// PAYMENT METHOD
+
+function getPaymentMethods() {
+    const methods = { cash: 0, transfer: 0, pos: 0 };
+
+    allCustomers.forEach(t => {
+
+        const method = (t.payment_mode || "").toLowerCase();
+
+        if (t.status === "Paid") {
+
+            if (methods[method] !== undefined) {
+                methods[method] += Number(t.final_price || 0);
+            }
+        }
+    });
+
+    return methods;
+}
+
+
+// RENDER PAYMENT CHART
+
+function renderPaymentChart() {
+    const methods = getPaymentMethods();
+
+    const values = [
+        methods.cash,
+        methods.transfer,
+        methods.pos
+    ];
+
+    const canvas = document.getElementById("paymentChart");
+    if (!canvas) return;
+
+    if (paymentChart) {
+        paymentChart.destroy();
+        paymentChart = null;
+    }
+
+    if (values.every(v => v === 0)) {
+        console.log("No payment data yet");
+        return;
+    }
+
+    const ctx = canvas.getContext("2d");
+
+    paymentChart = new Chart(ctx, {
+        type: "doughnut",
+        data: {
+            labels: ["Cash", "Transfer", "POS"],
+            datasets: [{
+                data: values,
+                backgroundColor: [
+                    "rgba(34, 197, 94, 0.75)",
+                    "rgba(37, 99, 235, 0.75)",
+                    "rgba(250, 204, 21, 0.75)"
+                ],
+                borderColor: "#111827",
+                borderWidth: 2
+            }]
+        },
+        options: {
+         responsive: true,
+        maintainAspectRatio: false,
+        animation: {
+        duration: 450,
+        easing: "easeOutQuart"
+        },
+        plugins: {
+            legend: {
+                position: "bottom"
+            }
+        }        
+    }
+});
+}
+
+
+// DELETE PRODUCT
+
+async function deleteProduct(id){
+
+    const confirmDelete =
+    confirm("Delete this product?");
+
+    if(!confirmDelete) return;
+
+    const { error } =
+    await supabaseClient
+    .from("products")
+    .delete()
+    .eq("id", id);
+
+    if(error){
+
+        console.log(error);
+
+        showNotification("Delete failed");
+
+        return;
+    }
+
+    showNotification("🗑 Product deleted");
+
+    await loadProducts();
+}
+
+// OUT OF STOCK NOTIFICATION
+function checkStockAlert(products) {
+
+    products.forEach(p => {
+
+        if (p.stock_quantity <= 0) {
+            showNotification(`⚠️ ${p.name} is OUT OF STOCK`);
+        }
+
+        else if (p.stock_quantity <= 5) {
+            showNotification(`⚠️ ${p.name} is LOW STOCK`);
+        }
+    });
+}
+
+
+// ========================
+// LOGOUT
+// ========================
+
+async function logout(){
+
+    await supabaseClient
+    .auth
+    .signOut();
+
+    window.location.href =
+    "signin.html";
+}
+
+// ========================
+// NAVIGATION
+// ========================
+
+function goTo(page){
+
+    window.location.href =
+    page;
+}
+
+function refreshDashboardSoon(message = "Dashboard updated live") {
+    clearTimeout(refreshTimer);
+
+    refreshTimer = setTimeout(async () => {
+        await loadProfiles();
+        await loadCustomers();
+        updateStats();
+        loadRepStats();
+        renderRevenueChart();
+        renderPaymentChart();
+        renderLiveFeed();
+        showNotification(message);
+    }, 200);
+}
+
+// ========================
+// START REALTIME
+// ========================
+
+function startAdminRealtime(){
+
+    if(adminSalesChannel){
+        supabaseClient.removeChannel(adminSalesChannel);
+    }
+
+    if(adminProductsChannel){
+        supabaseClient.removeChannel(adminProductsChannel);
+    }
+
+    adminSalesChannel =
+    supabaseClient
+    .channel("admin-sales-live")
+    .on(
+        "postgres_changes",
+        {
+            event: "*",
+            schema: "public",
+            table: "customers"
+        },
+        payload => {
+            console.log("Admin sales realtime:", payload.eventType);
+            refreshDashboardSoon("New sales activity received");
+        }
+    )
+    .subscribe(status => {
+        console.log("Admin sales channel:", status);
+
+        if(status === "CHANNEL_ERROR" || status === "TIMED_OUT"){
+            showNotification("Realtime reconnecting...");
+        }
+    });
+
+    adminProductsChannel =
+    supabaseClient
+    .channel("admin-products-live")
+    .on(
+        "postgres_changes",
+        {
+            event: "*",
+            schema: "public",
+            table: "products"
+        },
+        async () => {
+            await loadProducts();
+            showNotification("Products updated live");
+        }
+    )
+    .subscribe(status => {
+        console.log("Admin products channel:", status);
+    });
+
+    clearInterval(adminPollingTimer);
+
+    adminPollingTimer = setInterval(() => {
+        refreshDashboardSoon("Dashboard synced");
+    }, 15000);
+}
+
+// PRODUCT PANEL CLICK
+document
+.getElementById("productPanelHeader")
+.addEventListener("click", (event) => {
+
+    if (event.target.closest("input")) return;
+
+    toggleProducts();
+});
+
+init();
+updateSidebarState();
+
+</script>
+
+</body>
+</html>

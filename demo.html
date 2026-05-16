@@ -1,0 +1,108 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Sales Tracker Demo</title>
+    <link rel="icon" href="img/sales-logo.png" type="image/x-icon">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+    <link rel="stylesheet" href="public.css">
+</head>
+<body>
+    <nav class="site-nav">
+        <a class="brand" href="index.html">
+            <span><i class="fa-solid fa-chart-line"></i></span>
+            Sales Tracker
+        </a>
+
+        <div class="nav-links">
+            <a href="index.html">Home</a>
+            <a href="pricing.html">Pricing</a>
+            <a href="signin.html">Sign In</a>
+        </div>
+    </nav>
+
+    <main class="demo-section">
+        <div class="section-title">
+            <span>Interactive Preview</span>
+            <h2>Try the sales workflow with sample data.</h2>
+            <p>This demo does not save anything to your real database. It is just here to show the experience.</p>
+        </div>
+
+        <div class="demo-grid">
+            <section class="demo-panel">
+                <h3>New Sale</h3>
+                <input id="demoCustomer" readonly value="DEMO-1001">
+                <select id="demoProduct">
+                    <option value="Adire Hoodie" data-price="12000">Adire Hoodie - ₦12,000</option>
+                    <option value="Cargo Pants" data-price="20000">Cargo Pants - ₦20,000</option>
+                    <option value="Cap" data-price="3000">Cap - ₦3,000</option>
+                </select>
+                <input id="demoQty" type="number" min="1" value="1">
+                <select id="demoStatus">
+                    <option>Paid</option>
+                    <option>Pending</option>
+                    <option>Cancelled</option>
+                </select>
+                <button class="primary-btn" type="button" onclick="addDemoSale()">Add Demo Sale</button>
+            </section>
+
+            <section class="demo-panel">
+                <h3>Demo Dashboard</h3>
+                <div class="mini-stats-preview" id="demoStats"></div>
+                <div class="demo-list" id="demoList"></div>
+            </section>
+        </div>
+    </main>
+
+    <script>
+        let demoSales = [
+            { id: "DEMO-0999", product: "Adire Hoodie", qty: 2, status: "Paid", total: 24000 },
+            { id: "DEMO-1000", product: "Cap", qty: 4, status: "Pending", total: 12000 }
+        ];
+
+        function money(value) {
+            return `₦${Number(value || 0).toLocaleString()}`;
+        }
+
+        function renderDemo() {
+            const total = demoSales.reduce((sum, sale) => sum + sale.total, 0);
+            const paid = demoSales.filter(sale => sale.status === "Paid").length;
+
+            document.getElementById("demoStats").innerHTML = `
+                <div><span>Total Sales</span><strong>${demoSales.length}</strong></div>
+                <div><span>Revenue</span><strong>${money(total)}</strong></div>
+                <div><span>Paid</span><strong>${paid}</strong></div>
+            `;
+
+            document.getElementById("demoList").innerHTML = demoSales.map(sale => `
+                <div class="demo-sale">
+                    <strong>${sale.id}</strong>
+                    <p>${sale.product} x${sale.qty}</p>
+                    <small>${sale.status} - ${money(sale.total)}</small>
+                </div>
+            `).join("");
+        }
+
+        function addDemoSale() {
+            const product = document.getElementById("demoProduct");
+            const selected = product.options[product.selectedIndex];
+            const qty = Number(document.getElementById("demoQty").value || 1);
+            const status = document.getElementById("demoStatus").value;
+            const total = Number(selected.dataset.price || 0) * qty;
+
+            demoSales.unshift({
+                id: `DEMO-${Math.floor(1000 + Math.random() * 9000)}`,
+                product: selected.value,
+                qty,
+                status,
+                total
+            });
+
+            renderDemo();
+        }
+
+        renderDemo();
+    </script>
+</body>
+</html>
