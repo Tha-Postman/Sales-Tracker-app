@@ -121,6 +121,33 @@ h1 {
     margin-top: 28px;
 }
 
+.support-card {
+    width: fit-content;
+    max-width: 100%;
+    display: grid;
+    gap: 6px;
+    margin-top: 18px;
+    padding: 14px 16px;
+    border: 1px solid rgba(148,163,184,0.16);
+    border-radius: 16px;
+    background: rgba(15,23,42,0.62);
+    color: #cbd5e1;
+}
+
+.support-card span {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 13px;
+    font-weight: 800;
+}
+
+.support-card a {
+    color: #93c5fd;
+    font-weight: 900;
+    overflow-wrap: anywhere;
+}
+
 .primary-btn,
 .secondary-btn,
 .plan-btn {
@@ -267,6 +294,37 @@ h1 {
     padding: 52px 0 70px;
 }
 
+.contact-support-section,
+.pricing-support {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 18px;
+    margin: 10px 0 70px;
+    padding: 22px;
+    border: 1px solid rgba(148,163,184,0.16);
+    border-radius: 22px;
+    background: rgba(15,23,42,0.66);
+    box-shadow: 0 28px 70px rgba(0,0,0,0.22);
+}
+
+.contact-support-section h2,
+.pricing-support h3 {
+    margin: 8px 0;
+    font-size: clamp(24px, 3vw, 38px);
+}
+
+.contact-support-section p,
+.pricing-support p {
+    color: #cbd5e1;
+    line-height: 1.6;
+}
+
+.pricing-support {
+    margin-top: 22px;
+    margin-bottom: 0;
+}
+
 .section-title {
     margin-bottom: 22px;
 }
@@ -316,9 +374,21 @@ h1 {
     grid-template-columns: repeat(3, 1fr);
 }
 
+.pricing-grid.four-plan-grid {
+    grid-template-columns: repeat(4, 1fr);
+}
+
 .pricing-card.featured {
     border-color: rgba(96,165,250,0.45);
     transform: translateY(-8px);
+}
+
+.enterprise-card {
+    border-color: rgba(251,191,36,0.34);
+}
+
+.enterprise-price {
+    font-size: 32px;
 }
 
 .pricing-card.featured:hover {
@@ -539,6 +609,12 @@ h1 {
 
     .pricing-controls {
         align-items: stretch;
+        flex-direction: column;
+    }
+
+    .contact-support-section,
+    .pricing-support {
+        align-items: flex-start;
         flex-direction: column;
     }
 

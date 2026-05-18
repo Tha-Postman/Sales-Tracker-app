@@ -80,10 +80,51 @@
      <button type="button" class="toggle-btn" onclick="toggleSidebar()" aria-label="Open sidebar" aria-expanded="false"><i class="fas fa-bars"></i></button>
      <h1 class="admin-d">Admin Dashboard</h1>
      <h3 id="welcomeName" class="welcome"></h3>
+     <div class="admin-clock" aria-live="polite">
+        <span id="adminDate"></span>
+     </div>
+     <div class="admin-top-actions">
+        <button class="admin-password-btn" type="button" onclick="changePassword()">
+            <i class="fa-solid fa-key"></i>
+            Password
+        </button>
+        <button class="admin-logout-btn" type="button" onclick="logout()">
+            <i class="fa-solid fa-right-from-bracket"></i>
+            Logout
+        </button>
+     </div>
 
     </div>
     <!-- TOPBAR -->
+
+    <div class="admin-content-nav" aria-label="Admin dashboard sections">
+        <button class="active" type="button" data-view="overview" onclick="showAdminView('overview')">
+            <i class="fa-solid fa-chart-pie"></i>
+            Overview
+        </button>
+        <button type="button" data-view="products" onclick="showAdminView('products')">
+            <i class="fa-solid fa-boxes-stacked"></i>
+            Products
+        </button>
+        <button type="button" data-view="team" onclick="showAdminView('team')">
+            <i class="fa-solid fa-users"></i>
+            Team
+        </button>
+        <button type="button" data-view="tools" onclick="showAdminView('tools')">
+            <i class="fa-solid fa-wand-magic-sparkles"></i>
+            Business Tools
+        </button>
+        <button type="button" data-view="chat" onclick="showAdminView('chat')">
+            <i class="fa-solid fa-comments"></i>
+            Team Chat
+        </button>
+        <button type="button" data-view="feed" onclick="showAdminView('feed')">
+            <i class="fa-solid fa-bolt"></i>
+            Live Feed
+        </button>
+    </div>
     
+    <section class="admin-view" data-view-panel="products">
     <div class="product-form" >
         
         <div>
@@ -128,11 +169,20 @@
             <div id="productList" class="panel-body"></div>
             
     </div>
+    </section>
 
+    <section class="admin-view active" data-view-panel="overview">
     <div class="charts-container">
         
         <div class="chart-box">
-            <h3>Revenue Overview</h3>
+            <div class="chart-box-head">
+                <h3>Revenue Overview</h3>
+                <div class="chart-period-tabs" aria-label="Revenue period">
+                    <button class="active" type="button" data-revenue-period="daily" onclick="setRevenuePeriod('daily')">Daily</button>
+                    <button type="button" data-revenue-period="monthly" onclick="setRevenuePeriod('monthly')">Monthly</button>
+                    <button type="button" data-revenue-period="annual" onclick="setRevenuePeriod('annual')">Annual</button>
+                </div>
+            </div>
             <canvas id="revenueChart"></canvas>
         </div>
         
@@ -148,9 +198,11 @@
     <div id="topStaffTicker" class="top-staff-news"></div>
 
     <div id="stats" class="stats-grid"></div>
+    </section>
     
     <!-- REP SECTION -->
     
+    <section class="admin-view overview-followup active" data-view-panel="team">
     <div class="section">
         
         <div class="section-header">
@@ -163,11 +215,100 @@
             <span id="repCountBadge" class="section-badge">0 reps</span>
             
         </div>
+
+        <form id="repInviteForm" class="team-form">
+            <div>
+                <label for="repName">Rep name</label>
+                <input id="repName" type="text" placeholder="Full name" required>
+            </div>
+
+            <div>
+                <label for="repEmail">Rep email</label>
+                <input id="repEmail" type="email" placeholder="rep@email.com" required>
+            </div>
+
+            <div>
+                <label for="repPassword">Temporary password</label>
+                <input id="repPassword" type="text" placeholder="Minimum 6 characters" required>
+            </div>
+
+            <button type="submit">
+                <i class="fa-solid fa-user-plus"></i>
+                Add Rep
+            </button>
+        </form>
         
         <div id="repStats" class="rep-grid"></div>
         
     </div>
+    </section>
+
+    <section class="admin-view" data-view-panel="tools">
+        <div class="section business-tools-section">
+            <div class="section-header">
+                <div>
+                    <p class="section-kicker">Owner Toolkit</p>
+                    <h2>Business Tools</h2>
+                </div>
+
+                <span class="section-badge">Growth features</span>
+            </div>
+
+            <div id="businessTools" class="business-tools-grid"></div>
+        </div>
+    </section>
+
+    <section class="admin-view" data-view-panel="chat">
+        <div class="section team-chat-section">
+            <div class="section-header">
+                <div>
+                    <p class="section-kicker">Pro Workspace</p>
+                    <h2>Team Chat</h2>
+                </div>
+
+                <span id="chatPlanBadge" class="section-badge">Pro only</span>
+            </div>
+
+            <div id="chatLocked" class="chat-locked">
+                <i class="fa-solid fa-lock"></i>
+                <h3>Team chat is available on Pro</h3>
+                <p>Upgrade this business to Pro to send team-wide updates, chat with reps, and manage communication mode.</p>
+            </div>
+
+            <div id="chatWorkspace" class="chat-workspace hidden">
+                <div class="chat-controls">
+                    <label>
+                        <input id="chatAdminOnly" type="checkbox" onchange="saveChatSettings()">
+                        Only admin can talk
+                    </label>
+
+                    <label>
+                        <input id="chatAllowAttachments" type="checkbox" checked onchange="saveChatSettings()">
+                        Allow links/files
+                    </label>
+                </div>
+
+                <div id="chatMessages" class="chat-messages"></div>
+
+                <form id="chatForm" class="chat-form">
+                    <input id="chatMessageInput" type="text" placeholder="Send an update to the team...">
+                    <select id="chatAttachmentType" title="Attachment type">
+                        <option value="">No attachment</option>
+                        <option value="image">Picture link</option>
+                        <option value="voice">Voice note link</option>
+                        <option value="file">File link</option>
+                    </select>
+                    <input id="chatAttachmentUrl" type="url" placeholder="Optional attachment URL">
+                    <button type="submit">
+                        <i class="fa-solid fa-paper-plane"></i>
+                        Send
+                    </button>
+                </form>
+            </div>
+        </div>
+    </section>
     
+    <section class="admin-view overview-followup active" data-view-panel="feed">
     <div class="live-feed">
     
         <h2>Live Sales Feed</h2>
@@ -175,6 +316,7 @@
         <div id="liveSalesFeed"></div>
     
     </div>
+    </section>
 </div>
 
 <!-- MODAL -->
@@ -238,9 +380,13 @@ supabase.createClient(
 let allCustomers = [];
 
 let profiles = [];
+let currentProfile = null;
+let currentBusinessId = null;
+const TEAM_API_URL = "http://localhost:4242";
 
 let revenueChart;
 let paymentChart;
+let revenuePeriod = "daily";
 
 let currentRepSales = [];
 
@@ -251,6 +397,12 @@ let refreshTimer = null;
 let adminSalesChannel = null;
 let adminProductsChannel = null;
 let adminPollingTimer = null;
+let lastDashboardSignature = "";
+let chatRefreshTimer = null;
+let chatSettings = {
+    admin_only: false,
+    allow_attachments: true
+};
 
 const currencyFormatter = new Intl.NumberFormat("en-NG", {
     style: "currency",
@@ -294,12 +446,15 @@ function getInitials(name = "") {
 }
 
 function getProfileForSale(sale) {
+    const createdBy = String(sale.created_by || "").trim().toLowerCase();
+    const saleUserId = String(sale.user_id || "");
+
     return profiles.find(profile =>
-        sale.user_id === profile.id
+        saleUserId === String(profile.id || "")
         ||
-        sale.created_by === profile.full_name
+        createdBy === String(profile.full_name || "").trim().toLowerCase()
         ||
-        sale.created_by === profile.email
+        createdBy === String(profile.email || "").trim().toLowerCase()
     );
 }
 
@@ -311,6 +466,62 @@ function getRepNameForSale(sale) {
         || sale.rep_name
         || sale.email
         || "Unassigned";
+}
+
+function isAssignedTeamSale(sale) {
+    return Boolean(getProfileForSale(sale));
+}
+
+function getDashboardSignature() {
+    const latestSale = allCustomers[0];
+    const latestProfile = profiles[0];
+
+    return [
+        allCustomers.length,
+        profiles.length,
+        latestSale?.id || "",
+        latestSale?.status || "",
+        latestSale?.updated_at || latestSale?.created_at || "",
+        latestProfile?.id || ""
+    ].join("|");
+}
+
+function isProPlan(){
+    return getPlanLevel(currentProfile?.subscription_plan) >= 3;
+}
+
+function getPlanLevel(plan){
+    const normalized = String(plan || "").toLowerCase();
+
+    if(normalized.includes("enterprise")) return 4;
+    if(normalized.includes("pro")) return 3;
+    if(normalized.includes("business")) return 2;
+    if(normalized.includes("starter")) return 1;
+
+    return 0;
+}
+
+function showAdminView(view){
+    document.querySelectorAll("[data-view-panel]").forEach(panel => {
+        const isOverviewFollowup =
+            view === "overview"
+            &&
+            panel.classList.contains("overview-followup");
+
+        panel.classList.toggle("active", panel.dataset.viewPanel === view || isOverviewFollowup);
+    });
+
+    document.querySelectorAll("[data-view]").forEach(button => {
+        button.classList.toggle("active", button.dataset.view === view);
+    });
+
+    if(view === "chat"){
+        loadTeamChat();
+    }
+
+    if(view === "tools"){
+        renderBusinessTools();
+    }
 }
 
 function getSaleCartItems(sale) {
@@ -431,14 +642,97 @@ function hasActiveSubscription(profile){
     return new Date(profile.subscription_expires_at) > new Date();
 }
 
+function getBusinessId(){
+    return currentProfile?.business_id || currentBusinessId;
+}
+
+async function getAuthToken(){
+    const {
+        data: { session }
+    } = await supabaseClient.auth.getSession();
+
+    return session?.access_token || null;
+}
+
+async function callTeamApi(path, payload){
+    const token = await getAuthToken();
+
+    if(!token){
+        throw new Error("Login session expired");
+    }
+
+    let response;
+
+    try {
+        response = await fetch(`${TEAM_API_URL}${path}`, {
+            method: "POST",
+            headers: {
+                "Content-Type": "application/json",
+                Authorization: `Bearer ${token}`
+            },
+            body: JSON.stringify(payload)
+        });
+    } catch(error) {
+        throw new Error("Team backend is not running. Start it with npm run dev.");
+    }
+
+    const result = await response.json().catch(() => ({
+        error: response.status === 404
+            ? "Team backend route not found. Restart npm run dev after the latest code changes."
+            : ""
+    }));
+
+    if(!response.ok){
+        throw new Error(result.error || `Team request failed (${response.status})`);
+    }
+
+    return result;
+}
+
+async function getTeamApi(path){
+    const token = await getAuthToken();
+
+    if(!token){
+        throw new Error("Login session expired");
+    }
+
+    let response;
+
+    try {
+        response = await fetch(`${TEAM_API_URL}${path}`, {
+            headers: {
+                Authorization: `Bearer ${token}`
+            }
+        });
+    } catch(error) {
+        throw new Error("Team backend is not running. Start it with npm run dev.");
+    }
+
+    const result = await response.json().catch(() => ({
+        error: response.status === 404
+            ? "Team backend route not found. Restart npm run dev after the latest code changes."
+            : ""
+    }));
+
+    if(!response.ok){
+        throw new Error(result.error || `Team request failed (${response.status})`);
+    }
+
+    return result;
+}
+
 // LOAD PRODUCT
 
 async function loadProducts(){
+
+    const businessId = getBusinessId();
+    if(!businessId) return;
 
     const { data, error } =
     await supabaseClient
     .from("products")
     .select("*")
+    .eq("business_id", businessId)
     .order("id", {
         ascending: false
     });
@@ -539,6 +833,13 @@ function renderProducts(list = products){
 
 async function addProduct(){
 
+    const businessId = getBusinessId();
+
+    if(!businessId){
+        showNotification("Business account not ready");
+        return;
+    }
+
     const name =
     document.getElementById("productName").value.trim();
 
@@ -569,7 +870,9 @@ async function addProduct(){
 
         price,
 
-        stock_quantity: stock
+        stock_quantity: stock,
+
+        business_id: businessId
 
     }]);
 
@@ -610,22 +913,20 @@ function clearProductForm(){
 
 // FILTER PRODUCT
 
-function filterProducts(){
+function filterProducts(options = {}){
 
-    const search =
-    document.getElementById("productSearch")
-    .value
-    .toLowerCase();
+    const input = document.getElementById("productSearch");
+    const search = (input?.value || "").trim().toLowerCase();
 
-    const filtered =
-    products.filter(product =>
-
-        product.name
-        .toLowerCase()
-        .includes(search)
+    const filtered = products.filter(product =>
+        (product.name || "").toLowerCase().includes(search)
     );
 
     renderProducts(filtered);
+
+    if(options.open || search){
+        setProductsOpen(true);
+    }
 }
 
 // EDIT PRODUCT
@@ -666,7 +967,8 @@ async function editProduct(id){
         available: Number(newStock) > 0
     })
 
-    .eq("id", id);
+    .eq("id", id)
+    .eq("business_id", getBusinessId());
 
     if(error){
 
@@ -893,6 +1195,26 @@ async function init(){
         return;
     }
 
+    currentProfile = profile;
+    currentBusinessId = profile.business_id;
+
+    if(!currentBusinessId){
+        showNotification("Business account not found. Complete payment setup first.", "error");
+        window.location.href =
+        "pricing.html";
+
+        return;
+    }
+
+    if(profile.is_active === false || profile.status === "inactive"){
+        await supabaseClient.auth.signOut();
+        alert("This account has been deactivated.");
+        window.location.href =
+        "signin.html";
+
+        return;
+    }
+
     if(!hasActiveSubscription(profile)){
 
         window.location.href =
@@ -916,6 +1238,9 @@ async function init(){
     ).innerText =
     `Welcome, ${profile.full_name}`;
 
+    bindTeamForm();
+    bindChatForm();
+
     setProductsOpen(false);
 
     await loadProducts();
@@ -932,6 +1257,9 @@ async function init(){
 
     renderRevenueChart();
     renderPaymentChart();
+    lastDashboardSignature = getDashboardSignature();
+    setupChatAvailability();
+    renderBusinessTools();
 
     startAdminRealtime();
 }
@@ -942,12 +1270,35 @@ async function init(){
 
 async function loadProfiles(){
 
+    const businessId = getBusinessId();
+    if(!businessId) return;
+
+    try {
+        const result =
+        await getTeamApi("/api/team/profiles");
+
+        profiles = (result.profiles || []).filter(profile =>
+            profile.is_active !== false
+            &&
+            profile.status !== "inactive"
+        );
+
+        return;
+    } catch(error) {
+        console.log("Team API profile load failed, using Supabase fallback:", error.message);
+    }
+
     const { data } =
     await supabaseClient
     .from("profiles")
-    .select("*");
+    .select("*")
+    .eq("business_id", businessId);
 
-    profiles = data || [];
+    profiles = (data || []).filter(profile =>
+        profile.is_active !== false
+        &&
+        profile.status !== "inactive"
+    );
 }
 
 // ========================
@@ -956,10 +1307,14 @@ async function loadProfiles(){
 
 async function loadCustomers(){
 
+    const businessId = getBusinessId();
+    if(!businessId) return;
+
     const { data, error } =
     await supabaseClient
     .from("customers")
     .select("*")
+    .eq("business_id", businessId)
     .order("id", {
         ascending:false
     });
@@ -1055,6 +1410,8 @@ const now = new Date();
 
 allCustomers.forEach(c => {
 
+    if(!isAssignedTeamSale(c)) return;
+
     const amount =
     Number(c.final_price || 0);
 
@@ -1063,6 +1420,8 @@ allCustomers.forEach(c => {
 
     const saleDate =
     new Date(c.created_at);
+
+    if(Number.isNaN(saleDate.getTime())) return;
 
     // WEEK CHECK
     const diffDays =
@@ -1270,6 +1629,97 @@ function renderTopStaffTicker(weeklyTop, monthlyTop, yearlyTop) {
     `;
 }
 
+function renderBusinessTools(){
+    const container = document.getElementById("businessTools");
+
+    if(!container) return;
+
+    if(!isProPlan()){
+        container.innerHTML = `
+            <div class="chat-locked business-tools-locked">
+                <i class="fa-solid fa-lock"></i>
+                <h3>Business Tools are available on Pro</h3>
+                <p>Upgrade to Pro to unlock daily summaries, low-stock watch, target pulse, product trends, and customer intelligence.</p>
+            </div>
+        `;
+        return;
+    }
+
+    const paidSales = allCustomers.filter(sale => sale.status === "Paid");
+    const paidRevenue = paidSales.reduce((sum, sale) => sum + Number(sale.final_price || 0), 0);
+    const todayKey = new Date().toDateString();
+    const todaySales = allCustomers.filter(sale => {
+        const date = sale.created_at ? new Date(sale.created_at) : null;
+        return date && !Number.isNaN(date.getTime()) && date.toDateString() === todayKey;
+    });
+    const todayRevenue = todaySales.reduce((sum, sale) => sum + Number(sale.final_price || 0), 0);
+    const lowStock = products.filter(product => Number(product.stock_quantity || 0) <= 5);
+    const uniqueCustomers = new Set(allCustomers.map(sale => sale.customer_id).filter(Boolean)).size;
+    const averageSale = paidSales.length ? paidRevenue / paidSales.length : 0;
+    const topProductMap = {};
+
+    allCustomers.forEach(sale => {
+        getSaleCartItems(sale).forEach(item => {
+            const name = item.product || "Unknown product";
+            topProductMap[name] = (topProductMap[name] || 0) + Number(item.quantity || 1);
+        });
+    });
+
+    const topProduct =
+        Object.entries(topProductMap)
+        .sort((a, b) => b[1] - a[1])[0];
+
+    const tools = [
+        {
+            icon: "fa-solid fa-sun",
+            title: "Daily Owner Summary",
+            value: formatCurrency(todayRevenue),
+            note: `${todaySales.length} sale${todaySales.length === 1 ? "" : "s"} recorded today`,
+            action: "Review live feed"
+        },
+        {
+            icon: "fa-solid fa-bell",
+            title: "Low Stock Watch",
+            value: lowStock.length,
+            note: lowStock.length ? `${lowStock.slice(0, 3).map(p => p.name).join(", ")} needs to be restocked` : "All products look stocked",
+            action: "Restock soon"
+        },
+        {
+            icon: "fa-solid fa-bullseye",
+            title: "Rep Target Pulse",
+            value: `${Math.min(100, Math.round((paidSales.length / Math.max(allCustomers.length, 1)) * 100))}%`,
+            note: "Paid conversion across recorded sales",
+            action: "Coach reps"
+        },
+        {
+            icon: "fa-solid fa-box-open",
+            title: "Top Product",
+            value: topProduct ? topProduct[0] : "-",
+            note: topProduct ? `${topProduct[1]} unit${topProduct[1] === 1 ? "" : "s"} sold` : "No product trend yet",
+            action: "Plan inventory"
+        },
+        {
+            icon: "fa-solid fa-users-viewfinder",
+            title: "Customer Records",
+            value: uniqueCustomers,
+            note: `Average paid sale is ${formatCurrency(averageSale)}`,
+            action: "Build loyalty"
+        }
+    ];
+
+    container.innerHTML = tools.map(tool => `
+        <article class="business-tool-card">
+            <div class="business-tool-icon"><i class="${tool.icon}"></i></div>
+            <div>
+                <span>${tool.title}</span>
+                <strong>${escapeHtml(String(tool.value))}</strong>
+                <p>${escapeHtml(tool.note)}</p>
+            </div>
+            <small>${tool.action}</small>
+        </article>
+    `).join("");
+}
+
 // NOTIFICATION
 function showNotification(message, type = "info"){
 
@@ -1404,7 +1854,7 @@ function loadRepStats(){
 
     reps.sort((a, b) => {
         const getRepRevenue = rep => allCustomers
-            .filter(c => c.user_id === rep.id || c.created_by === rep.full_name)
+            .filter(c => getProfileForSale(c)?.id === rep.id)
             .reduce((sum, sale) => sum + Number(sale.final_price || 0), 0);
 
         return getRepRevenue(b) - getRepRevenue(a);
@@ -1419,14 +1869,7 @@ function loadRepStats(){
 
         // MATCH SALES
         const sales =
-        allCustomers.filter(c =>
-
-            c.user_id === rep.id
-
-            ||
-
-            c.created_by === rep.full_name
-        );
+        allCustomers.filter(c => getProfileForSale(c)?.id === rep.id);
 
         // TOTALS
         let totalRevenue = 0;
@@ -1531,6 +1974,15 @@ function loadRepStats(){
             <span>View Sales</span>
             <i class="fa-solid fa-arrow-right"></i>
         </button>
+
+        ${rep.role === "rep" ? `
+        <button
+        class="rep-action danger"
+        onclick="deactivateRep('${rep.id}')">
+            <span>Deactivate Rep</span>
+            <i class="fa-solid fa-user-slash"></i>
+        </button>
+        ` : ""}
         `;
 
         container.appendChild(card);
@@ -1547,11 +1999,7 @@ function viewRepSales(repId){
 
     const rep = profiles.find(profile => profile.id === repId);
 
-    const sales = allCustomers.filter(c =>
-        c.user_id === repId
-        ||
-        (rep && c.created_by === rep.full_name)
-    );
+    const sales = allCustomers.filter(c => getProfileForSale(c)?.id === repId);
 
     // 🔥 STORE DATA FOR SEARCH
     currentRepSales = sales
@@ -1604,9 +2052,9 @@ function closeRepModal(){
 
 // CHART/REVENUE
 
-function getRevenueData() {
+function getRevenueData(period = revenuePeriod) {
 
-    const daily = {};
+    const revenue = {};
 
     allCustomers.forEach(t => {
 
@@ -1617,21 +2065,294 @@ function getRevenueData() {
 
         if (Number.isNaN(date.getTime())) return;
 
-        const dayKey = date.toISOString().slice(0, 10);
-        daily[dayKey] = (daily[dayKey] || 0) + amount;
+        let key;
+
+        if(period === "annual"){
+            key = String(date.getFullYear());
+        } else if(period === "monthly"){
+            key = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, "0")}`;
+        } else {
+            key = date.toISOString().slice(0, 10);
+        }
+
+        revenue[key] = (revenue[key] || 0) + amount;
     });
 
-    const labels = Object.keys(daily).sort();
-    const values = labels.map(label => daily[label]);
+    const labels = Object.keys(revenue).sort();
+    const values = labels.map(label => revenue[label]);
 
     return { labels, values };
+}
+
+function formatRevenueLabel(label, period = revenuePeriod){
+    if(period === "annual") return label;
+
+    if(period === "monthly"){
+        const [year, month] = label.split("-");
+        return new Date(Number(year), Number(month) - 1, 1).toLocaleDateString(undefined, {
+            month: "short",
+            year: "numeric"
+        });
+    }
+
+    const date = new Date(`${label}T00:00:00`);
+    return Number.isNaN(date.getTime())
+        ? label
+        : date.toLocaleDateString(undefined, { month: "short", day: "numeric" });
+}
+
+function setRevenuePeriod(period){
+    revenuePeriod = period;
+
+    document.querySelectorAll("[data-revenue-period]").forEach(button => {
+        button.classList.toggle("active", button.dataset.revenuePeriod === period);
+    });
+
+    renderRevenueChart();
+}
+
+function bindTeamForm(){
+    const form = document.getElementById("repInviteForm");
+
+    if(!form || form.dataset.bound === "true") return;
+
+    form.dataset.bound = "true";
+
+    form.addEventListener("submit", async event => {
+        event.preventDefault();
+
+        const name = document.getElementById("repName").value.trim();
+        const email = document.getElementById("repEmail").value.trim().toLowerCase();
+        const password = document.getElementById("repPassword").value.trim();
+        const button = form.querySelector("button");
+
+        if(!name || !email || password.length < 6){
+            showNotification("Enter rep name, email, and a 6+ character password", "error");
+            return;
+        }
+
+        button.disabled = true;
+        button.innerHTML = `<i class="fa-solid fa-spinner fa-spin"></i> Adding...`;
+
+        try {
+            const result = await callTeamApi("/api/team/reps", {
+                full_name: name,
+                email,
+                password
+            });
+
+            form.reset();
+            showNotification("Rep added successfully");
+            await loadProfiles();
+            if(result.profile && !profiles.some(profile => profile.id === result.profile.id)){
+                profiles.push(result.profile);
+            }
+            loadRepStats();
+        } catch(error) {
+            showNotification(error.message, "error");
+        } finally {
+            button.disabled = false;
+            button.innerHTML = `<i class="fa-solid fa-user-plus"></i> Add Rep`;
+        }
+    });
+}
+
+async function deactivateRep(repId){
+    const rep = profiles.find(profile => profile.id === repId);
+
+    if(!rep || rep.role === "admin") return;
+
+    if(!confirm(`Deactivate ${rep.full_name || rep.email}? They will no longer access this business.`)){
+        return;
+    }
+
+    try {
+        await callTeamApi(`/api/team/reps/${repId}/deactivate`, {});
+
+        showNotification("Rep deactivated");
+        await loadProfiles();
+        loadRepStats();
+    } catch(error) {
+        showNotification(error.message, "error");
+    }
+}
+
+function setupChatAvailability(){
+    const locked = document.getElementById("chatLocked");
+    const workspace = document.getElementById("chatWorkspace");
+    const badge = document.getElementById("chatPlanBadge");
+
+    if(!locked || !workspace) return;
+
+    const pro = isProPlan();
+
+    locked.classList.toggle("hidden", pro);
+    workspace.classList.toggle("hidden", !pro);
+
+    if(badge){
+        badge.textContent = pro ? "Pro active" : "Pro only";
+    }
+
+    if(pro){
+        loadTeamChat();
+        clearInterval(chatRefreshTimer);
+        chatRefreshTimer = setInterval(loadTeamChat, 12000);
+    }
+}
+
+function bindChatForm(){
+    const form = document.getElementById("chatForm");
+
+    if(!form || form.dataset.bound === "true") return;
+
+    form.dataset.bound = "true";
+
+    form.addEventListener("submit", async event => {
+        event.preventDefault();
+
+        const input = document.getElementById("chatMessageInput");
+        const attachmentType = document.getElementById("chatAttachmentType");
+        const attachmentUrl = document.getElementById("chatAttachmentUrl");
+        const button = form.querySelector("button");
+
+        button.disabled = true;
+
+        try {
+            await callTeamApi("/api/team/chat", {
+                message: input.value,
+                attachment_type: attachmentType.value,
+                attachment_url: attachmentUrl.value
+            });
+
+            input.value = "";
+            attachmentType.value = "";
+            attachmentUrl.value = "";
+            await loadTeamChat();
+        } catch(error) {
+            showNotification(error.message, "error");
+        } finally {
+            button.disabled = false;
+        }
+    });
+}
+
+async function loadTeamChat(){
+    if(!isProPlan()) return;
+
+    const container = document.getElementById("chatMessages");
+    if(!container) return;
+
+    try {
+        const result = await getTeamApi("/api/team/chat");
+
+        chatSettings = result.settings || chatSettings;
+
+        const adminOnly = document.getElementById("chatAdminOnly");
+        const allowAttachments = document.getElementById("chatAllowAttachments");
+
+        if(adminOnly) adminOnly.checked = Boolean(chatSettings.admin_only);
+        if(allowAttachments) allowAttachments.checked = chatSettings.allow_attachments !== false;
+
+        renderChatMessages(result.messages || []);
+    } catch(error) {
+        container.innerHTML = `<div class="empty-state">${escapeHtml(error.message)}</div>`;
+    }
+}
+
+function renderChatMessages(messages){
+    const container = document.getElementById("chatMessages");
+
+    if(!container) return;
+
+    if(messages.length === 0){
+        container.innerHTML = `<div class="empty-state">No team messages yet.</div>`;
+        return;
+    }
+
+    container.innerHTML = messages.map(message => {
+        const mine = message.sender_id === currentProfile?.id;
+        const date = message.created_at
+            ? new Date(message.created_at).toLocaleString()
+            : "";
+
+        const attachment = message.attachment_url
+            ? `<a href="${escapeHtml(message.attachment_url)}" target="_blank" rel="noopener">
+                <i class="fa-solid fa-paperclip"></i>
+                ${escapeHtml(message.attachment_type || "attachment")}
+            </a>`
+            : "";
+        const reactions = renderReactionSummary(message);
+
+        return `
+            <div class="chat-message ${mine ? "mine" : ""}">
+                <div class="chat-message-top">
+                    <strong>${escapeHtml(message.sender_name || "Team member")}</strong>
+                    <span>${escapeHtml(message.sender_role || "")} · ${escapeHtml(date)}</span>
+                </div>
+                <p>${escapeHtml(message.message || "")}</p>
+                ${attachment}
+                ${reactions}
+                <div class="chat-reactions">
+                    <button type="button" onclick="reactToChatMessage('${message.id}', 'seen')">Seen</button>
+                    <button type="button" onclick="reactToChatMessage('${message.id}', 'done')">Done</button>
+                    <button type="button" onclick="reactToChatMessage('${message.id}', 'question')">Question</button>
+                </div>
+            </div>
+        `;
+    }).join("");
+
+    container.scrollTop = container.scrollHeight;
+}
+
+function renderReactionSummary(message){
+    const reactions = message.reactions || [];
+
+    if(reactions.length === 0) return "";
+
+    const counts = reactions.reduce((map, reaction) => {
+        map[reaction.reaction] = (map[reaction.reaction] || 0) + 1;
+        return map;
+    }, {});
+
+    return `
+        <div class="chat-reaction-summary">
+            ${counts.seen ? `<span>Seen ${counts.seen}</span>` : ""}
+            ${counts.done ? `<span>Done ${counts.done}</span>` : ""}
+            ${counts.question ? `<span>Questions ${counts.question}</span>` : ""}
+        </div>
+    `;
+}
+
+async function reactToChatMessage(messageId, reaction){
+    try {
+        await callTeamApi(`/api/team/chat/${messageId}/react`, { reaction });
+        await loadTeamChat();
+    } catch(error) {
+        showNotification(error.message, "error");
+    }
+}
+
+async function saveChatSettings(){
+    if(!isProPlan()) return;
+
+    try {
+        const result = await callTeamApi("/api/team/chat/settings", {
+            admin_only: document.getElementById("chatAdminOnly").checked,
+            allow_attachments: document.getElementById("chatAllowAttachments").checked
+        });
+
+        chatSettings = result.settings || chatSettings;
+        showNotification("Chat settings updated");
+    } catch(error) {
+        showNotification(error.message, "error");
+    }
 }
 
 // let revenueChart;
 
 function renderRevenueChart() {
 
-    const { labels, values } = getRevenueData();
+    const { labels, values } = getRevenueData(revenuePeriod);
 
     const canvas = document.getElementById("revenueChart");
 
@@ -1642,11 +2363,11 @@ function renderRevenueChart() {
     revenueChart = new Chart(canvas.getContext("2d"), {
         type: "bar",
         data: {
-            labels,
+            labels: labels.map(label => formatRevenueLabel(label, revenuePeriod)),
 
             datasets: [
                 {
-                    label: "Daily Revenue",
+                    label: `${revenuePeriod.charAt(0).toUpperCase()}${revenuePeriod.slice(1)} Revenue`,
                     data: values,
                     borderWidth: 1,
                     backgroundColor: "rgba(37, 99, 235, 0.65)",
@@ -1841,7 +2562,8 @@ async function deleteProduct(id){
     await supabaseClient
     .from("products")
     .delete()
-    .eq("id", id);
+    .eq("id", id)
+    .eq("business_id", getBusinessId());
 
     if(error){
 
@@ -1887,6 +2609,48 @@ async function logout(){
     "signin.html";
 }
 
+async function changePassword(){
+
+    const nextPassword =
+    prompt("Enter your new password (minimum 6 characters):");
+
+    if(nextPassword === null) return;
+
+    if(nextPassword.length < 6){
+        showNotification("Password needs 6+ characters", "error");
+        return;
+    }
+
+    const { error } =
+    await supabaseClient.auth.updateUser({
+        password: nextPassword
+    });
+
+    if(error){
+        showNotification(error.message, "error");
+        return;
+    }
+
+    showNotification("Password changed successfully", "success");
+}
+
+function updateAdminClock(){
+    const dateEl = document.getElementById("adminDate");
+
+    if(!dateEl) return;
+
+    const now = new Date();
+
+    dateEl.textContent = now.toLocaleDateString(undefined, {
+        weekday: "long",
+        month: "short",
+        day: "numeric",
+        year: "numeric"
+    });
+}
+
+updateAdminClock();
+
 // ========================
 // NAVIGATION
 // ========================
@@ -1897,18 +2661,27 @@ function goTo(page){
     page;
 }
 
-function refreshDashboardSoon(message = "Dashboard updated live") {
+function refreshDashboardSoon(message = "Dashboard updated live", options = {}) {
     clearTimeout(refreshTimer);
 
     refreshTimer = setTimeout(async () => {
         await loadProfiles();
         await loadCustomers();
+
+        const nextSignature = getDashboardSignature();
+        const changed = nextSignature !== lastDashboardSignature;
+        lastDashboardSignature = nextSignature;
+
         updateStats();
         loadRepStats();
         renderRevenueChart();
         renderPaymentChart();
         renderLiveFeed();
-        showNotification(message);
+        renderBusinessTools();
+
+        if(options.notify !== false && changed){
+            showNotification(message);
+        }
     }, 200);
 }
 
@@ -1937,6 +2710,12 @@ function startAdminRealtime(){
             table: "customers"
         },
         payload => {
+            const row = payload.new || payload.old || {};
+
+            if(row.business_id && row.business_id !== getBusinessId()){
+                return;
+            }
+
             console.log("Admin sales realtime:", payload.eventType);
             refreshDashboardSoon("New sales activity received");
         }
@@ -1959,7 +2738,13 @@ function startAdminRealtime(){
             schema: "public",
             table: "products"
         },
-        async () => {
+        async (payload) => {
+            const row = payload.new || payload.old || {};
+
+            if(row.business_id && row.business_id !== getBusinessId()){
+                return;
+            }
+
             await loadProducts();
             showNotification("Products updated live");
         }
@@ -1971,8 +2756,8 @@ function startAdminRealtime(){
     clearInterval(adminPollingTimer);
 
     adminPollingTimer = setInterval(() => {
-        refreshDashboardSoon("Dashboard synced");
-    }, 15000);
+        refreshDashboardSoon("Dashboard synced", { notify: false });
+    }, 30000);
 }
 
 // PRODUCT PANEL CLICK
@@ -1984,6 +2769,21 @@ document
 
     toggleProducts();
 });
+
+const productSearchInput = document.getElementById("productSearch");
+
+if(productSearchInput){
+    productSearchInput.addEventListener("focus", () => {
+        filterProducts({ open: true });
+    });
+
+    productSearchInput.addEventListener("keydown", event => {
+        if(event.key === "Escape"){
+            productSearchInput.blur();
+            setProductsOpen(false);
+        }
+    });
+}
 
 init();
 updateSidebarState();

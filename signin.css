@@ -310,6 +310,25 @@ body::before {
     font-weight: 900;
 }
 
+.form-row {
+    display: flex;
+    justify-content: flex-end;
+    margin: -6px 0 14px;
+}
+
+.text-btn {
+    border: none;
+    background: transparent;
+    color: #93c5fd;
+    cursor: pointer;
+    font-weight: 900;
+    padding: 4px 0;
+}
+
+.text-btn:hover {
+    color: white;
+}
+
 #toast {
     position: fixed;
     top: 18px;

@@ -104,6 +104,12 @@
                 </button>
             </div>
 
+            <div class="form-row">
+                <button class="text-btn" type="button" onclick="sendPasswordReset()">
+                    Forgot password?
+                </button>
+            </div>
+
             <button class="auth-btn" type="submit">
                 <span>Sign In</span>
                 <i class="fa-solid fa-arrow-right"></i>
@@ -186,276 +192,229 @@
 
         const supabaseKey ="eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im5paHFtcGltenZoamdsd2ttaGZsIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Nzc5MzM4MjgsImV4cCI6MjA5MzUwOTgyOH0.PU0egVoNGXsloErw5hGwb9JrLHnn02F1nh6jsudsJ8w";
 
-        const supabaseClient =supabase.createClient( supabaseUrl, supabaseKey );
-
-        // SHOW TOAST
+        const supabaseClient = supabase.createClient(supabaseUrl, supabaseKey);
 
         function showToast(message, type = "info"){
+            const toast = document.getElementById("toast");
+            const normalized = String(message).toLowerCase();
 
-        const toast =
-        document.getElementById("toast");
-
-        const normalized = String(message).toLowerCase();
-
-        if(type === "info"){
-            if(normalized.includes("error") || normalized.includes("invalid") || normalized.includes("not found") || normalized.includes("required")){
-                type = "error";
-            } else if(normalized.includes("successful") || normalized.includes("created") || normalized.includes("login")){
-                type = "success";
+            if(type === "info"){
+                if(normalized.includes("error") || normalized.includes("invalid") || normalized.includes("not found") || normalized.includes("required")){
+                    type = "error";
+                } else if(normalized.includes("successful") || normalized.includes("created") || normalized.includes("login") || normalized.includes("sent")){
+                    type = "success";
+                }
             }
+
+            toast.textContent = message;
+            toast.className = type;
+            toast.classList.add("show");
+
+            setTimeout(() => {
+                toast.classList.remove("show");
+            }, 2500);
         }
 
-        toast.textContent = message;
-
-        toast.className = type;
-
-        toast.classList.add("show");
-
-        setTimeout(() => {
-
-        toast.classList.remove("show");
-
-        }, 2500);
-    }
-
         function setButtonLoading(button, loading, text){
-
             if(!button) return;
 
             button.disabled = loading;
 
             if(loading){
                 button.dataset.originalText = button.innerHTML;
-                button.innerHTML = `<span>${text}</span><i class="fa-solid fa-spinner fa-spin"></i>`;
+                button.innerHTML = '<span>' + text + '</span><i class="fa-solid fa-spinner fa-spin"></i>';
             } else if(button.dataset.originalText){
                 button.innerHTML = button.dataset.originalText;
             }
         }
 
         function togglePassword(inputId, button){
-
-            const input =
-            document.getElementById(inputId);
-
+            const input = document.getElementById(inputId);
             if(!input) return;
 
-            const visible =
-            input.type === "text";
+            const visible = input.type === "text";
+            input.type = visible ? "password" : "text";
+            button.innerHTML = visible
+                ? '<i class="fa-regular fa-eye"></i>'
+                : '<i class="fa-regular fa-eye-slash"></i>';
+        }
 
-            input.type =
-            visible ? "password" : "text";
+        async function sendPasswordReset(){
+            const emailInput = document.getElementById("signin-email");
+            const email = emailInput.value.trim();
 
-            button.innerHTML =
-            visible
-            ? `<i class="fa-regular fa-eye"></i>`
-            : `<i class="fa-regular fa-eye-slash"></i>`;
+            if(!email){
+                showToast("Enter your email address first", "error");
+                emailInput.focus();
+                return;
+            }
+
+            const redirectTo = window.location.origin + window.location.pathname;
+            const { error } = await supabaseClient.auth.resetPasswordForEmail(email, { redirectTo });
+
+            if(error){
+                showToast(error.message, "error");
+                return;
+            }
+
+            showToast("Password reset link sent. Check your email.", "success");
         }
 
         function hasActiveSubscription(profile){
-
             if(!profile) return false;
-
             if(profile.subscription_status !== "active") return false;
-
             if(!profile.subscription_expires_at) return true;
-
             return new Date(profile.subscription_expires_at) > new Date();
         }
 
-        // SWITCH TAB FUNCTION
+        function getAuthIntent(){
+            const params = new URLSearchParams(window.location.search);
+            const plan = params.get("plan");
+            const tab = params.get("tab");
+
+            if(plan){
+                localStorage.setItem("pendingPlan", plan);
+            }
+
+            return {
+                plan: plan || localStorage.getItem("pendingPlan"),
+                tab
+            };
+        }
+
+        function redirectAfterAuth(profile){
+            const pendingPlan = localStorage.getItem("pendingPlan");
+
+            if(pendingPlan){
+                window.location.href = "pricing.html?resumeCheckout=1";
+                return;
+            }
+
+            const repWithBusiness = profile.role !== "admin" && profile.business_id;
+
+            if(!hasActiveSubscription(profile) && !repWithBusiness){
+                window.location.href = "pricing.html?resumeCheckout=1";
+                return;
+            }
+
+            window.location.href = profile.role === "admin" ? "admin.html" : "dashboard.html";
+        }
+
         function switchTab(tabId){
-
-            document
-            .querySelectorAll(".form")
-            .forEach(form=>{
-                form.classList.remove("active");
-            });
-
-            document
-            .querySelectorAll(".tab")
-            .forEach(tab=>{
-                tab.classList.remove("active");
-            });
-
-            document
-            .getElementById(tabId)
-            .classList.add("active");
+            document.querySelectorAll(".form").forEach(form => form.classList.remove("active"));
+            document.querySelectorAll(".tab").forEach(tab => tab.classList.remove("active"));
+            document.getElementById(tabId).classList.add("active");
 
             if(tabId === "signin-form"){
-                document
-                .querySelectorAll(".tab")[0]
-                .classList.add("active");
-            }else{
-                document
-                .querySelectorAll(".tab")[1]
-                .classList.add("active");
-            }
-
-        }
-
-        // SIGN UP
-        document
-    .getElementById("signup-form")
-    .addEventListener("submit", async (e) => {
-
-    e.preventDefault();
-
-    const submitBtn =
-    e.currentTarget.querySelector(".auth-btn");
-
-    setButtonLoading(submitBtn, true, "Creating account...");
-
-    const email =
-    document.getElementById("signup-email").value.trim();
-
-    const password =
-    document.getElementById("signup-password").value;
-
-    const name =
-    document.getElementById("signup-name").value.trim();
-
-    if(!name || !email || password.length < 6){
-        showToast("Enter valid details. Password needs 6+ characters.");
-        setButtonLoading(submitBtn, false);
-        return;
-    }
-
-    const { data, error } =
-    await supabaseClient.auth.signUp({
-
-        email,
-        password,
-
-        options: {
-            data: {
-                full_name: name
+                document.querySelectorAll(".tab")[0].classList.add("active");
+            } else {
+                document.querySelectorAll(".tab")[1].classList.add("active");
             }
         }
 
-    });
+        document.getElementById("signup-form").addEventListener("submit", async (e) => {
+            e.preventDefault();
 
-    if(error){
+            const submitBtn = e.currentTarget.querySelector(".auth-btn");
+            setButtonLoading(submitBtn, true, "Creating account...");
 
-        showToast(error.message);
-        setButtonLoading(submitBtn, false);
-        return;
-    }
+            const email = document.getElementById("signup-email").value.trim();
+            const password = document.getElementById("signup-password").value;
+            const name = document.getElementById("signup-name").value.trim();
 
+            if(!name || !email || password.length < 6){
+                showToast("Enter valid details. Password needs 6+ characters.", "error");
+                setButtonLoading(submitBtn, false);
+                return;
+            }
 
-    // CREATE PROFILE
-const { error: profileError } =
-await supabaseClient
-.from("profiles")
-.insert([{
+            const { data, error } = await supabaseClient.auth.signUp({
+                email,
+                password,
+                options: {
+                    data: { full_name: name }
+                }
+            });
 
-    id: data.user.id,
+            if(error){
+                showToast(error.message, "error");
+                setButtonLoading(submitBtn, false);
+                return;
+            }
 
-    email: email,
+            const { error: profileError } = await supabaseClient
+                .from("profiles")
+                .insert([{
+                    id: data.user.id,
+                    email,
+                    full_name: name,
+                    role: "rep",
+                    subscription_status: "inactive"
+                }]);
 
-    full_name: name,
+            if(profileError){
+                showToast(profileError.message, "error");
+                setButtonLoading(submitBtn, false);
+                return;
+            }
 
-    role: "rep",
+            showToast("Account created successfully!", "success");
+            document.getElementById("signup-form").reset();
+            setButtonLoading(submitBtn, false);
 
-    subscription_status: "inactive"
+            if(data.session){
+                setTimeout(() => {
+                    window.location.href = localStorage.getItem("pendingPlan") ? "pricing.html?resumeCheckout=1" : "signin.html";
+                }, 900);
+                return;
+            }
 
-}]);
+            showToast("Account created. Sign in to continue payment.", "success");
+            switchTab("signin-form");
+        });
 
-    if(profileError){
-        showToast(profileError.message);
-        setButtonLoading(submitBtn, false);
-        return;
-    }
+        document.getElementById("signin-form").addEventListener("submit", async (e) => {
+            e.preventDefault();
 
-    showToast("Account created successfully!");
+            const submitBtn = e.currentTarget.querySelector(".auth-btn");
+            setButtonLoading(submitBtn, true, "Signing in...");
 
-    document.getElementById("signup-form").reset();
+            const email = document.getElementById("signin-email").value.trim();
+            const password = document.getElementById("signin-password").value;
 
-    setButtonLoading(submitBtn, false);
+            const { data, error } = await supabaseClient.auth.signInWithPassword({ email, password });
 
-    switchTab("signin-form");
+            if(error){
+                showToast(error.message, "error");
+                setButtonLoading(submitBtn, false);
+                return;
+            }
 
-});
+            const user = data.user;
+            const { data: profile, error: profileError } = await supabaseClient
+                .from("profiles")
+                .select("*")
+                .eq("id", user.id)
+                .single();
 
-// SIGN IN
-document
-.getElementById("signin-form")
-.addEventListener("submit", async (e) => {
+            if(profileError || !profile){
+                showToast("Profile not found", "error");
+                setButtonLoading(submitBtn, false);
+                return;
+            }
 
-    e.preventDefault();
+            showToast("Login successful!", "success");
+            setTimeout(() => redirectAfterAuth(profile), 1200);
+        });
 
-    const submitBtn =
-    e.currentTarget.querySelector(".auth-btn");
+        const authIntent = getAuthIntent();
 
-    setButtonLoading(submitBtn, true, "Signing in...");
-
-    const email =
-    document.getElementById("signin-email").value.trim();
-
-    const password =
-    document.getElementById("signin-password").value;
-
-    const { data, error } =
-    await supabaseClient.auth.signInWithPassword({
-        email,
-        password
-    });
-
-    if(error){
-
-        showToast(error.message);
-        setButtonLoading(submitBtn, false);
-        return;
-    }
-
-    const user = data.user;
-
-    // ✅ GET USER ROLE FROM PROFILES
-    const { data: profile, error: profileError } =
-    await supabaseClient
-    .from("profiles")
-    .select("*")
-    .eq("id", user.id)
-    .single();
-
-    if(profileError || !profile){
-
-        showToast("Profile not found");
-        setButtonLoading(submitBtn, false);
-        return;
-    }
-
-    showToast("Login successful!");
-
-    // localStorage.setItem(
-    //     "offlineUser",
-    //     JSON.stringify(user)
-    // );
-
-    setTimeout(() => {
-
-        if(!hasActiveSubscription(profile)){
-
-            window.location.href =
-            "pricing.html";
-
-            return;
-        }
-
-        // 🔥 ROLE-BASED REDIRECT
-        if(profile.role === "admin"){
-
-            window.location.href =
-            "admin.html";
-
+        if(authIntent.tab === "signup"){
+            switchTab("signup-form");
         } else {
-
-            window.location.href =
-            "dashboard.html";
+            switchTab("signin-form");
         }
-
-    }, 1500);
-});
-</script>
+    </script>
 
 </body>
 </html>

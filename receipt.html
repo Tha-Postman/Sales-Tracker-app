@@ -1,0 +1,274 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Sales Tracker Receipt</title>
+    <style>
+        * {
+            box-sizing: border-box;
+        }
+
+        body {
+            margin: 0;
+            padding: 24px;
+            background: #f8fafc;
+            color: #0f172a;
+            font-family: Arial, Helvetica, sans-serif;
+        }
+
+        .receipt-box {
+            max-width: 460px;
+            margin: 0 auto;
+            padding: 28px;
+            background: #ffffff;
+            border: 1px solid #e2e8f0;
+            border-radius: 18px;
+            box-shadow: 0 18px 48px rgba(15, 23, 42, 0.12);
+        }
+
+        .receipt-head {
+            text-align: center;
+            border-bottom: 1px solid #e2e8f0;
+            padding-bottom: 18px;
+            margin-bottom: 18px;
+        }
+
+        .receipt-head img {
+            width: 58px;
+            height: 58px;
+            object-fit: contain;
+        }
+
+        .receipt-head h2 {
+            margin: 8px 0 4px;
+            font-size: 24px;
+        }
+
+        .muted,
+        .receipt-meta span,
+        th,
+        td span,
+        .receipt-summary span {
+            color: #64748b;
+        }
+
+        .receipt-meta {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 8px 14px;
+            padding: 14px;
+            border-radius: 14px;
+            background: #f8fafc;
+            margin-bottom: 18px;
+        }
+
+        .receipt-meta strong {
+            text-align: right;
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-bottom: 16px;
+        }
+
+        th {
+            text-align: left;
+            font-size: 12px;
+            text-transform: uppercase;
+            padding-bottom: 8px;
+            border-bottom: 1px solid #e2e8f0;
+        }
+
+        td {
+            padding: 12px 0;
+            border-bottom: 1px solid #eef2f7;
+            vertical-align: top;
+        }
+
+        td:nth-child(2),
+        td:nth-child(3),
+        th:nth-child(2),
+        th:nth-child(3) {
+            text-align: right;
+        }
+
+        td span {
+            display: block;
+            margin-top: 4px;
+            font-size: 12px;
+        }
+
+        .receipt-summary {
+            display: grid;
+            gap: 8px;
+        }
+
+        .receipt-summary div {
+            display: flex;
+            justify-content: space-between;
+        }
+
+        .receipt-grand {
+            margin-top: 8px;
+            padding-top: 12px;
+            border-top: 2px solid #0f172a;
+            font-size: 18px;
+        }
+
+        .receipt-thanks {
+            text-align: center;
+            margin: 22px 0 0;
+        }
+
+        .empty {
+            max-width: 460px;
+            margin: 60px auto;
+            color: #64748b;
+            text-align: center;
+        }
+
+        @media print {
+            body {
+                background: #ffffff;
+                padding: 0;
+            }
+
+            .receipt-box {
+                box-shadow: none;
+                border-radius: 0;
+            }
+        }
+    </style>
+</head>
+<body>
+    <main id="receiptRoot"></main>
+
+    <script>
+        function formatMoney(amount) {
+            return `\u20a6${Number(amount || 0).toLocaleString()}`;
+        }
+
+        function getCartItems(cart) {
+            if (!cart) return [];
+            if (Array.isArray(cart)) return cart;
+
+            try {
+                const parsed = JSON.parse(cart);
+                return Array.isArray(parsed) ? parsed : [];
+            } catch (error) {
+                return [];
+            }
+        }
+
+        function addText(parent, tag, text, className = "") {
+            const element = document.createElement(tag);
+            element.textContent = text;
+            if (className) element.className = className;
+            parent.appendChild(element);
+            return element;
+        }
+
+        function renderReceipt() {
+            const root = document.getElementById("receiptRoot");
+            const sale = JSON.parse(sessionStorage.getItem("salesTrackerReceipt") || "null");
+
+            if (!sale) {
+                root.innerHTML = "<p class='empty'>No receipt data found. Please print again from the sales dashboard.</p>";
+                return;
+            }
+
+            const cartItems = getCartItems(sale.cart);
+            const items = cartItems.length ? cartItems : [{
+                product: sale.product || "Sale item",
+                quantity: 1,
+                price: sale.price || sale.final_price || 0,
+                discount: sale.discount || 0,
+                total: sale.final_price || sale.price || 0
+            }];
+
+            const subtotal = items.reduce((sum, item) => (
+                sum + (Number(item.price || 0) * Number(item.quantity || 1))
+            ), 0);
+            const discount = Number(sale.discount || 0);
+            const grandTotal = Number(sale.final_price || sale.price || subtotal - discount || 0);
+            const receiptDate = sale.created_at ? new Date(sale.created_at) : new Date();
+
+            const box = document.createElement("section");
+            box.className = "receipt-box";
+
+            const head = document.createElement("div");
+            head.className = "receipt-head";
+
+            const logo = document.createElement("img");
+            logo.src = "img/sales-logo.png";
+            logo.alt = "Sales Tracker";
+            head.appendChild(logo);
+            addText(head, "h2", "Sales Tracker");
+            addText(head, "p", "Official Receipt", "muted");
+
+            const meta = document.createElement("div");
+            meta.className = "receipt-meta";
+
+            [
+                ["Receipt No.", sale.customer_id || "-"],
+                ["Date", receiptDate.toLocaleString()],
+                ["Status", sale.status || "-"],
+                ["Payment", sale.payment_mode || "-"]
+            ].forEach(([label, value]) => {
+                addText(meta, "span", label);
+                addText(meta, "strong", value);
+            });
+
+            const table = document.createElement("table");
+            const thead = document.createElement("thead");
+            const headerRow = document.createElement("tr");
+
+            ["Item", "Discount", "Total"].forEach(label => addText(headerRow, "th", label));
+            thead.appendChild(headerRow);
+
+            const tbody = document.createElement("tbody");
+            items.forEach(item => {
+                const row = document.createElement("tr");
+                const itemCell = document.createElement("td");
+
+                addText(itemCell, "strong", item.product || "Product");
+                addText(itemCell, "span", `Qty ${Number(item.quantity || 1)} x ${formatMoney(item.price || 0)}`);
+                addText(row, "td", "");
+                row.firstElementChild.replaceWith(itemCell);
+                addText(row, "td", formatMoney(item.discount || 0));
+                addText(row, "td", formatMoney(item.total || (Number(item.price || 0) * Number(item.quantity || 1))));
+                tbody.appendChild(row);
+            });
+
+            table.append(thead, tbody);
+
+            const summary = document.createElement("div");
+            summary.className = "receipt-summary";
+
+            [
+                ["Subtotal", formatMoney(subtotal), ""],
+                ["Discount", formatMoney(discount), ""],
+                ["Total Paid", formatMoney(grandTotal), "receipt-grand"]
+            ].forEach(([label, value, className]) => {
+                const row = document.createElement("div");
+                if (className) row.className = className;
+                addText(row, "span", label);
+                addText(row, "strong", value);
+                summary.appendChild(row);
+            });
+
+            addText(box, "div", "");
+            box.firstElementChild.replaceWith(head);
+            box.append(meta, table, summary);
+            addText(box, "p", "Thank you for your purchase.", "receipt-thanks muted");
+            root.appendChild(box);
+
+            setTimeout(() => window.print(), 350);
+        }
+
+        renderReceipt();
+    </script>
+</body>
+</html>

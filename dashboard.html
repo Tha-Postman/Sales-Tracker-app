@@ -24,17 +24,69 @@
         <!-- <div class="glow glow1"></div>
         <div class="glow glow2"></div> -->
 
-        <div id="network-status"></div>
+        <header class="sales-topbar">
+            <div class="sales-brand">
+                <img src="img/sales-logo.png" alt="" class="logo">
+                <div>
+                    <h2>Sales Tracker</h2>
+                    <span id="welcomeName"></span>
+                </div>
+            </div>
 
-        <div class="intro">
-            <h2>Sales Tracker</h2>
-            <img src="img/sales-logo.png" alt="" class="logo">
-        </div>
+            <div class="sales-top-meta">
+                <div class="dashboard-clock" aria-live="polite">
+                    <span id="dashboardDate"></span>
+                </div>
+                <div id="network-status"></div>
+            </div>
 
-        <button onclick="logout()" class="logout-btn">Logout</button>
+            <div class="account-actions">
+                <button onclick="openPasswordModal()" class="account-btn" type="button">
+                    <i class="fa-solid fa-key"></i>
+                    Password
+                </button>
+                <button onclick="logout()" class="logout-btn" type="button">
+                    <i class="fa-solid fa-right-from-bracket"></i>
+                    <span>Logout</span>
+                </button>
+            </div>
+        </header>
 
-        <div class="top-bar">
-        <h2 id="welcomeName"></h2>
+        <div id="passwordModal" class="password-modal hidden" role="dialog" aria-modal="true" aria-labelledby="passwordModalTitle">
+            <form class="password-card" id="passwordForm">
+                <div class="password-card-head">
+                    <div>
+                        <p>Account Security</p>
+                        <h3 id="passwordModalTitle">Change Password</h3>
+                    </div>
+                    <button type="button" class="password-close" onclick="closePasswordModal()" aria-label="Close password modal">
+                        <i class="fa-solid fa-xmark"></i>
+                    </button>
+                </div>
+
+                <label>
+                    Old password
+                    <input id="oldPassword" type="password" autocomplete="current-password" required>
+                </label>
+
+                <label>
+                    New password
+                    <input id="newPassword" type="password" autocomplete="new-password" minlength="6" required>
+                </label>
+
+                <label>
+                    Confirm new password
+                    <input id="confirmPassword" type="password" autocomplete="new-password" minlength="6" required>
+                </label>
+
+                <div class="password-actions">
+                    <button type="button" class="password-cancel" onclick="closePasswordModal()">Cancel</button>
+                    <button type="submit" class="password-save">
+                        <i class="fa-solid fa-shield-halved"></i>
+                        Update Password
+                    </button>
+                </div>
+            </form>
         </div>
 
         <input id="search" placeholder="Search by Product name or Customer ID..." oninput="searchCustomer()">
@@ -147,6 +199,35 @@
         </div>
         <div id="stats" class="stats-grid"></div>
 
+        <div class="dashboard-section-title">
+            <p>Pro Workspace</p>
+            <h3>Team Chat</h3>
+        </div>
+
+        <section class="team-chat-card">
+            <div id="repChatLocked" class="chat-locked">
+                <i class="fa-solid fa-lock"></i>
+                <strong>Team chat is available on Pro</strong>
+                <span>Your admin can enable this workspace from the Pro plan.</span>
+            </div>
+
+            <div id="repChatWorkspace" class="chat-workspace hidden">
+                <div id="repChatStatus" class="chat-status"></div>
+                <div id="repChatMessages" class="chat-messages"></div>
+                <form id="repChatForm" class="chat-form">
+                    <input id="repChatMessageInput" type="text" placeholder="Message your team...">
+                    <select id="repChatAttachmentType" title="Attachment type">
+                        <option value="">No attachment</option>
+                        <option value="image">Picture link</option>
+                        <option value="voice">Voice note link</option>
+                        <option value="file">File link</option>
+                    </select>
+                    <input id="repChatAttachmentUrl" type="url" placeholder="Optional attachment URL">
+                    <button type="submit">Send</button>
+                </form>
+            </div>
+        </section>
+
         <!-- CUSTOMERS -->
         <div class="dashboard-section-title">
             <p>History</p>
@@ -235,6 +316,13 @@ let basePrice = 0;
 
 let currentUserRole = "rep";
 let currentProfile = null;
+let currentBusinessId = null;
+const TEAM_API_URL = "http://localhost:4242";
+let repChatSettings = {
+    admin_only: false,
+    allow_attachments: true
+};
+let repChatRefreshTimer = null;
 
 let products = [];
 let productsMap = {};
@@ -571,6 +659,78 @@ function hasActiveSubscription(profile){
     return new Date(profile.subscription_expires_at) > new Date();
 }
 
+function getBusinessId(){
+    return currentProfile?.business_id || currentBusinessId;
+}
+
+function isProPlan(){
+    return getPlanLevel(currentProfile?.subscription_plan) >= 3;
+}
+
+function getPlanLevel(plan){
+    const normalized = String(plan || "").toLowerCase();
+
+    if(normalized.includes("enterprise")) return 4;
+    if(normalized.includes("pro")) return 3;
+    if(normalized.includes("business")) return 2;
+    if(normalized.includes("starter")) return 1;
+
+    return 0;
+}
+
+function escapeHtml(value = ""){
+    return String(value)
+        .replaceAll("&", "&amp;")
+        .replaceAll("<", "&lt;")
+        .replaceAll(">", "&gt;")
+        .replaceAll('"', "&quot;")
+        .replaceAll("'", "&#039;");
+}
+
+async function getAuthToken(){
+    const {
+        data: { session }
+    } = await supabaseClient.auth.getSession();
+
+    return session?.access_token || null;
+}
+
+async function teamApi(path, payload = null){
+    const token = await getAuthToken();
+
+    if(!token){
+        throw new Error("Login session expired");
+    }
+
+    const options = {
+        headers: {
+            Authorization: `Bearer ${token}`
+        }
+    };
+
+    if(payload){
+        options.method = "POST";
+        options.headers["Content-Type"] = "application/json";
+        options.body = JSON.stringify(payload);
+    }
+
+    let response;
+
+    try {
+        response = await fetch(`${TEAM_API_URL}${path}`, options);
+    } catch(error) {
+        throw new Error("Team backend is not running");
+    }
+
+    const result = await response.json().catch(() => ({}));
+
+    if(!response.ok){
+        throw new Error(result.error || "Team request failed");
+    }
+
+    return result;
+}
+
 // loadProfileUI
 async function loadProfileUI(){
 
@@ -580,13 +740,15 @@ async function loadProfileUI(){
     if(!profile) return false;
 
     currentProfile = profile;
+    currentBusinessId = profile.business_id;
 
     currentUserRole = profile.role || "rep";
 
-    if(!hasActiveSubscription(profile)){
-
+    if(profile.is_active === false || profile.status === "inactive"){
+        await supabaseClient.auth.signOut();
+        alert("Your sales rep access has been deactivated by the business admin.");
         window.location.href =
-        "pricing.html";
+        "signin.html";
 
         return false;
     }
@@ -596,6 +758,156 @@ if (welcome) welcome.innerText = `Welcome, ${profile.full_name}`;
     applyPermissions(currentUserRole);
 
     return true;
+}
+
+function setupRepChat(){
+    const locked = document.getElementById("repChatLocked");
+    const workspace = document.getElementById("repChatWorkspace");
+
+    if(!locked || !workspace) return;
+
+    const pro = isProPlan();
+
+    locked.classList.toggle("hidden", pro);
+    workspace.classList.toggle("hidden", !pro);
+
+    if(pro){
+        bindRepChatForm();
+        loadRepChat();
+        clearInterval(repChatRefreshTimer);
+        repChatRefreshTimer = setInterval(loadRepChat, 12000);
+    }
+}
+
+function bindRepChatForm(){
+    const form = document.getElementById("repChatForm");
+
+    if(!form || form.dataset.bound === "true") return;
+
+    form.dataset.bound = "true";
+
+    form.addEventListener("submit", async event => {
+        event.preventDefault();
+
+        const input = document.getElementById("repChatMessageInput");
+        const attachmentType = document.getElementById("repChatAttachmentType");
+        const attachmentUrl = document.getElementById("repChatAttachmentUrl");
+
+        try {
+            await teamApi("/api/team/chat", {
+                message: input.value,
+                attachment_type: attachmentType.value,
+                attachment_url: attachmentUrl.value
+            });
+
+            input.value = "";
+            attachmentType.value = "";
+            attachmentUrl.value = "";
+            await loadRepChat();
+        } catch(error) {
+            showToast(error.message, "error");
+        }
+    });
+}
+
+async function loadRepChat(){
+    if(!isProPlan()) return;
+
+    const messagesContainer = document.getElementById("repChatMessages");
+    const status = document.getElementById("repChatStatus");
+
+    if(!messagesContainer) return;
+
+    try {
+        const result = await teamApi("/api/team/chat");
+
+        repChatSettings = result.settings || repChatSettings;
+
+        if(status){
+            status.textContent = repChatSettings.admin_only
+                ? "Read-only mode: only admin can send messages."
+                : "Team mode: reps can reply.";
+        }
+
+        const form = document.getElementById("repChatForm");
+        const readOnly = repChatSettings.admin_only && currentUserRole !== "admin";
+
+        if(form){
+            form.querySelectorAll("input, select, button").forEach(control => {
+                control.disabled = readOnly;
+            });
+        }
+
+        renderRepChatMessages(result.messages || []);
+    } catch(error) {
+        messagesContainer.innerHTML = `<div class="empty-state">${error.message}</div>`;
+    }
+}
+
+function renderRepChatMessages(messages){
+    const container = document.getElementById("repChatMessages");
+
+    if(!container) return;
+
+    if(messages.length === 0){
+        container.innerHTML = `<div class="empty-state">No team messages yet.</div>`;
+        return;
+    }
+
+    container.innerHTML = messages.map(message => {
+        const mine = message.sender_id === currentProfile?.id;
+        const attachment = message.attachment_url
+            ? `<a href="${escapeHtml(message.attachment_url)}" target="_blank" rel="noopener">${escapeHtml(message.attachment_type || "attachment")}</a>`
+            : "";
+        const reactions = renderRepReactionSummary(message);
+
+        return `
+            <div class="chat-message ${mine ? "mine" : ""}">
+                <div class="chat-message-top">
+                    <strong>${escapeHtml(message.sender_name || "Team member")}</strong>
+                    <span>${escapeHtml(message.sender_role || "")}</span>
+                </div>
+                <p>${escapeHtml(message.message || "")}</p>
+                ${attachment}
+                ${reactions}
+                <div class="chat-reactions">
+                    <button type="button" onclick="reactToRepChatMessage('${message.id}', 'seen')">Seen</button>
+                    <button type="button" onclick="reactToRepChatMessage('${message.id}', 'done')">Done</button>
+                    <button type="button" onclick="reactToRepChatMessage('${message.id}', 'question')">Question</button>
+                </div>
+            </div>
+        `;
+    }).join("");
+
+    container.scrollTop = container.scrollHeight;
+}
+
+function renderRepReactionSummary(message){
+    const reactions = message.reactions || [];
+
+    if(reactions.length === 0) return "";
+
+    const counts = reactions.reduce((map, reaction) => {
+        map[reaction.reaction] = (map[reaction.reaction] || 0) + 1;
+        return map;
+    }, {});
+
+    return `
+        <div class="chat-reaction-summary">
+            ${counts.seen ? `<span>Seen ${counts.seen}</span>` : ""}
+            ${counts.done ? `<span>Done ${counts.done}</span>` : ""}
+            ${counts.question ? `<span>Questions ${counts.question}</span>` : ""}
+        </div>
+    `;
+}
+
+async function reactToRepChatMessage(messageId, reaction){
+    try {
+        await teamApi(`/api/team/chat/${messageId}/react`, { reaction });
+        await loadRepChat();
+    } catch(error) {
+        showToast(error.message, "error");
+    }
 }
 
 // GENERATE CUSTOMER ID
@@ -666,12 +978,24 @@ if(!online){
         return;
     }
 
-    const { data, error } =
-    await supabaseClient
+    let query =
+    supabaseClient
     .from("customers")
     .select("*")
-    .eq("user_id", user.id)
     .order("id", { ascending: false });
+
+    const businessId = getBusinessId();
+
+    if(businessId){
+        query = query.eq("business_id", businessId);
+    }
+
+    if(currentUserRole !== "admin"){
+        query = query.eq("user_id", user.id);
+    }
+
+    const { data, error } =
+    await query;
 
     if(error){
 
@@ -805,6 +1129,8 @@ async function addCustomer(){
 
             created_by: currentProfile?.full_name || offlineUser?.email || currentUser?.email || "Sales Rep",
 
+            business_id: getBusinessId(),
+
             created_at:
             new Date().toISOString()
         };
@@ -846,6 +1172,8 @@ if(!online){
                 user_id: offlineUser?.id || null,
 
                 created_by: currentProfile?.full_name || offlineUser?.email || "Sales Rep",
+
+                business_id: getBusinessId(),
 
                 offline: true,
 
@@ -929,7 +1257,7 @@ if(!online){
 
         await loadCustomers();
 
-        showToast("Sale recorded and synced to admin", "success");
+        showToast("Sale added and synced to admin", "success");
 
     } catch(err){
 
@@ -981,6 +1309,9 @@ if(!online){
 
                 user_id:
                 offlineUser?.id || currentUser?.id || null,
+
+                business_id:
+                getBusinessId(),
 
                 created_at:
                 new Date().toISOString()
@@ -1040,10 +1371,19 @@ async function loadProducts(){
     // ONLINE MODE
     // =====================
 
-    const { data, error } =
-    await supabaseClient
+    let productQuery =
+    supabaseClient
     .from("products")
     .select("*");
+
+    const businessId = getBusinessId();
+
+    if(businessId){
+        productQuery = productQuery.eq("business_id", businessId);
+    }
+
+    const { data, error } =
+    await productQuery;
 
     if(error){
 
@@ -1233,6 +1573,8 @@ async function syncOfflineSales(){
 
             user_id: sale.user_id || user.id,
 
+            business_id: sale.business_id || getBusinessId(),
+
             created_by: sale.created_by || currentProfile?.full_name || user.email || "Sales Rep",
 
             created_at: sale.created_at
@@ -1343,10 +1685,18 @@ window.addEventListener(
 async function deleteCustomer(id) {
     if (!confirm("Delete this customer?")) return;
 
-    const { error } = await supabaseClient
+    let query = supabaseClient
         .from("customers")
         .delete()
         .eq("id", id);
+
+    const businessId = getBusinessId();
+
+    if(businessId){
+        query = query.eq("business_id", businessId);
+    }
+
+    const { error } = await query;
 
     if (error) {
         console.log(error);
@@ -1410,13 +1760,22 @@ async function cancelSale(id){
     // ======================
     // ONLINE MODE
     // ======================
-    const { error } =
-    await supabaseClient
+    let query =
+    supabaseClient
     .from("customers")
     .update({
         status: "Cancelled"
     })
     .eq("id", id);
+
+    const businessId = getBusinessId();
+
+    if(businessId){
+        query = query.eq("business_id", businessId);
+    }
+
+    const { error } =
+    await query;
 
     if(error){
 
@@ -1767,50 +2126,8 @@ function printReceipt(id) {
     const c = allCustomers.find(x => x.id === id);
     if (!c) return;
 
-    let items = "";
-    let cartItems = c.cart;
-
-    if (typeof cartItems === "string") {
-        try {
-            cartItems = JSON.parse(cartItems);
-        } catch (err) {
-            cartItems = [];
-        }
-    }
-
-    if (Array.isArray(cartItems)) {
-        items = cartItems.map(item => `
-            <li>
-                ${item.product} x${item.quantity} - ${formatMoney(item.total)}
-            </li>
-        `).join("");
-    }
-
-    const receiptDiv = document.getElementById("receipt");
-
-    receiptDiv.innerHTML = `
-        <div class="receipt-box">
-            <img src="img/sales-logo.png" style="width:60px; display:block; margin:auto;">
-            
-            <h2 style="text-align:center;">Receipt</h2>
-
-            <p>Customer ID:${c.customer_id || "-"}</p>
-
-            <ul>${items}</ul>
-
-            <p><strong>Total:</strong> ${formatMoney(c.final_price || c.price)}</p>
-            <p><strong>Discount:</strong> ${formatMoney(c.discount || 0)}</p>
-            <p><strong>Payment:</strong> ${c.payment_mode}</p>
-
-            <hr>
-            <p style="text-align:center;">Thank you!</p>
-        </div>
-    `;
-
-    const printWindow = window.open('', '', 'width=400,height=600');
-    printWindow.document.write(receiptDiv.innerHTML);
-    printWindow.document.close();
-    printWindow.print();
+    sessionStorage.setItem("salesTrackerReceipt", JSON.stringify(c));
+    window.open("receipt.html", "_blank", "width=430,height=680");
 }
 
 
@@ -1917,11 +2234,20 @@ async function markPaid(id){
     // ONLINE MODE
     // ======================
 
-    const { error } =
-    await supabaseClient
+    let query =
+    supabaseClient
     .from("customers")
     .update({ status: "Paid" })
     .eq("id", id);
+
+    const businessId = getBusinessId();
+
+    if(businessId){
+        query = query.eq("business_id", businessId);
+    }
+
+    const { error } =
+    await query;
 
     if(error){
 
@@ -1930,7 +2256,7 @@ async function markPaid(id){
         return;
     }
 
-    showToast("✅ Paid successfully");
+    showToast("Sale marked as paid", "success");
 
     await loadCustomers();
 }
@@ -1970,7 +2296,7 @@ async function syncOfflineQueue(){
 
         localStorage.removeItem("offlineQueue");
 
-        showToast("🔄 Offline status changes synced");
+        showToast("Offline status changes synced", "success");
 
         return;
     }
@@ -2155,13 +2481,17 @@ function updateAddButtonState() {
 
 function renderCart() {
     const cartList = document.getElementById("cartList");
+    const cartTotal = document.getElementById("cartTotal");
+
+    if(!cartList || !cartTotal) return;
+
     cartList.innerHTML = "";
 
     let total = 0;
 
     if(cart.length === 0){
 
-        document.getElementById("cartTotal").innerText = "0";
+        cartTotal.innerText = "0";
 
         cartList.innerHTML = `
             <div class="cart-empty">
@@ -2183,7 +2513,7 @@ function renderCart() {
 
         div.innerHTML = `
             <div class="cart-item-main">
-                <strong>${item.product}</strong>
+                <strong>${escapeHtml(item.product || "Product")}</strong>
                 <span>Qty ${item.quantity}</span>
             </div>
 
@@ -2200,7 +2530,7 @@ function renderCart() {
         cartList.appendChild(div);
     });
 
-    document.getElementById("cartTotal").innerText =
+    cartTotal.innerText =
     Number(total || 0).toLocaleString();
 
     updateAddButtonState();
@@ -2233,7 +2563,9 @@ function resetProductSelect() {
 
 
 
-function updateStats(data) {
+function updateStats(data = allCustomers) {
+
+    data = Array.isArray(data) ? data : [];
 
     let paidRevenue = 0;
     let pendingRevenue = 0;
@@ -2277,7 +2609,11 @@ function updateStats(data) {
 
     const totalCustomers = data.length;
 
-    document.getElementById("stats").innerHTML = `
+    const statsEl = document.getElementById("stats");
+
+    if(!statsEl) return;
+
+    statsEl.innerHTML = `
         <div class="stat-card">
             <div class="stat-icon blue"><i class="fa-solid fa-users"></i></div>
             <p>Total Customers</p>
@@ -2473,6 +2809,112 @@ async function logout(){
     }, 1000);
 }
 
+function openPasswordModal(){
+    const modal = document.getElementById("passwordModal");
+    const oldPassword = document.getElementById("oldPassword");
+
+    if(!modal) return;
+
+    modal.classList.remove("hidden");
+    if(oldPassword) oldPassword.focus();
+}
+
+function closePasswordModal(){
+    const modal = document.getElementById("passwordModal");
+    const form = document.getElementById("passwordForm");
+
+    if(form) form.reset();
+    if(modal) modal.classList.add("hidden");
+}
+
+function bindPasswordForm(){
+    const form = document.getElementById("passwordForm");
+
+    if(!form || form.dataset.bound === "true") return;
+
+    form.dataset.bound = "true";
+
+    form.addEventListener("submit", async event => {
+        event.preventDefault();
+
+        const oldPassword = document.getElementById("oldPassword").value;
+        const newPassword = document.getElementById("newPassword").value;
+        const confirmPassword = document.getElementById("confirmPassword").value;
+        const button = form.querySelector(".password-save");
+        const user = await getUser();
+
+        if(!user?.email){
+            showToast("Login session expired", "error");
+            return;
+        }
+
+        if(newPassword.length < 6){
+            showToast("New password needs 6+ characters", "error");
+            return;
+        }
+
+        if(newPassword !== confirmPassword){
+            showToast("New passwords do not match", "error");
+            return;
+        }
+
+        if(oldPassword === newPassword){
+            showToast("New password must be different", "error");
+            return;
+        }
+
+        button.disabled = true;
+        button.innerHTML = `<i class="fa-solid fa-spinner fa-spin"></i> Updating...`;
+
+        try {
+            const { error: verifyError } =
+            await supabaseClient.auth.signInWithPassword({
+                email: user.email,
+                password: oldPassword
+            });
+
+            if(verifyError){
+                showToast("Old password is incorrect", "error");
+                return;
+            }
+
+            const { error } =
+            await supabaseClient.auth.updateUser({
+                password: newPassword
+            });
+
+            if(error){
+                showToast(error.message, "error");
+                return;
+            }
+
+            closePasswordModal();
+            showToast("Password changed successfully", "success");
+        } finally {
+            button.disabled = false;
+            button.innerHTML = `<i class="fa-solid fa-shield-halved"></i> Update Password`;
+        }
+    });
+}
+
+function updateDashboardClock(){
+    const dateEl = document.getElementById("dashboardDate");
+
+    if(!dateEl) return;
+
+    const now = new Date();
+
+    dateEl.textContent = now.toLocaleDateString(undefined, {
+        weekday: "long",
+        month: "short",
+        day: "numeric",
+        year: "numeric"
+    });
+}
+
+updateDashboardClock();
+bindPasswordForm();
+
 document.addEventListener("click", event => {
 
     const logoutButton =
@@ -2554,6 +2996,7 @@ async function init(){
     renderCustomers(allCustomers);
 
     updateStats(allCustomers);
+    setupRepChat();
 
 if(online){
 
@@ -2607,9 +3050,11 @@ function startRealtime(){
 
             const user = await getUser();
             const row = payload.new || payload.old || {};
-            const isOwnSale = !user || row.user_id === user.id;
+            const businessId = getBusinessId();
+            const isSameBusiness = !businessId || row.business_id === businessId;
+            const isOwnSale = currentUserRole === "admin" || !user || row.user_id === user.id;
 
-            if(isOwnSale){
+            if(isSameBusiness && isOwnSale){
                 refreshSalesDashboardSoon("Sales history updated live");
             }
         }
@@ -2636,11 +3081,17 @@ function startRealtime(){
             schema: "public",
             table: "products"
         },
-        async () => {
+        async (payload) => {
 
             console.log(
                 "🔥 Products updated"
             );
+
+            const row = payload.new || payload.old || {};
+
+            if(row.business_id && row.business_id !== getBusinessId()){
+                return;
+            }
 
             await loadProducts();
 
