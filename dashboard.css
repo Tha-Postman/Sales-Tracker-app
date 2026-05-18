@@ -34,6 +34,19 @@ body {
     animation: fadeSlide 0.45s ease both;
 }
 
+
+.sales-brand .logo-mark {
+    flex: 0 0 auto;
+    width: 46px;
+    height: 46px;
+    display: grid;
+    place-items: center;
+    border-radius: 15px;
+    background: linear-gradient(135deg, #2563eb, #14b8a6);
+    color: white;
+    font-size: 20px;
+    box-shadow: 0 14px 30px rgba(37,99,235,0.28);
+}
 .sales-brand {
     flex: 1 1 260px;
     display: flex;
@@ -1835,5 +1848,205 @@ body {
     .history-toolbar button,
     .tabs button {
         flex: 1 1 calc(50% - 8px);
+    }
+}
+
+
+/* ADMIN LIVE-UPDATE NOTIFICATIONS */
+#notificationContainer {
+    position: fixed;
+    top: 18px;
+    right: 18px;
+    z-index: 9999;
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+    width: min(380px, calc(100vw - 32px));
+    pointer-events: none;
+}
+
+.notification {
+    position: relative;
+    display: grid;
+    grid-template-columns: auto 1fr auto;
+    align-items: center;
+    gap: 12px;
+    overflow: hidden;
+    background: rgba(15, 23, 42, 0.94);
+    color: white;
+    padding: 14px;
+    border-radius: 16px;
+    border: 1px solid rgba(148,163,184,0.16);
+    box-shadow: 0 18px 46px rgba(0,0,0,0.32);
+    backdrop-filter: blur(14px);
+    animation: notificationIn 0.32s cubic-bezier(.2,.8,.2,1) both;
+    pointer-events: auto;
+}
+
+.notification.leaving {
+    animation: notificationOut 0.22s ease forwards;
+}
+
+.notification-icon {
+    width: 36px;
+    height: 36px;
+    display: grid;
+    place-items: center;
+    border-radius: 12px;
+    background: rgba(96,165,250,0.14);
+    color: #93c5fd;
+}
+
+.notification-message {
+    line-height: 1.35;
+    font-size: 14px;
+    font-weight: 700;
+}
+
+.notification-close {
+    width: 30px;
+    height: 30px;
+    border: none;
+    border-radius: 10px;
+    background: rgba(255,255,255,0.06);
+    color: #cbd5e1;
+    cursor: pointer;
+    transition: background 0.2s ease, color 0.2s ease;
+}
+
+.notification-close:hover {
+    background: rgba(255,255,255,0.12);
+    color: white;
+}
+
+.notification-progress {
+    position: absolute;
+    left: 0;
+    bottom: 0;
+    width: 100%;
+    height: 3px;
+    background: #60a5fa;
+    animation: notificationProgress 4.5s linear forwards;
+    transform-origin: left;
+}
+
+.notification.success .notification-icon,
+.notification.success .notification-progress {
+    background: #22c55e;
+    color: white;
+}
+
+.notification.warning .notification-icon,
+.notification.warning .notification-progress {
+    background: #f59e0b;
+    color: white;
+}
+
+.notification.error .notification-icon,
+.notification.error .notification-progress {
+    background: #ef4444;
+    color: white;
+}
+
+@keyframes notificationIn {
+    from {
+        transform: translateX(26px) scale(0.98);
+        opacity: 0;
+    }
+
+    to {
+        transform: translateX(0) scale(1);
+        opacity: 1;
+    }
+}
+
+@keyframes notificationOut {
+    to {
+        transform: translateX(26px) scale(0.98);
+        opacity: 0;
+    }
+}
+
+@keyframes notificationProgress {
+    to {
+        transform: scaleX(0);
+    }
+}
+.team-chat-toolbar {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 14px;
+    margin-bottom: 14px;
+}
+
+.team-chat-toolbar div {
+    display: grid;
+    gap: 4px;
+}
+
+.team-chat-toolbar strong {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    color: #f8fafc;
+    font-size: 15px;
+}
+
+.team-chat-toolbar span {
+    color: #94a3b8;
+    font-size: 12px;
+    font-weight: 700;
+}
+
+.chat-minimize-btn {
+    min-height: 38px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    border: 1px solid rgba(96,165,250,0.24);
+    border-radius: 999px;
+    background: rgba(37,99,235,0.16);
+    color: #bfdbfe;
+    padding: 8px 12px;
+    font-weight: 900;
+    cursor: pointer;
+    transition: transform 0.2s ease, background 0.2s ease, border-color 0.2s ease;
+}
+
+.chat-minimize-btn:hover {
+    transform: translateY(-1px);
+    background: rgba(37,99,235,0.26);
+    border-color: rgba(147,197,253,0.42);
+}
+
+.team-chat-card.chat-collapsed {
+    padding: 14px 16px;
+}
+
+.team-chat-card.chat-collapsed .team-chat-toolbar {
+    margin-bottom: 0;
+}
+
+.team-chat-card.chat-collapsed .chat-locked,
+.team-chat-card.chat-collapsed .chat-workspace {
+    display: none !important;
+}
+
+@media (max-width: 640px) {
+    #notificationContainer {
+        top: auto;
+        right: 12px;
+        bottom: 12px;
+        width: calc(100vw - 24px);
+    }
+
+    .team-chat-toolbar {
+        align-items: flex-start;
+    }
+
+    .chat-minimize-btn span {
+        display: none;
     }
 }

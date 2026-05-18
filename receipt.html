@@ -1,9 +1,11 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
+    <link rel="icon" type="image/svg+xml" href="img/favicon.svg">
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Sales Tracker Receipt</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
     <style>
         * {
             box-sizing: border-box;
@@ -34,12 +36,28 @@
             margin-bottom: 18px;
         }
 
-        .receipt-head img {
-            width: 58px;
-            height: 58px;
-            object-fit: contain;
+
+        .receipt-logo {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            gap: 10px;
+            color: #0f172a;
+            font-size: 24px;
+            font-weight: 900;
+            margin-bottom: 8px;
         }
 
+        .receipt-logo .logo-mark {
+            width: 42px;
+            height: 42px;
+            display: grid;
+            place-items: center;
+            border-radius: 14px;
+            background: linear-gradient(135deg, #2563eb, #14b8a6);
+            color: white;
+            box-shadow: 0 12px 26px rgba(37,99,235,0.24);
+        }
         .receipt-head h2 {
             margin: 8px 0 4px;
             font-size: 24px;
@@ -201,11 +219,10 @@
             const head = document.createElement("div");
             head.className = "receipt-head";
 
-            const logo = document.createElement("img");
-            logo.src = "img/sales-logo.png";
-            logo.alt = "Sales Tracker";
+            const logo = document.createElement("div");
+            logo.className = "receipt-logo";
+            logo.innerHTML = `<span class="logo-mark"><i class="fa-solid fa-chart-simple"></i></span><span>Sales Tracker</span>`;
             head.appendChild(logo);
-            addText(head, "h2", "Sales Tracker");
             addText(head, "p", "Official Receipt", "muted");
 
             const meta = document.createElement("div");

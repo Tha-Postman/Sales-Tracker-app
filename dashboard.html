@@ -1,12 +1,11 @@
 <!DOCTYPE html>
 <html lang="en">
     <head>
+    <link rel="icon" type="image/svg+xml" href="img/favicon.svg">
         <meta charset="UTF-8">
         <meta name="viewport" content="width=device-width, initial-scale=1.0">
         <!-- <meta http-equiv="refresh" content="2"> -->
         <link rel="stylesheet" href="dashboard.css">
-
-        <link type="image/x-icon" rel="icon" href="img/sales-logo.png">
 
         <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/choices.js/public/assets/styles/choices.min.css">
 
@@ -26,7 +25,7 @@
 
         <header class="sales-topbar">
             <div class="sales-brand">
-                <img src="img/sales-logo.png" alt="" class="logo">
+                <span class="logo-mark"><i class="fa-solid fa-chart-simple"></i></span>
                 <div>
                     <h2>Sales Tracker</h2>
                     <span id="welcomeName"></span>
@@ -204,7 +203,17 @@
             <h3>Team Chat</h3>
         </div>
 
-        <section class="team-chat-card">
+        <section class="team-chat-card" id="repTeamChatCard">
+            <div class="team-chat-toolbar">
+                <div>
+                    <strong><i class="fa-solid fa-comments"></i> Team Chat</strong>
+                    <span>Updates from your admin and team.</span>
+                </div>
+                <button id="repChatToggle" class="chat-minimize-btn" type="button" onclick="toggleRepChat()" aria-expanded="true">
+                    <i class="fa-solid fa-minus"></i>
+                    <span>Minimize</span>
+                </button>
+            </div>
             <div id="repChatLocked" class="chat-locked">
                 <i class="fa-solid fa-lock"></i>
                 <strong>Team chat is available on Pro</strong>
@@ -257,7 +266,7 @@
         <div id="list"></div>
 
         <!-- TOAST -->
-        <div id="toast" class="toast"></div>
+        <div id="notificationContainer"></div>
 
 
         <!-- RECEIPT  -->
@@ -323,6 +332,7 @@ let repChatSettings = {
     allow_attachments: true
 };
 let repChatRefreshTimer = null;
+let repChatMinimized = localStorage.getItem("repChatMinimized") === "true";
 
 let products = [];
 let productsMap = {};
@@ -760,11 +770,31 @@ if (welcome) welcome.innerText = `Welcome, ${profile.full_name}`;
     return true;
 }
 
+function applyRepChatMinimized(){
+    const card = document.getElementById("repTeamChatCard");
+    const button = document.getElementById("repChatToggle");
+
+    if(!card || !button) return;
+
+    card.classList.toggle("chat-collapsed", repChatMinimized);
+    button.setAttribute("aria-expanded", String(!repChatMinimized));
+    button.innerHTML = repChatMinimized
+        ? `<i class="fa-solid fa-plus"></i><span>Expand</span>`
+        : `<i class="fa-solid fa-minus"></i><span>Minimize</span>`;
+}
+
+function toggleRepChat(){
+    repChatMinimized = !repChatMinimized;
+    localStorage.setItem("repChatMinimized", String(repChatMinimized));
+    applyRepChatMinimized();
+}
 function setupRepChat(){
     const locked = document.getElementById("repChatLocked");
     const workspace = document.getElementById("repChatWorkspace");
 
     if(!locked || !workspace) return;
+
+    applyRepChatMinimized();
 
     const pro = isProPlan();
 
@@ -2725,24 +2755,72 @@ function updateHistoryTab(view){
 // =======================
 // TOAST
 // =======================
-function showToast(msg, type = "info") {
-    const t = document.getElementById("toast");
+function showToast(message, type = "info"){
+    const container = document.getElementById("notificationContainer");
+    if(!container) return;
 
-    const normalized = String(msg).toLowerCase();
+    const div = document.createElement("div");
+    const normalized = String(message).toLowerCase();
 
     if(type === "info"){
-        if(normalized.includes("error") || normalized.includes("failed") || normalized.includes("required")){
+        if(
+            normalized.includes("failed") ||
+            normalized.includes("error") ||
+            normalized.includes("required") ||
+            normalized.includes("incorrect") ||
+            normalized.includes("not match")
+        ){
             type = "error";
-        } else if(normalized.includes("success") || normalized.includes("added") || normalized.includes("paid") || normalized.includes("synced") || normalized.includes("online")){
+        } else if(
+            normalized.includes("low stock") ||
+            normalized.includes("out of stock") ||
+            normalized.includes("offline") ||
+            normalized.includes("pending") ||
+            normalized.includes("queued")
+        ){
+            type = "warning";
+        } else if(
+            normalized.includes("added") ||
+            normalized.includes("updated") ||
+            normalized.includes("deleted") ||
+            normalized.includes("live") ||
+            normalized.includes("synced") ||
+            normalized.includes("paid") ||
+            normalized.includes("online") ||
+            normalized.includes("success")
+        ){
             type = "success";
         }
     }
 
-    t.textContent = msg;
-    t.className = `toast ${type}`;
-    t.classList.add("show");
+    const icons = {
+        success: "fa-circle-check",
+        error: "fa-circle-xmark",
+        warning: "fa-triangle-exclamation",
+        info: "fa-circle-info"
+    };
 
-    setTimeout(() => t.classList.remove("show"), 2000);
+    div.className = `notification ${type}`;
+    div.innerHTML = `
+        <span class="notification-icon"><i class="fa-solid ${icons[type] || icons.info}"></i></span>
+        <span class="notification-message">${escapeHtml(message)}</span>
+        <button type="button" class="notification-close" aria-label="Dismiss notification">
+            <i class="fa-solid fa-xmark"></i>
+        </button>
+        <span class="notification-progress"></span>
+    `;
+
+    container.appendChild(div);
+
+    div.querySelector(".notification-close").addEventListener("click", () => {
+        div.classList.add("leaving");
+        setTimeout(() => div.remove(), 220);
+    });
+
+    setTimeout(() => {
+        div.classList.add("leaving");
+        setTimeout(() => div.remove(), 220);
+    }, 4500);
 }
 
 function refreshSalesDashboardSoon(message = "") {
@@ -2756,8 +2834,6 @@ function refreshSalesDashboardSoon(message = "") {
         }
     }, 250);
 }
-
-
 
 // =======================
 // CLEAR FORM
