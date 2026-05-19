@@ -448,6 +448,54 @@
 </div>
 
 
+
+
+<div id="productEditModal" class="modal product-edit-modal">
+    <div class="modal-content product-edit-content">
+        <div class="modal-top">
+            <div>
+                <p class="modal-kicker">Inventory</p>
+                <h3>Edit Product</h3>
+                <div class="rep-modal-summary">
+                    <span id="productEditHint">Update product details</span>
+                </div>
+            </div>
+            <button onclick="closeProductEditModal()" class="close-rep" type="button" aria-label="Close edit product">×</button>
+        </div>
+
+        <form id="productEditForm" class="product-edit-form">
+            <input type="hidden" id="editProductId">
+
+            <div>
+                <label for="editProductName">Product name</label>
+                <input id="editProductName" type="text" placeholder="Product name" required>
+            </div>
+
+            <div>
+                <label for="editProductPrice">Price</label>
+                <input id="editProductPrice" type="number" min="0" step="0.01" placeholder="0" required>
+            </div>
+
+            <div>
+                <label for="editProductStock">Stock quantity</label>
+                <input id="editProductStock" type="number" min="0" step="1" placeholder="0" required>
+            </div>
+
+            <label class="product-availability-toggle">
+                <input id="editProductAvailable" type="checkbox">
+                <span></span>
+                Available for sale
+            </label>
+
+            <div class="product-edit-actions">
+                <button type="button" class="modal-secondary-btn" onclick="closeProductEditModal()">Cancel</button>
+                <button type="submit" class="modal-primary-btn"><i class="fa-solid fa-floppy-disk"></i> Save Changes</button>
+            </div>
+        </form>
+    </div>
+</div>
+
+
 <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
 
 
@@ -1041,57 +1089,85 @@ function filterProducts(options = {}){
 
 // EDIT PRODUCT
 
-async function editProduct(id){
+function editProduct(id){
 
     const product =
     products.find(p => p.id == id);
 
     if(!product) return;
 
-    const newName =
-    prompt("Edit product name:", product.name);
+    document.getElementById("editProductId").value = product.id;
+    document.getElementById("editProductName").value = product.name || "";
+    document.getElementById("editProductPrice").value = Number(product.price || 0);
+    document.getElementById("editProductStock").value = Number(product.stock_quantity || 0);
+    document.getElementById("editProductAvailable").checked = product.available !== false && Number(product.stock_quantity || 0) > 0;
 
-    if(newName === null) return;
-
-    const newPrice =
-    prompt("Edit product price:", product.price);
-
-    if(newPrice === null) return;
-
-    const newStock =
-    prompt("Edit stock quantity:", product.stock_quantity);
-
-    if(newStock === null) return;
-
-    const { error } =
-    await supabaseClient
-    .from("products")
-    .update({
-
-        name: newName,
-
-        price: Number(newPrice),
-
-        stock_quantity: Number(newStock),
-
-        available: Number(newStock) > 0
-    })
-
-    .eq("id", id)
-    .eq("business_id", getBusinessId());
-
-    if(error){
-
-        console.log(error);
-
-        showNotification("Failed to update");
-
-        return;
+    const hint = document.getElementById("productEditHint");
+    if(hint){
+        hint.textContent = `${product.name || "Product"} • ${formatCurrency(product.price || 0)}`;
     }
 
-        showNotification("Product updated");
+    document.getElementById("productEditModal").style.display = "flex";
+    setTimeout(() => document.getElementById("editProductName")?.focus(), 80);
+}
 
-    await loadProducts();
+function closeProductEditModal(){
+    const modal = document.getElementById("productEditModal");
+    if(modal){
+        modal.style.display = "none";
+    }
+}
+
+function bindProductEditForm(){
+    const form = document.getElementById("productEditForm");
+
+    if(!form || form.dataset.bound === "true") return;
+
+    form.dataset.bound = "true";
+
+    form.addEventListener("submit", async event => {
+        event.preventDefault();
+
+        const id = document.getElementById("editProductId").value;
+        const name = document.getElementById("editProductName").value.trim();
+        const price = Number(document.getElementById("editProductPrice").value);
+        const stock = Number(document.getElementById("editProductStock").value);
+        const available = document.getElementById("editProductAvailable").checked && stock > 0;
+        const button = form.querySelector("button[type='submit']");
+
+        if(!name || Number.isNaN(price) || Number.isNaN(stock) || price < 0 || stock < 0){
+            showNotification("Enter a valid product name, price, and stock", "error");
+            return;
+        }
+
+        button.disabled = true;
+        button.innerHTML = `<i class="fa-solid fa-spinner fa-spin"></i> Saving...`;
+
+        const { error } =
+        await supabaseClient
+        .from("products")
+        .update({
+            name,
+            price,
+            stock_quantity: stock,
+            available
+        })
+        .eq("id", id)
+        .eq("business_id", getBusinessId());
+
+        button.disabled = false;
+        button.innerHTML = `<i class="fa-solid fa-floppy-disk"></i> Save Changes`;
+
+        if(error){
+            console.log(error);
+            showNotification("Failed to update product", "error");
+            return;
+        }
+
+        showNotification("Product updated", "success");
+        closeProductEditModal();
+        await loadProducts();
+    });
 }
 
 // EXPORT EXCEL
@@ -1351,6 +1427,7 @@ async function init(){
     bindTeamForm();
     bindChatForm();
     bindBusinessSettingsForm();
+    bindProductEditForm();
 
     setProductsOpen(false);
 
