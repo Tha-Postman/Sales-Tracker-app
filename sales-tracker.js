@@ -51,7 +51,7 @@ const DEFAULT_RECEIPT_FOOTER = "Thank you for your purchase.";
 
 const allowedOrigins = [
     appUrl,
-    "http://localhost:3000",
+    "https://use-sales-tracker.vercel.app/",
     "http://localhost:5500",
     "http://127.0.0.1:5500",
     "http://127.0.0.1:3000"
