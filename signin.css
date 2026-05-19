@@ -7,9 +7,10 @@
 
 body {
     min-height: 100vh;
+    min-height: 100dvh;
     display: grid;
     place-items: center;
-    padding: 24px;
+    padding: clamp(14px, 3vw, 24px);
     color: white;
     background:
     radial-gradient(circle at top left, rgba(37,99,235,0.2), transparent 34%),
@@ -32,6 +33,7 @@ body::before {
 
 .auth-shell {
     width: min(1100px, 100%);
+    min-width: 0;
     display: grid;
     grid-template-columns: 1.1fr 430px;
     gap: 24px;
@@ -124,8 +126,10 @@ body::before {
 
 .container {
     position: relative;
+    width: 100%;
+    max-width: 430px;
     border-radius: 28px;
-    padding: 34px;
+    padding: clamp(24px, 4vw, 34px);
     overflow: hidden;
     animation: panelUp 0.45s ease both;
 }
@@ -226,6 +230,7 @@ body::before {
 
 .input-box input {
     width: 100%;
+    max-width: 100%;
     min-height: 50px;
     padding: 14px 46px 14px 42px;
     border-radius: 14px;
@@ -451,36 +456,60 @@ body::before {
     }
 }
 
+@media (max-width: 720px) {
+    body {
+        place-items: center;
+        padding: max(14px, env(safe-area-inset-top)) max(14px, env(safe-area-inset-right)) max(14px, env(safe-area-inset-bottom)) max(14px, env(safe-area-inset-left));
+    }
+
+    .auth-shell {
+        width: min(430px, 100%);
+        display: block;
+    }
+
+    .brand-panel {
+        display: none;
+    }
+
+    .container {
+        min-height: auto;
+        max-width: 100%;
+        border-radius: 22px;
+        box-shadow: 0 22px 54px rgba(0,0,0,0.34);
+    }
+
+    .logo {
+        justify-content: center;
+        text-align: center;
+    }
+
+    .sub {
+        text-align: center;
+    }
+}
+
 @media (max-width: 560px) {
     body {
         padding: 14px;
     }
 
-    .container,
-    .brand-panel {
-        border-radius: 22px;
-        padding: 24px;
+    .container {
+        border-radius: 20px;
+        padding: 22px;
     }
 
-    .feature-grid {
-        grid-template-columns: 1fr;
+    .tabs {
+        margin-bottom: 20px;
     }
 
-    .brand-panel {
-        gap: 10px;
+    .tab,
+    .auth-btn,
+    .input-box input {
+        min-height: 48px;
     }
 
-    .brand-panel h1 {
-        font-size: 30px;
-    }
-
-    .brand-panel p {
-        font-size: 14px;
-        line-height: 1.55;
-    }
-
-    .feature-grid div {
-        padding: 11px;
+    .bottom-text {
+        font-size: 13px;
     }
 
     #toast {
@@ -488,6 +517,31 @@ body::before {
         right: 12px;
         bottom: 12px;
         max-width: calc(100vw - 24px);
+    }
+}
+
+@media (max-width: 380px) {
+    .container {
+        padding: 18px;
+        border-radius: 18px;
+    }
+
+    .logo {
+        font-size: 22px;
+    }
+
+    .tabs {
+        gap: 5px;
+        padding: 5px;
+    }
+
+    .tab {
+        font-size: 13px;
+        padding: 10px 8px;
+    }
+
+    .input-box input {
+        padding-right: 42px;
     }
 }
 

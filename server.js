@@ -1,10 +1,14 @@
 import crypto from "crypto";
+import path from "path";
+import { fileURLToPath } from "url";
 import cors from "cors";
 import dotenv from "dotenv";
 import express from "express";
 import { createClient } from "@supabase/supabase-js";
 
 dotenv.config();
+
+const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
 const app = express();
 const port = process.env.PORT || 4242;
@@ -981,8 +985,17 @@ async function activateSubscriptionFromPaystack(payment) {
     return data;
 }
 
+app.use(express.static(__dirname, {
+    extensions: ["html"]
+}));
+
+app.get("/", (req, res) => {
+    res.sendFile(path.join(__dirname, "signin.html"));
+});
+
 app.listen(port, () => {
-    console.log(`Sales Tracker payment backend running on http://localhost:${port}`);
+    console.log(`Sales Tracker running on http://localhost:${port}`);
+    console.log(`Payment backend ready at http://localhost:${port}/api/health`);
 });
 
 

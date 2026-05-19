@@ -2343,3 +2343,246 @@ body:not(.sidebar-collapsed)::after {
         width: 100%;
     }
 }
+
+
+/* Product inventory polish */
+.product-count-badge {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-width: 30px;
+    min-height: 24px;
+    margin-left: 8px;
+    padding: 3px 9px;
+    border: 1px solid rgba(148, 163, 184, 0.18);
+    border-radius: 999px;
+    color: #bfdbfe;
+    background: rgba(15, 23, 42, 0.82);
+    font-size: 12px;
+    font-weight: 900;
+    vertical-align: middle;
+}
+
+.product-card {
+    border: 1px solid rgba(148, 163, 184, 0.16);
+    box-shadow: 0 16px 34px rgba(2, 6, 23, 0.2);
+}
+
+.product-card:hover {
+    border-color: rgba(96, 165, 250, 0.42);
+}
+
+.product-card-top {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 10px;
+    margin-bottom: 10px;
+}
+
+.product-number,
+.product-stock-tag {
+    display: inline-flex;
+    align-items: center;
+    min-height: 24px;
+    border-radius: 999px;
+    padding: 4px 9px;
+    font-size: 11px;
+    font-weight: 900;
+}
+
+.product-number {
+    color: #bfdbfe;
+    background: rgba(37, 99, 235, 0.14);
+    border: 1px solid rgba(96, 165, 250, 0.18);
+}
+
+.product-stock-tag {
+    color: #99f6e4;
+    background: rgba(20, 184, 166, 0.12);
+    border: 1px solid rgba(45, 212, 191, 0.18);
+}
+
+.product-delete-content {
+    max-width: 560px;
+}
+
+.danger-kicker {
+    color: #f87171;
+}
+
+.delete-warning-box {
+    display: flex;
+    gap: 13px;
+    align-items: flex-start;
+    padding: 14px;
+    border: 1px solid rgba(248, 113, 113, 0.2);
+    border-radius: 16px;
+    color: #fecaca;
+    background: rgba(127, 29, 29, 0.22);
+}
+
+.delete-warning-box i {
+    margin-top: 2px;
+    color: #f87171;
+}
+
+.delete-warning-box p {
+    margin: 5px 0 0;
+    color: #cbd5e1;
+    line-height: 1.55;
+}
+
+.modal-danger-btn {
+    min-height: 42px;
+    border: 0;
+    border-radius: 12px;
+    padding: 10px 14px;
+    color: #ffffff;
+    background: linear-gradient(135deg, #dc2626, #f97316);
+    box-shadow: 0 16px 34px rgba(220, 38, 38, 0.22);
+    font-weight: 900;
+    cursor: pointer;
+    transition: transform 0.2s ease, opacity 0.2s ease;
+}
+
+.modal-danger-btn:hover {
+    transform: translateY(-1px);
+}
+
+.modal-danger-btn:disabled {
+    cursor: wait;
+    opacity: 0.72;
+    transform: none;
+}
+
+/* Admin password modal, aligned with sales dashboard */
+.password-modal {
+    position: fixed;
+    inset: 0;
+    z-index: 10000;
+    display: grid;
+    place-items: center;
+    padding: 18px;
+    background: rgba(2, 6, 23, 0.74);
+    backdrop-filter: blur(12px);
+}
+
+.password-modal.hidden {
+    display: none !important;
+}
+
+.password-card {
+    width: min(430px, 100%);
+    display: grid;
+    gap: 14px;
+    padding: 20px;
+    border: 1px solid rgba(148, 163, 184, 0.18);
+    border-radius: 20px;
+    color: #f8fafc;
+    background: linear-gradient(145deg, rgba(15, 23, 42, 0.96), rgba(2, 6, 23, 0.92));
+    box-shadow: 0 28px 70px rgba(2, 6, 23, 0.5);
+    animation: modalIn 0.25s ease both;
+}
+
+.password-card-head {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 12px;
+}
+
+.password-card-head p {
+    margin: 0 0 4px;
+    color: #93c5fd;
+    font-size: 12px;
+    font-weight: 900;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+}
+
+.password-card-head h3 {
+    margin: 0;
+}
+
+.password-close {
+    width: 34px;
+    height: 34px;
+    display: grid;
+    place-items: center;
+    border: 1px solid rgba(148, 163, 184, 0.16);
+    border-radius: 10px;
+    color: #cbd5e1;
+    background: rgba(255, 255, 255, 0.06);
+    cursor: pointer;
+}
+
+.password-card label {
+    display: grid;
+    gap: 7px;
+    color: #cbd5e1;
+    font-weight: 800;
+    font-size: 13px;
+}
+
+.password-card input {
+    width: 100%;
+    min-height: 44px;
+    margin: 0;
+    border: 1px solid rgba(148, 163, 184, 0.2);
+    border-radius: 12px;
+    color: #ffffff;
+    background: rgba(15, 23, 42, 0.82);
+    padding: 10px 12px;
+    outline: none;
+}
+
+.password-card input:focus {
+    border-color: rgba(96, 165, 250, 0.72);
+    box-shadow: 0 0 0 4px rgba(37, 99, 235, 0.18);
+}
+
+.password-actions {
+    display: flex;
+    justify-content: flex-end;
+    gap: 10px;
+    flex-wrap: wrap;
+}
+
+.password-cancel,
+.password-save {
+    min-height: 42px;
+    border-radius: 12px;
+    padding: 10px 14px;
+    font-weight: 900;
+    cursor: pointer;
+}
+
+.password-cancel {
+    color: #cbd5e1;
+    background: rgba(255, 255, 255, 0.06);
+    border: 1px solid rgba(148, 163, 184, 0.16);
+}
+
+.password-save {
+    color: white;
+    border: 0;
+    background: linear-gradient(135deg, #2563eb, #14b8a6);
+}
+
+.password-save:disabled {
+    cursor: wait;
+    opacity: 0.72;
+}
+
+@media (max-width: 640px) {
+    .modal-danger-btn,
+    .password-cancel,
+    .password-save {
+        width: 100%;
+    }
+
+    .password-actions {
+        flex-direction: column-reverse;
+    }
+}
