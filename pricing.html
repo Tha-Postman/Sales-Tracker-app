@@ -7,6 +7,7 @@
     <title>Sales Tracker Pricing</title>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
     <link rel="stylesheet" href="public.css">
+    <link rel="stylesheet" href="support-widget.css">
 </head>
 <body>
     <nav class="site-nav">
@@ -122,7 +123,7 @@
                 <h3>Need help choosing?</h3>
                 <p>Contact support for plan guidance, onboarding help, or custom setup questions.</p>
             </div>
-            <a class="secondary-btn" href="mailto:olaniyanoluwatobi01@gmail.com">olaniyanoluwatobi01@gmail.com</a>
+            <button class="secondary-btn support-chat-btn" type="button" onclick="openSupportChat()"><i class="fa-solid fa-headset"></i> Open Support Chat</button>
         </div>
 
         <!-- <p class="pricing-note reveal-up">
@@ -353,5 +354,7 @@
             setTimeout(() => startCheckout(pendingPlan), 450);
         });
     </script>
+    <script src="support-widget.js"></script>
 </body>
 </html>
+

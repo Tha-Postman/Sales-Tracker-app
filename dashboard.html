@@ -16,7 +16,8 @@
 
         <title>Sales Tracker</title>
 
-    </head>
+        <link rel="stylesheet" href="support-widget.css">
+</head>
     <body>
         <!-- BACKGROUND GLOWS -->
 
@@ -326,6 +327,7 @@ let basePrice = 0;
 let currentUserRole = "rep";
 let currentProfile = null;
 let currentBusinessId = null;
+let currentBusinessSettings = null;
 const TEAM_API_URL = "http://localhost:4242";
 let repChatSettings = {
     admin_only: false,
@@ -937,6 +939,18 @@ async function reactToRepChatMessage(messageId, reaction){
         await loadRepChat();
     } catch(error) {
         showToast(error.message, "error");
+    }
+}
+
+
+
+async function loadBusinessContext(){
+    try {
+        const result = await teamApi("/api/team/business");
+        currentBusinessSettings = result.business || null;
+        sessionStorage.setItem("salesTrackerBusinessSettings", JSON.stringify(currentBusinessSettings || {}));
+    } catch(error) {
+        currentBusinessSettings = JSON.parse(sessionStorage.getItem("salesTrackerBusinessSettings") || "null");
     }
 }
 
@@ -1656,7 +1670,9 @@ window.addEventListener(
 
         await loadCustomers();
 
-        await loadProducts();
+        await loadBusinessContext();
+
+    await loadProducts();
 
         await startRealtime();
 
@@ -2156,7 +2172,13 @@ function printReceipt(id) {
     const c = allCustomers.find(x => x.id === id);
     if (!c) return;
 
-    sessionStorage.setItem("salesTrackerReceipt", JSON.stringify(c));
+    sessionStorage.setItem("salesTrackerReceipt", JSON.stringify({
+        ...c,
+        business_name: currentBusinessSettings?.business_name || "Sales Tracker",
+        receipt_footer: currentBusinessSettings?.receipt_footer || "Thank you for your purchase.",
+        currency: currentBusinessSettings?.currency || currentProfile?.subscription_currency || "NGN",
+        created_by: c.created_by || currentProfile?.full_name || "Sales Rep"
+    }));
     window.open("receipt.html", "_blank", "width=430,height=680");
 }
 
@@ -3065,6 +3087,8 @@ async function init(){
         return;
     }
 
+    await loadBusinessContext();
+
     await loadProducts();
 
     await loadCustomers();
@@ -3192,5 +3216,7 @@ function startRealtime(){
 init();
 // loadCustomers();
 </script>
+    <script src="support-widget.js"></script>
 </body>
 </html>
+

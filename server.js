@@ -43,6 +43,8 @@ const PLAN_REP_LIMITS = {
     enterprise: Number.POSITIVE_INFINITY
 };
 
+const DEFAULT_RECEIPT_FOOTER = "Thank you for your purchase.";
+
 const allowedOrigins = [
     appUrl,
     "http://localhost:3000",
@@ -217,6 +219,11 @@ app.post("/api/team/reps", async (req, res) => {
             throw error;
         }
 
+        await logAudit(adminProfile, "rep_added", "profile", profile.id, {
+            rep_name: profile.full_name,
+            rep_email: profile.email
+        });
+
         res.json({ ok: true, profile });
     } catch (error) {
         console.error("Create rep failed:", error);
@@ -251,25 +258,134 @@ app.get("/api/team/profiles", async (req, res) => {
 
 app.get("/api/team/business", async (req, res) => {
     try {
-        const adminProfile = await requireAdminProfile(req);
-
-        const { data, error } = await supabaseAdmin
-            .from("businesses")
-            .select("*")
-            .eq("id", adminProfile.business_id)
-            .single();
-
-        if (error) {
-            throw error;
-        }
+        const profile = await requireBusinessProfile(req);
+        const business = await getOrCreateBusinessForProfile(profile);
 
         res.json({
             ok: true,
-            business: data
+            business
         });
     } catch (error) {
         console.error("Load business failed:", error);
         res.status(error.status || 500).json({ error: error.message || "Could not load business" });
+    }
+});
+
+
+app.post("/api/team/business/settings", async (req, res) => {
+    try {
+        const profile = await requireAdminProfile(req);
+        const businessName = String(req.body.business_name || "").trim();
+        const currency = String(req.body.currency || "NGN").trim().toUpperCase();
+        const receiptFooter = String(req.body.receipt_footer || DEFAULT_RECEIPT_FOOTER).trim();
+        const lowStockThreshold = Number(req.body.low_stock_threshold || 5);
+
+        if (!businessName) {
+            res.status(400).json({ error: "Business name is required" });
+            return;
+        }
+
+        const { data, error } = await supabaseAdmin
+            .from("businesses")
+            .upsert({
+                id: profile.business_id,
+                owner_id: profile.role === "admin" ? profile.id : null,
+                business_name: businessName,
+                currency,
+                receipt_footer: receiptFooter || DEFAULT_RECEIPT_FOOTER,
+                low_stock_threshold: Number.isFinite(lowStockThreshold) ? Math.max(0, lowStockThreshold) : 5,
+                plan: profile.subscription_plan || "starter-monthly",
+                subscription_status: profile.subscription_status || "active",
+                subscription_expires_at: profile.subscription_expires_at || null,
+                updated_at: new Date().toISOString()
+            }, { onConflict: "id" })
+            .select("*")
+            .maybeSingle();
+
+        if (error) throw error;
+        if (!data) throw new Error("Business settings could not be saved. Run business-id-repair.sql, then try again.");
+
+        await logAudit(profile, "business_settings_updated", "business", profile.business_id, {
+            business_name: businessName,
+            currency
+        });
+
+        res.json({ ok: true, business: data });
+    } catch (error) {
+        console.error("Save business settings failed:", error);
+        res.status(error.status || 500).json({ error: error.message || "Could not save business settings" });
+    }
+});
+
+app.get("/api/team/reports", async (req, res) => {
+    try {
+        const profile = await requireAdminProfile(req);
+        const { from, to, rep, status } = req.query;
+
+        let query = supabaseAdmin
+            .from("customers")
+            .select("*")
+            .eq("business_id", profile.business_id)
+            .order("created_at", { ascending: false });
+
+        if (from) query = query.gte("created_at", from);
+        if (to) query = query.lte("created_at", to);
+        if (rep && rep !== "all") query = query.eq("user_id", rep);
+        if (status && status !== "All") query = query.eq("status", status);
+
+        const { data, error } = await query.limit(1000);
+        if (error) throw error;
+
+        const rows = data || [];
+        const paidRows = rows.filter(row => row.status === "Paid");
+        const pendingRows = rows.filter(row => row.status === "Pending");
+        const cancelledRows = rows.filter(row => row.status === "Cancelled");
+        const revenue = paidRows.reduce((sum, row) => sum + Number(row.final_price || row.price || 0), 0);
+        const pendingRevenue = pendingRows.reduce((sum, row) => sum + Number(row.final_price || row.price || 0), 0);
+
+        res.json({
+            ok: true,
+            summary: {
+                totalSales: rows.length,
+                paidSales: paidRows.length,
+                pendingSales: pendingRows.length,
+                cancelledSales: cancelledRows.length,
+                revenue,
+                pendingRevenue,
+                averageSale: paidRows.length ? revenue / paidRows.length : 0
+            },
+            rows
+        });
+    } catch (error) {
+        console.error("Load reports failed:", error);
+        res.status(error.status || 500).json({ error: error.message || "Could not load reports" });
+    }
+});
+
+app.get("/api/team/audit", async (req, res) => {
+    try {
+        const profile = await requireAdminProfile(req);
+
+        const { data, error } = await supabaseAdmin
+            .from("audit_logs")
+            .select("*")
+            .eq("business_id", profile.business_id)
+            .order("created_at", { ascending: false })
+            .limit(80);
+
+        if (error) {
+            if (isMissingTableError(error)) {
+                res.json({ ok: true, logs: [] });
+                return;
+            }
+
+            throw error;
+        }
+
+        res.json({ ok: true, logs: data || [] });
+    } catch (error) {
+        console.error("Load audit failed:", error);
+        res.status(error.status || 500).json({ error: error.message || "Could not load activity log" });
     }
 });
 
@@ -384,6 +500,10 @@ app.post("/api/team/chat", async (req, res) => {
             throw error;
         }
 
+        await logAudit(profile, "chat_message_sent", "team_chat_message", data.id, {
+            has_attachment: Boolean(data.attachment_url)
+        });
+
         res.json({ ok: true, message: data });
     } catch (error) {
         console.error("Send team chat failed:", error);
@@ -469,6 +589,11 @@ app.post("/api/team/chat/settings", async (req, res) => {
             throw error;
         }
 
+        await logAudit(profile, "chat_settings_updated", "team_chat_settings", profile.business_id, {
+            admin_only: Boolean(admin_only),
+            allow_attachments: allow_attachments !== false
+        });
+
         res.json({ ok: true, settings: data });
     } catch (error) {
         console.error("Update team chat settings failed:", error);
@@ -509,12 +634,89 @@ app.post("/api/team/reps/:id/deactivate", async (req, res) => {
             throw error;
         }
 
+        await logAudit(adminProfile, "rep_deactivated", "profile", repId, {});
+
         res.json({ ok: true });
     } catch (error) {
         console.error("Deactivate rep failed:", error);
         res.status(error.status || 500).json({ error: error.message || "Could not deactivate rep" });
     }
 });
+
+
+
+async function getOrCreateBusinessForProfile(profile) {
+    const { data, error } = await supabaseAdmin
+        .from("businesses")
+        .select("*")
+        .eq("id", profile.business_id)
+        .maybeSingle();
+
+    if (error) throw error;
+    if (data) return data;
+
+    const businessName = profile.business_name
+        || (profile.full_name ? `${profile.full_name}'s Business` : "New Business");
+
+    const { data: created, error: createError } = await supabaseAdmin
+        .from("businesses")
+        .insert({
+            id: profile.business_id,
+            business_name: businessName,
+            owner_id: profile.role === "admin" ? profile.id : null,
+            plan: profile.subscription_plan || "starter-monthly",
+            subscription_status: profile.subscription_status || "active",
+            subscription_expires_at: profile.subscription_expires_at || null,
+            currency: profile.subscription_currency || "NGN",
+            receipt_footer: DEFAULT_RECEIPT_FOOTER,
+            low_stock_threshold: 5
+        })
+        .select("*")
+        .maybeSingle();
+
+    if (createError) throw createError;
+    if (!created) throw new Error("Business record could not be created. Run business-id-repair.sql, then try again.");
+
+    return created;
+}
+async function hasActiveBusinessSubscription(profile) {
+    if (!profile?.business_id) return false;
+
+    const profileActive = profile.subscription_status === "active"
+        && (!profile.subscription_expires_at || new Date(profile.subscription_expires_at) > new Date());
+
+    if (profileActive) return true;
+
+    const { data: business } = await supabaseAdmin
+        .from("businesses")
+        .select("subscription_status, subscription_expires_at")
+        .eq("id", profile.business_id)
+        .maybeSingle();
+
+    return business?.subscription_status === "active"
+        && (!business.subscription_expires_at || new Date(business.subscription_expires_at) > new Date());
+}
+
+async function logAudit(profile, action, targetType, targetId, details = {}) {
+    if (!profile?.business_id) return;
+
+    const { error } = await supabaseAdmin
+        .from("audit_logs")
+        .insert({
+            business_id: profile.business_id,
+            actor_id: profile.id,
+            actor_name: profile.full_name || profile.email || "System",
+            actor_role: profile.role || "system",
+            action,
+            target_type: targetType,
+            target_id: targetId ? String(targetId) : null,
+            details
+        });
+
+    if (error && !isMissingTableError(error)) {
+        console.warn("Audit log failed:", error.message);
+    }
+}
 
 function getExpiryDate(billingCycle) {
     const date = new Date();
@@ -584,6 +786,12 @@ async function requireBusinessProfile(req) {
     if (profile.is_active === false || profile.status === "inactive") {
         const error = new Error("Account is inactive");
         error.status = 403;
+        throw error;
+    }
+
+    if (!(await hasActiveBusinessSubscription(profile))) {
+        const error = new Error("Subscription is inactive or expired");
+        error.status = 402;
         throw error;
     }
 
@@ -731,6 +939,23 @@ async function activateSubscriptionFromPaystack(payment) {
         throw teamSubscriptionError;
     }
 
+    const { data: ownerProfile } = await supabaseAdmin
+        .from("profiles")
+        .select("id, full_name, email, role, business_id")
+        .eq("id", userId)
+        .single();
+
+    await logAudit({
+        ...(ownerProfile || {}),
+        id: userId,
+        business_id: businessId,
+        role: "admin"
+    }, "subscription_activated", "business", businessId, {
+        plan: plan + "-" + billingCycle,
+        reference,
+        currency
+    });
+
     const { data, error } = await supabaseAdmin
         .from("profiles")
         .update({
@@ -759,3 +984,5 @@ async function activateSubscriptionFromPaystack(payment) {
 app.listen(port, () => {
     console.log(`Sales Tracker payment backend running on http://localhost:${port}`);
 });
+
+

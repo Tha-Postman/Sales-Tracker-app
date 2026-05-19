@@ -7,6 +7,7 @@
     <title>Sales Tracker</title>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
     <link rel="stylesheet" href="public.css">
+    <link rel="stylesheet" href="support-widget.css">
 </head>
 <body>
     <nav class="site-nav">
@@ -39,7 +40,7 @@
 
                 <div class="support-card">
                     <span><i class="fa-regular fa-circle-question"></i> Need help choosing a plan?</span>
-                    <a href="mailto:olaniyanoluwatobi01@gmail.com">olaniyanoluwatobi01@gmail.com</a>
+                    <button type="button" class="support-inline-link" onclick="openSupportChat()">Open support chat</button>
                 </div>
             </div>
 
@@ -124,11 +125,11 @@
                 <p>Email support and get direct help with onboarding, billing, dashboard setup, or team access.</p>
             </div>
 
-            <a class="primary-btn" href="mailto:olaniyanoluwatobi01@gmail.com">
-                <i class="fa-regular fa-envelope"></i>
-                Contact Support
-            </a>
+            <button class="primary-btn support-chat-btn" type="button" onclick="openSupportChat()"><i class="fa-solid fa-headset"></i> Contact Support</button>
         </section>
     </main>
+    <script src="support-widget.js"></script>
 </body>
 </html>
+
+

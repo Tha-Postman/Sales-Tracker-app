@@ -16,6 +16,7 @@
 
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
 
+    <link rel="stylesheet" href="support-widget.css">
 </head>
 
 <body class="sidebar-collapsed">
@@ -115,6 +116,18 @@
             <i class="fa-solid fa-wand-magic-sparkles"></i>
             Business Tools
         </button>
+        <button type="button" data-view="settings" onclick="showAdminView('settings')">
+            <i class="fa-solid fa-sliders"></i>
+            Settings
+        </button>
+        <button type="button" data-view="reports" onclick="showAdminView('reports')">
+            <i class="fa-solid fa-file-lines"></i>
+            Reports
+        </button>
+        <button type="button" data-view="audit" onclick="showAdminView('audit')">
+            <i class="fa-solid fa-clock-rotate-left"></i>
+            Activity
+        </button>
         <button type="button" data-view="chat" onclick="showAdminView('chat')">
             <i class="fa-solid fa-comments"></i>
             Team Chat
@@ -199,6 +212,8 @@
     <div id="topStaffTicker" class="top-staff-news"></div>
 
     <div id="stats" class="stats-grid"></div>
+
+    <div id="onboardingChecklist" class="onboarding-checklist"></div>
     </section>
     
     <!-- REP SECTION -->
@@ -256,6 +271,82 @@
             </div>
 
             <div id="businessTools" class="business-tools-grid"></div>
+        </div>
+    </section>
+
+    
+
+    <section class="admin-view" data-view-panel="settings">
+        <div class="section settings-section">
+            <div class="section-header">
+                <div>
+                    <p class="section-kicker">Business Setup</p>
+                    <h2>Business Settings</h2>
+                </div>
+                <span class="section-badge">Receipt + currency</span>
+            </div>
+
+            <form id="businessSettingsForm" class="team-form settings-form">
+                <div>
+                    <label for="businessNameInput">Business name</label>
+                    <input id="businessNameInput" type="text" placeholder="Your business name" required>
+                </div>
+                <div>
+                    <label for="businessCurrencyInput">Currency</label>
+                    <input id="businessCurrencyInput" type="text" placeholder="NGN" maxlength="3">
+                </div>
+                <div>
+                    <label for="lowStockThresholdInput">Low stock alert</label>
+                    <input id="lowStockThresholdInput" type="number" min="0" value="5">
+                </div>
+                <div class="settings-wide">
+                    <label for="receiptFooterInput">Receipt footer</label>
+                    <input id="receiptFooterInput" type="text" placeholder="Thank you for your purchase.">
+                </div>
+                <button type="submit"><i class="fa-solid fa-floppy-disk"></i> Save Settings</button>
+            </form>
+        </div>
+    </section>
+
+    <section class="admin-view" data-view-panel="reports">
+        <div class="section reports-section">
+            <div class="section-header">
+                <div>
+                    <p class="section-kicker">Exports + Insights</p>
+                    <h2>Reports</h2>
+                </div>
+                <button class="section-action" type="button" onclick="exportReportCSV()"><i class="fa-solid fa-download"></i> CSV</button>
+            </div>
+
+            <div class="report-filters">
+                <input id="reportFrom" type="date" title="From date">
+                <input id="reportTo" type="date" title="To date">
+                <select id="reportRep" title="Sales rep"></select>
+                <select id="reportStatus" title="Status">
+                    <option>All</option>
+                    <option>Paid</option>
+                    <option>Pending</option>
+                    <option>Cancelled</option>
+                    <option>Refunded</option>
+                </select>
+                <button type="button" onclick="loadReports()"><i class="fa-solid fa-filter"></i> Apply</button>
+            </div>
+
+            <div id="reportSummary" class="report-summary-grid"></div>
+            <div id="reportTable" class="report-table-wrap"></div>
+        </div>
+    </section>
+
+    <section class="admin-view" data-view-panel="audit">
+        <div class="section audit-section">
+            <div class="section-header">
+                <div>
+                    <p class="section-kicker">Accountability</p>
+                    <h2>Activity Log</h2>
+                </div>
+                <button class="section-action" type="button" onclick="loadAuditLogs()"><i class="fa-solid fa-rotate"></i> Refresh</button>
+            </div>
+            <div id="auditLogList" class="audit-log-list"></div>
         </div>
     </section>
 
@@ -400,6 +491,9 @@ let adminProductsChannel = null;
 let adminPollingTimer = null;
 let lastDashboardSignature = "";
 let chatRefreshTimer = null;
+let businessSettings = null;
+let reportRows = [];
+let auditLogs = [];
 let chatSettings = {
     admin_only: false,
     allow_attachments: true
@@ -522,6 +616,21 @@ function showAdminView(view){
 
     if(view === "tools"){
         renderBusinessTools();
+    renderOnboardingChecklist();
+    loadBusinessSettings();
+    }
+
+    if(view === "settings"){
+        loadBusinessSettings();
+    }
+
+    if(view === "reports"){
+        populateReportRepFilter();
+        loadReports();
+    }
+
+    if(view === "audit"){
+        loadAuditLogs();
     }
 }
 
@@ -1241,6 +1350,7 @@ async function init(){
 
     bindTeamForm();
     bindChatForm();
+    bindBusinessSettingsForm();
 
     setProductsOpen(false);
 
@@ -1254,7 +1364,10 @@ async function init(){
     renderLiveFeed();
 
     updateStats();
+    await loadBusinessSettings();
     loadRepStats();
+    renderOnboardingChecklist();
+    populateReportRepFilter();
 
     renderRevenueChart();
     renderPaymentChart();
@@ -1719,6 +1832,206 @@ function renderBusinessTools(){
             <small>${tool.action}</small>
         </article>
     `).join("");
+}
+
+
+
+function renderOnboardingChecklist(){
+    const container = document.getElementById("onboardingChecklist");
+    if(!container) return;
+
+    const reps = profiles.filter(profile => profile.role === "rep");
+    const items = [
+        { label: "Add your first product", done: products.length > 0 },
+        { label: "Add at least one sales rep", done: reps.length > 0 },
+        { label: "Record your first sale", done: allCustomers.length > 0 },
+        { label: "Review team performance", done: reps.some(rep => allCustomers.some(sale => getProfileForSale(sale)?.id === rep.id)) },
+        { label: "Set receipt and currency", done: Boolean(businessSettings?.business_name) }
+    ];
+    const complete = items.filter(item => item.done).length;
+
+    container.innerHTML = `
+        <div class="section-header">
+            <div>
+                <p class="section-kicker">Launch Checklist</p>
+                <h2>${complete}/${items.length} ready</h2>
+            </div>
+            <span class="section-badge">Owner onboarding</span>
+        </div>
+        <div class="onboarding-items">
+            ${items.map(item => `
+                <div class="onboarding-item ${item.done ? "done" : ""}">
+                    <i class="fa-solid ${item.done ? "fa-circle-check" : "fa-circle"}"></i>
+                    <span>${escapeHtml(item.label)}</span>
+                </div>
+            `).join("")}
+        </div>
+    `;
+}
+
+async function loadBusinessSettings(){
+    try {
+        const result = await getTeamApi("/api/team/business");
+        businessSettings = result.business || null;
+        sessionStorage.setItem("salesTrackerBusinessSettings", JSON.stringify(businessSettings || {}));
+
+        const name = document.getElementById("businessNameInput");
+        const currency = document.getElementById("businessCurrencyInput");
+        const threshold = document.getElementById("lowStockThresholdInput");
+        const footer = document.getElementById("receiptFooterInput");
+
+        if(name) name.value = businessSettings?.business_name || "";
+        if(currency) currency.value = businessSettings?.currency || currentProfile?.subscription_currency || "NGN";
+        if(threshold) threshold.value = businessSettings?.low_stock_threshold ?? 5;
+        if(footer) footer.value = businessSettings?.receipt_footer || "Thank you for your purchase.";
+
+        renderOnboardingChecklist();
+    } catch(error) {
+        console.log("Business settings load failed:", error.message);
+    }
+}
+
+function bindBusinessSettingsForm(){
+    const form = document.getElementById("businessSettingsForm");
+    if(!form || form.dataset.bound === "true") return;
+
+    form.dataset.bound = "true";
+    form.addEventListener("submit", async event => {
+        event.preventDefault();
+        const button = form.querySelector("button");
+        button.disabled = true;
+
+        try {
+            const result = await callTeamApi("/api/team/business/settings", {
+                business_name: document.getElementById("businessNameInput").value,
+                currency: document.getElementById("businessCurrencyInput").value,
+                low_stock_threshold: document.getElementById("lowStockThresholdInput").value,
+                receipt_footer: document.getElementById("receiptFooterInput").value
+            });
+
+            businessSettings = result.business;
+            sessionStorage.setItem("salesTrackerBusinessSettings", JSON.stringify(businessSettings || {}));
+            showNotification("Business settings updated", "success");
+            renderOnboardingChecklist();
+            loadAuditLogs();
+        } catch(error) {
+            showNotification(error.message, "error");
+        } finally {
+            button.disabled = false;
+        }
+    });
+}
+
+function populateReportRepFilter(){
+    const select = document.getElementById("reportRep");
+    if(!select) return;
+
+    select.innerHTML = `<option value="all">All reps</option>` + profiles
+        .filter(profile => profile.role === "rep" || profile.role === "admin")
+        .map(profile => `<option value="${profile.id}">${escapeHtml(profile.full_name || profile.email || "Team member")}</option>`)
+        .join("");
+}
+
+async function loadReports(){
+    const summary = document.getElementById("reportSummary");
+    const table = document.getElementById("reportTable");
+    if(!summary || !table) return;
+
+    summary.innerHTML = `<div class="empty-state">Loading report...</div>`;
+    table.innerHTML = "";
+
+    try {
+        const params = new URLSearchParams();
+        const from = document.getElementById("reportFrom")?.value;
+        const to = document.getElementById("reportTo")?.value;
+        const rep = document.getElementById("reportRep")?.value || "all";
+        const status = document.getElementById("reportStatus")?.value || "All";
+
+        if(from) params.set("from", new Date(from).toISOString());
+        if(to) {
+            const end = new Date(to);
+            end.setHours(23, 59, 59, 999);
+            params.set("to", end.toISOString());
+        }
+        params.set("rep", rep);
+        params.set("status", status);
+
+        const result = await getTeamApi(`/api/team/reports?${params.toString()}`);
+        reportRows = result.rows || [];
+        const s = result.summary || {};
+
+        summary.innerHTML = [
+            ["Revenue", formatCurrency(s.revenue)],
+            ["Total Sales", s.totalSales || 0],
+            ["Paid", s.paidSales || 0],
+            ["Pending", s.pendingSales || 0],
+            ["Pending Revenue", formatCurrency(s.pendingRevenue)],
+            ["Average Sale", formatCurrency(s.averageSale)]
+        ].map(([label, value]) => `<div class="stat-card compact-stat"><p>${label}</p><h2>${value}</h2></div>`).join("");
+
+        table.innerHTML = reportRows.length ? `
+            <table class="report-table">
+                <thead><tr><th>Date</th><th>Customer</th><th>Rep</th><th>Status</th><th>Payment</th><th>Total</th></tr></thead>
+                <tbody>
+                    ${reportRows.map(row => `<tr>
+                        <td>${formatDate(row.created_at)}</td>
+                        <td>${escapeHtml(row.customer_id || "-")}</td>
+                        <td>${escapeHtml(getRepNameForSale(row))}</td>
+                        <td>${escapeHtml(row.status || "-")}</td>
+                        <td>${escapeHtml(row.payment_mode || "-")}</td>
+                        <td>${formatCurrency(row.final_price || row.price || 0)}</td>
+                    </tr>`).join("")}
+                </tbody>
+            </table>
+        ` : `<div class="empty-state">No report data for this filter.</div>`;
+    } catch(error) {
+        summary.innerHTML = `<div class="empty-state">${escapeHtml(error.message)}</div>`;
+    }
+}
+
+function exportReportCSV(){
+    if(!reportRows.length){
+        showNotification("No report rows to export", "warning");
+        return;
+    }
+
+    const headers = ["Date", "Customer", "Rep", "Status", "Payment", "Total"];
+    const csv = [headers, ...reportRows.map(row => [
+        formatDate(row.created_at),
+        row.customer_id || "-",
+        getRepNameForSale(row),
+        row.status || "-",
+        row.payment_mode || "-",
+        row.final_price || row.price || 0
+    ])].map(cols => cols.map(value => `"${String(value).replaceAll('"', '""')}"`).join(",")).join("\n");
+
+    const blob = new Blob([csv], { type: "text/csv;charset=utf-8" });
+    saveAs(blob, "sales-report.csv");
+}
+
+async function loadAuditLogs(){
+    const container = document.getElementById("auditLogList");
+    if(!container) return;
+
+    container.innerHTML = `<div class="empty-state">Loading activity...</div>`;
+
+    try {
+        const result = await getTeamApi("/api/team/audit");
+        auditLogs = result.logs || [];
+
+        container.innerHTML = auditLogs.length ? auditLogs.map(log => `
+            <article class="audit-item">
+                <span class="audit-icon"><i class="fa-solid fa-clock-rotate-left"></i></span>
+                <div>
+                    <strong>${escapeHtml(log.action || "Activity")}</strong>
+                    <p>${escapeHtml(log.actor_name || "System")} - ${escapeHtml(log.actor_role || "")}</p>
+                </div>
+                <time>${formatDate(log.created_at)}</time>
+            </article>
+        `).join("") : `<div class="empty-state">No activity has been logged yet.</div>`;
+    } catch(error) {
+        container.innerHTML = `<div class="empty-state">${escapeHtml(error.message)}</div>`;
+    }
 }
 
 // NOTIFICATION
@@ -2791,5 +3104,9 @@ updateSidebarState();
 
 </script>
 
+    <script src="support-widget.js"></script>
 </body>
 </html>
+
+
+

@@ -223,7 +223,7 @@
             logo.className = "receipt-logo";
             logo.innerHTML = `<span class="logo-mark"><i class="fa-solid fa-chart-simple"></i></span><span>Sales Tracker</span>`;
             head.appendChild(logo);
-            addText(head, "p", "Official Receipt", "muted");
+            addText(head, "p", sale.business_name ? `${sale.business_name} - Official Receipt` : "Official Receipt", "muted");
 
             const meta = document.createElement("div");
             meta.className = "receipt-meta";
@@ -232,7 +232,8 @@
                 ["Receipt No.", sale.customer_id || "-"],
                 ["Date", receiptDate.toLocaleString()],
                 ["Status", sale.status || "-"],
-                ["Payment", sale.payment_mode || "-"]
+                ["Payment", sale.payment_mode || "-"],
+                ["Served By", sale.created_by || "-"]
             ].forEach(([label, value]) => {
                 addText(meta, "span", label);
                 addText(meta, "strong", value);
@@ -279,7 +280,7 @@
             addText(box, "div", "");
             box.firstElementChild.replaceWith(head);
             box.append(meta, table, summary);
-            addText(box, "p", "Thank you for your purchase.", "receipt-thanks muted");
+            addText(box, "p", sale.receipt_footer || "Thank you for your purchase.", "receipt-thanks muted");
             root.appendChild(box);
 
             setTimeout(() => window.print(), 350);
