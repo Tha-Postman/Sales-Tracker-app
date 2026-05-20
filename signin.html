@@ -194,7 +194,13 @@
 
         const supabaseKey ="eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im5paHFtcGltenZoamdsd2ttaGZsIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Nzc5MzM4MjgsImV4cCI6MjA5MzUwOTgyOH0.PU0egVoNGXsloErw5hGwb9JrLHnn02F1nh6jsudsJ8w";
 
-        const supabaseClient = supabase.createClient(supabaseUrl, supabaseKey);
+        const supabaseClient = supabase.createClient(supabaseUrl, supabaseKey, {
+            auth: {
+                persistSession: true,
+                autoRefreshToken: true,
+                detectSessionInUrl: true
+            }
+        });
         const PUBLIC_APP_URL = "https://use-sales-tracker.vercel.app";
 
         function getPublicAppUrl(){
@@ -271,6 +277,44 @@
             }
 
             showToast("Password reset link sent. Check your email.", "success");
+        }
+
+        async function getProfileForUser(user){
+            if(!user) return null;
+
+            const { data: profile, error } = await supabaseClient
+                .from("profiles")
+                .select("*")
+                .eq("id", user.id)
+                .maybeSingle();
+
+            if(error){
+                console.log("Profile load error:", error);
+                return null;
+            }
+
+            if(profile) return profile;
+
+            const fullName = user.user_metadata?.full_name || user.email?.split("@")[0] || "User";
+
+            const { data: createdProfile, error: createError } = await supabaseClient
+                .from("profiles")
+                .insert([{
+                    id: user.id,
+                    email: user.email,
+                    full_name: fullName,
+                    role: "rep",
+                    subscription_status: "inactive"
+                }])
+                .select("*")
+                .single();
+
+            if(createError){
+                console.log("Profile create error:", createError);
+                return null;
+            }
+
+            return createdProfile;
         }
 
         function hasActiveSubscription(profile){
@@ -389,9 +433,8 @@
             setButtonLoading(submitBtn, false);
 
             if(data.session){
-                setTimeout(() => {
-                    window.location.href = localStorage.getItem("pendingPlan") ? "pricing.html?resumeCheckout=1" : "signin.html";
-                }, 900);
+                const profile = await getProfileForUser(data.user);
+                setTimeout(() => redirectAfterAuth(profile || { role: "rep", subscription_status: "inactive" }), 900);
                 return;
             }
 
@@ -452,14 +495,10 @@
             }
 
             const user = data.user;
-            const { data: profile, error: profileError } = await supabaseClient
-                .from("profiles")
-                .select("*")
-                .eq("id", user.id)
-                .single();
+            const profile = await getProfileForUser(user);
 
-            if(profileError || !profile){
-                showToast("Profile not found", "error");
+            if(!profile){
+                showToast("Profile setup failed. Please contact support.", "error");
                 setButtonLoading(submitBtn, false);
                 return;
             }
@@ -467,6 +506,20 @@
             showToast("Login successful!", "success");
             setTimeout(() => redirectAfterAuth(profile), 1200);
         });
+
+        async function resumeExistingSession(){
+            if(isPasswordRecoveryUrl()) return;
+
+            const { data: { session } } = await supabaseClient.auth.getSession();
+
+            if(!session?.user) return;
+
+            const profile = await getProfileForUser(session.user);
+
+            if(profile){
+                redirectAfterAuth(profile);
+            }
+        }
 
         const authIntent = getAuthIntent();
 
@@ -483,6 +536,8 @@
                 showPasswordResetForm();
             }
         });
+
+        resumeExistingSession();
     </script>
 
     <script src="support-widget.js"></script>
