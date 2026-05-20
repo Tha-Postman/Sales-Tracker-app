@@ -12,7 +12,7 @@ const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
 const app = express();
 const port = process.env.PORT || 4242;
-const appUrl = process.env.APP_URL || "https://sales-tracker-app-cd7k.onrender.com";
+const appUrl = process.env.APP_URL || "http://localhost:5500";
 const supabaseUrl = process.env.SUPABASE_URL;
 const supabaseServiceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
 const paystackSecretKey = process.env.PAYSTACK_SECRET_KEY;

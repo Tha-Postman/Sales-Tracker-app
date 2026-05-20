@@ -328,7 +328,7 @@ let currentUserRole = "rep";
 let currentProfile = null;
 let currentBusinessId = null;
 let currentBusinessSettings = null;
-const TEAM_API_URL = "http://localhost:4242";
+const TEAM_API_URL = "https://sales-tracker-app-cd7k.onrender.com";
 let repChatSettings = {
     admin_only: false,
     allow_attachments: true
@@ -731,7 +731,7 @@ async function teamApi(path, payload = null){
     try {
         response = await fetch(`${TEAM_API_URL}${path}`, options);
     } catch(error) {
-        throw new Error("Team backend is not running");
+        throw new Error("Team service is temporarily unavailable. Please try again shortly.");
     }
 
     const result = await response.json().catch(() => ({}));

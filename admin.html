@@ -593,7 +593,7 @@ let allCustomers = [];
 let profiles = [];
 let currentProfile = null;
 let currentBusinessId = null;
-const TEAM_API_URL = "http://localhost:4242";
+const TEAM_API_URL = "https://sales-tracker-app-cd7k.onrender.com";
 
 let revenueChart;
 let paymentChart;
@@ -903,12 +903,12 @@ async function callTeamApi(path, payload){
             body: JSON.stringify(payload)
         });
     } catch(error) {
-        throw new Error("Team backend is not running. Start it with npm run dev.");
+        throw new Error("Team service is temporarily unavailable. Please try again shortly.");
     }
 
     const result = await response.json().catch(() => ({
         error: response.status === 404
-            ? "Team backend route not found. Restart npm run dev after the latest code changes."
+            ? "Team service route is not available yet. Please redeploy the backend."
             : ""
     }));
 
@@ -935,12 +935,12 @@ async function getTeamApi(path){
             }
         });
     } catch(error) {
-        throw new Error("Team backend is not running. Start it with npm run dev.");
+        throw new Error("Team service is temporarily unavailable. Please try again shortly.");
     }
 
     const result = await response.json().catch(() => ({
         error: response.status === 404
-            ? "Team backend route not found. Restart npm run dev after the latest code changes."
+            ? "Team service route is not available yet. Please redeploy the backend."
             : ""
     }));
 
