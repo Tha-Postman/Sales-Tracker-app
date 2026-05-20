@@ -72,6 +72,147 @@ app.get("/api/health", (req, res) => {
     res.json({ ok: true });
 });
 
+app.get("/api/auth/access", async (req, res) => {
+    try {
+        const authHeader = req.headers.authorization || "";
+        const token = authHeader.startsWith("Bearer ")
+            ? authHeader.slice(7)
+            : null;
+
+        if (!token) {
+            res.status(401).json({ error: "Login required" });
+            return;
+        }
+
+        const {
+            data: { user },
+            error: userError
+        } = await supabaseAdmin.auth.getUser(token);
+
+        if (userError || !user) {
+            res.status(401).json({ error: "Invalid login session" });
+            return;
+        }
+
+        let { data: profile, error: profileError } = await supabaseAdmin
+            .from("profiles")
+            .select("*")
+            .eq("id", user.id)
+            .maybeSingle();
+
+        if (profileError) {
+            throw profileError;
+        }
+
+        if (!profile) {
+            const fullName = user.user_metadata?.full_name || user.email?.split("@")[0] || "User";
+
+            const { data: createdProfile, error: createError } = await supabaseAdmin
+                .from("profiles")
+                .insert({
+                    id: user.id,
+                    email: user.email,
+                    full_name: fullName,
+                    role: "rep",
+                    subscription_status: "inactive",
+                    status: "active",
+                    is_active: true
+                })
+                .select("*")
+                .single();
+
+            if (createError) throw createError;
+            profile = createdProfile;
+        }
+
+        let business = null;
+
+        if (profile.business_id) {
+            const { data, error } = await supabaseAdmin
+                .from("businesses")
+                .select("*")
+                .eq("id", profile.business_id)
+                .maybeSingle();
+
+            if (error) throw error;
+            business = data;
+        }
+
+        if (!business) {
+            const { data, error } = await supabaseAdmin
+                .from("businesses")
+                .select("*")
+                .eq("owner_id", user.id)
+                .maybeSingle();
+
+            if (error) throw error;
+            business = data;
+        }
+
+        const profileActive =
+            String(profile.subscription_status || profile.status || "").toLowerCase() === "active"
+            && (!profile.subscription_expires_at || new Date(profile.subscription_expires_at) > new Date());
+
+        const businessActive =
+            String(business?.subscription_status || business?.status || "").toLowerCase() === "active"
+            && (!business?.subscription_expires_at || new Date(business.subscription_expires_at) > new Date());
+
+        if (business && businessActive) {
+            const updates = {
+                business_id: business.id,
+                subscription_status: "active",
+                subscription_plan: business.plan || profile.subscription_plan || "starter-monthly",
+                subscription_expires_at: business.subscription_expires_at || profile.subscription_expires_at || null,
+                is_active: true,
+                status: "active"
+            };
+
+            if (business.owner_id === user.id) {
+                updates.role = "admin";
+            }
+
+            const { data: updatedProfile, error: updateError } = await supabaseAdmin
+                .from("profiles")
+                .update(updates)
+                .eq("id", user.id)
+                .select("*")
+                .single();
+
+            if (updateError) throw updateError;
+            profile = updatedProfile;
+
+            res.json({
+                ok: true,
+                access: "active",
+                destination: profile.role === "admin" ? "admin.html" : "dashboard.html",
+                profile
+            });
+            return;
+        }
+
+        if (profile.business_id && profileActive && profile.is_active !== false && profile.status !== "inactive") {
+            res.json({
+                ok: true,
+                access: "active",
+                destination: profile.role === "admin" ? "admin.html" : "dashboard.html",
+                profile
+            });
+            return;
+        }
+
+        res.json({
+            ok: true,
+            access: "inactive",
+            destination: "pricing.html?resumeCheckout=1",
+            profile
+        });
+    } catch (error) {
+        console.error("Auth access check failed:", error);
+        res.status(500).json({ error: error.message || "Could not check account access" });
+    }
+});
+
+
 app.post(
     "/api/paystack/webhook",
     express.raw({ type: "application/json" }),

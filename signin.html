@@ -252,6 +252,7 @@
             }
         });
         const PUBLIC_APP_URL = "https://use-sales-tracker.vercel.app";
+        const AUTH_API_URL = "https://sales-tracker-app-cd7k.onrender.com";
 
         function getPublicAppUrl(){
             const host = window.location.hostname;
@@ -394,13 +395,49 @@
             };
         }
 
-        function redirectAfterAuth(profile){
+        async function redirectAfterBackendAccess(){
+            const { data: { session } } = await supabaseClient.auth.getSession();
+
+            if(!session?.access_token) return false;
+
+            try {
+                const response = await fetch(`${AUTH_API_URL}/api/auth/access`, {
+                    headers: {
+                        Authorization: `Bearer ${session.access_token}`
+                    }
+                });
+
+                const result = await response.json().catch(() => ({}));
+
+                if(!response.ok){
+                    console.log("Backend access check failed:", result.error || response.status);
+                    return false;
+                }
+
+                if(result.access === "active"){
+                    localStorage.removeItem("pendingPlan");
+                    window.location.href = result.destination || "dashboard.html";
+                    return true;
+                }
+
+                return false;
+            } catch(error) {
+                console.log("Backend access check unavailable:", error);
+                return false;
+            }
+        }
+
+        async function redirectAfterAuth(profile){
             const isActiveOwner = hasActiveSubscription(profile);
             const repWithBusiness = profile.role !== "admin" && profile.business_id;
 
             if(isActiveOwner || repWithBusiness){
                 localStorage.removeItem("pendingPlan");
                 window.location.href = profile.role === "admin" ? "admin.html" : "dashboard.html";
+                return;
+            }
+
+            if(await redirectAfterBackendAccess()){
                 return;
             }
 
