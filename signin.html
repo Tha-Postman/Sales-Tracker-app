@@ -178,6 +178,56 @@
 
         </form>
 
+        <!-- PASSWORD RESET -->
+
+        <form class="form" id="reset-password-form">
+            <div class="reset-copy">
+                <h3>Create a new password</h3>
+                <p>Use a strong password that you do not use on other websites.</p>
+            </div>
+
+            <div class="input-box">
+                <i class="fa-solid fa-lock"></i>
+                <input
+                    type="password"
+                    id="reset-new-password"
+                    placeholder="New Password"
+                    minlength="6"
+                    autocomplete="new-password"
+                    required
+                >
+                <button class="password-toggle" type="button" onclick="togglePassword('reset-new-password', this)" aria-label="Show password">
+                    <i class="fa-regular fa-eye"></i>
+                </button>
+            </div>
+
+            <div class="input-box">
+                <i class="fa-solid fa-shield-halved"></i>
+                <input
+                    type="password"
+                    id="reset-confirm-password"
+                    placeholder="Confirm Password"
+                    minlength="6"
+                    autocomplete="new-password"
+                    required
+                >
+                <button class="password-toggle" type="button" onclick="togglePassword('reset-confirm-password', this)" aria-label="Show password">
+                    <i class="fa-regular fa-eye"></i>
+                </button>
+            </div>
+
+            <button class="auth-btn" type="submit">
+                <span>Update Password</span>
+                <i class="fa-solid fa-shield-halved"></i>
+            </button>
+
+            <div class="bottom-text">
+                Remembered it?
+                <span onclick="switchTab('signin-form')">Sign in</span>
+            </div>
+        </form>
+
+
         
     </div>
 
@@ -358,9 +408,17 @@
         }
 
         function showPasswordResetForm(){
+            const resetForm = document.getElementById("reset-password-form");
+
+            if(!resetForm){
+                switchTab("signin-form");
+                showToast("Password reset form is unavailable. Refresh and try again.", "error");
+                return;
+            }
+
             document.querySelectorAll(".form").forEach(form => form.classList.remove("active"));
             document.querySelectorAll(".tab").forEach(tab => tab.classList.remove("active"));
-            document.getElementById("reset-password-form").classList.add("active");
+            resetForm.classList.add("active");
         }
 
         function isPasswordRecoveryUrl(){
@@ -442,7 +500,10 @@
             switchTab("signin-form");
         });
 
-        document.getElementById("reset-password-form").addEventListener("submit", async (e) => {
+        const resetPasswordForm = document.getElementById("reset-password-form");
+
+        if(resetPasswordForm){
+        resetPasswordForm.addEventListener("submit", async (e) => {
             e.preventDefault();
 
             const submitBtn = e.currentTarget.querySelector(".auth-btn");
@@ -476,6 +537,7 @@
             setButtonLoading(submitBtn, false);
             switchTab("signin-form");
         });
+        }
 
         document.getElementById("signin-form").addEventListener("submit", async (e) => {
             e.preventDefault();
@@ -509,6 +571,12 @@
 
         async function resumeExistingSession(){
             if(isPasswordRecoveryUrl()) return;
+
+            const params = new URLSearchParams(window.location.search);
+            const shouldResumeCheckout = params.get("resumeCheckout") === "1";
+            const hasPendingPlan = Boolean(localStorage.getItem("pendingPlan"));
+
+            if(!shouldResumeCheckout && !hasPendingPlan) return;
 
             const { data: { session } } = await supabaseClient.auth.getSession();
 
