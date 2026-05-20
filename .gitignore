@@ -1,2 +1,14 @@
 .env
 node_modules/
+
+# Local notes, guides, and setup documents
+*.pdf
+*Guide*.html
+*Guide*.pdf
+PAYMENT_SETUP.md
+
+# Local database setup scripts
+*.sql
+
+# Local-only backend duplicate/backup
+sales-tracker.js
