@@ -661,3 +661,99 @@ h1 {
 
 .support-chat-btn { font: inherit; }
 
+
+
+/* Mobile overflow hardening */
+html,
+body {
+    max-width: 100%;
+    overflow-x: hidden;
+}
+
+.site-nav,
+.pricing-section,
+.demo-section,
+.hero,
+.pricing-grid,
+.feature-grid,
+.pricing-controls,
+.billing-toggle,
+.currency-control,
+.pricing-card,
+.pricing-support {
+    min-width: 0;
+}
+
+.pricing-grid.four-plan-grid {
+    grid-template-columns: repeat(auto-fit, minmax(min(100%, 240px), 1fr));
+}
+
+.pricing-card {
+    width: 100%;
+    max-width: 100%;
+    overflow-wrap: anywhere;
+}
+
+.price {
+    overflow-wrap: anywhere;
+    word-break: break-word;
+}
+
+@media (max-width: 700px) {
+    .site-nav,
+    .pricing-section,
+    .demo-section {
+        width: 100%;
+        max-width: 100%;
+        padding-left: 14px;
+        padding-right: 14px;
+    }
+
+    .pricing-grid,
+    .pricing-grid.four-plan-grid,
+    .feature-grid {
+        grid-template-columns: minmax(0, 1fr);
+        width: 100%;
+    }
+
+    .pricing-card.featured,
+    .pricing-card.featured:hover {
+        transform: none;
+    }
+
+    .pricing-controls {
+        width: 100%;
+    }
+
+    .billing-toggle {
+        display: grid;
+        grid-template-columns: 1fr;
+        width: 100%;
+    }
+
+    .billing-toggle button,
+    .currency-control,
+    .currency-control select,
+    .plan-btn,
+    .secondary-btn {
+        width: 100%;
+        max-width: 100%;
+    }
+
+    .currency-control {
+        align-items: stretch;
+        flex-direction: column;
+    }
+}
+
+@media (max-width: 380px) {
+    .pricing-card,
+    .pricing-support {
+        padding: 16px;
+        border-radius: 18px;
+    }
+
+    .section-title h2 {
+        font-size: 28px;
+    }
+}

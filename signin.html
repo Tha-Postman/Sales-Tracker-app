@@ -195,6 +195,17 @@
         const supabaseKey ="eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im5paHFtcGltenZoamdsd2ttaGZsIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Nzc5MzM4MjgsImV4cCI6MjA5MzUwOTgyOH0.PU0egVoNGXsloErw5hGwb9JrLHnn02F1nh6jsudsJ8w";
 
         const supabaseClient = supabase.createClient(supabaseUrl, supabaseKey);
+        const PUBLIC_APP_URL = "https://use-sales-tracker.vercel.app";
+
+        function getPublicAppUrl(){
+            const host = window.location.hostname;
+
+            if(host === "localhost" || host === "127.0.0.1"){
+                return PUBLIC_APP_URL;
+            }
+
+            return window.location.origin;
+        }
 
         function showToast(message, type = "info"){
             const toast = document.getElementById("toast");
@@ -251,7 +262,7 @@
                 return;
             }
 
-            const redirectTo = window.location.origin + window.location.pathname;
+            const redirectTo = new URL("signin.html", getPublicAppUrl()).href;
             const { error } = await supabaseClient.auth.resetPasswordForEmail(email, { redirectTo });
 
             if(error){
@@ -300,6 +311,19 @@
             }
 
             window.location.href = profile.role === "admin" ? "admin.html" : "dashboard.html";
+        }
+
+        function showPasswordResetForm(){
+            document.querySelectorAll(".form").forEach(form => form.classList.remove("active"));
+            document.querySelectorAll(".tab").forEach(tab => tab.classList.remove("active"));
+            document.getElementById("reset-password-form").classList.add("active");
+        }
+
+        function isPasswordRecoveryUrl(){
+            const hash = new URLSearchParams(window.location.hash.replace(/^#/, ""));
+            const query = new URLSearchParams(window.location.search);
+
+            return hash.get("type") === "recovery" || query.get("type") === "recovery";
         }
 
         function switchTab(tabId){
@@ -375,6 +399,41 @@
             switchTab("signin-form");
         });
 
+        document.getElementById("reset-password-form").addEventListener("submit", async (e) => {
+            e.preventDefault();
+
+            const submitBtn = e.currentTarget.querySelector(".auth-btn");
+            const nextPassword = document.getElementById("reset-new-password").value;
+            const confirmPassword = document.getElementById("reset-confirm-password").value;
+
+            if(nextPassword.length < 6){
+                showToast("Password needs 6+ characters.", "error");
+                return;
+            }
+
+            if(nextPassword !== confirmPassword){
+                showToast("Passwords do not match.", "error");
+                return;
+            }
+
+            setButtonLoading(submitBtn, true, "Updating password...");
+
+            const { error } = await supabaseClient.auth.updateUser({
+                password: nextPassword
+            });
+
+            if(error){
+                showToast(error.message, "error");
+                setButtonLoading(submitBtn, false);
+                return;
+            }
+
+            document.getElementById("reset-password-form").reset();
+            showToast("Password updated. You can sign in now.", "success");
+            setButtonLoading(submitBtn, false);
+            switchTab("signin-form");
+        });
+
         document.getElementById("signin-form").addEventListener("submit", async (e) => {
             e.preventDefault();
 
@@ -411,11 +470,19 @@
 
         const authIntent = getAuthIntent();
 
-        if(authIntent.tab === "signup"){
+        if(isPasswordRecoveryUrl()){
+            showPasswordResetForm();
+        } else if(authIntent.tab === "signup"){
             switchTab("signup-form");
         } else {
             switchTab("signin-form");
         }
+
+        supabaseClient.auth.onAuthStateChange((event) => {
+            if(event === "PASSWORD_RECOVERY"){
+                showPasswordResetForm();
+            }
+        });
     </script>
 
     <script src="support-widget.js"></script>

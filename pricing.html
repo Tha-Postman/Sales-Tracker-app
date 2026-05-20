@@ -144,7 +144,7 @@
         const PAYMENT_API_URL = "https://sales-tracker-app-cd7k.onrender.com";
         const YEARLY_MONTHS = 11;
         const plans = {
-            starter: { name: "Starter", monthlyNgn: 10000 },
+            starter: { name: "Starter", monthlyNgn: 500 },
             business: { name: "Business", monthlyNgn: 25000 },
             pro: { name: "Pro", monthlyNgn: 50000 }
         };
@@ -183,7 +183,21 @@
         function detectCurrency() {
             const locale = navigator.language || "en-NG";
             const region = locale.split("-")[1]?.toUpperCase();
-            return regionCurrency[region] || "NGN";
+
+            if(regionCurrency[region]){
+                return regionCurrency[region];
+            }
+
+            const timeZone = Intl.DateTimeFormat().resolvedOptions().timeZone || "";
+
+            if(timeZone.includes("Lagos")) return "NGN";
+            if(timeZone.includes("Accra")) return "GHS";
+            if(timeZone.includes("Nairobi")) return "KES";
+            if(timeZone.includes("Johannesburg")) return "ZAR";
+            if(timeZone.includes("London")) return "GBP";
+            if(timeZone.includes("New_York") || timeZone.includes("Chicago") || timeZone.includes("Los_Angeles")) return "USD";
+
+            return "NGN";
         }
 
         function formatPlanMoney(value, currency) {
