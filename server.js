@@ -178,7 +178,20 @@ app.get("/api/auth/access", async (req, res) => {
                 .select("*")
                 .single();
 
-            if (updateError) throw updateError;
+            if (updateError) {
+                if (String(updateError.message || "").includes("profiles_business_id_fkey")) {
+                    res.status(409).json({
+                        error: "Your payment is active, but the profile-to-business database link is broken. Run paid-access-fk-repair.sql in Supabase, then try signing in again.",
+                        code: "PROFILE_BUSINESS_FK_REPAIR_REQUIRED",
+                        business_id: business.id,
+                        user_id: user.id
+                    });
+                    return;
+                }
+
+                throw updateError;
+            }
+
             profile = updatedProfile;
 
             res.json({
