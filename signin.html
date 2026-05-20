@@ -369,8 +369,13 @@
 
         function hasActiveSubscription(profile){
             if(!profile) return false;
-            if(profile.subscription_status !== "active") return false;
+
+            const status =
+            String(profile.subscription_status || profile.status || "").toLowerCase();
+
+            if(status !== "active") return false;
             if(!profile.subscription_expires_at) return true;
+
             return new Date(profile.subscription_expires_at) > new Date();
         }
 
@@ -390,6 +395,15 @@
         }
 
         function redirectAfterAuth(profile){
+            const isActiveOwner = hasActiveSubscription(profile);
+            const repWithBusiness = profile.role !== "admin" && profile.business_id;
+
+            if(isActiveOwner || repWithBusiness){
+                localStorage.removeItem("pendingPlan");
+                window.location.href = profile.role === "admin" ? "admin.html" : "dashboard.html";
+                return;
+            }
+
             const pendingPlan = localStorage.getItem("pendingPlan");
 
             if(pendingPlan){
@@ -397,14 +411,7 @@
                 return;
             }
 
-            const repWithBusiness = profile.role !== "admin" && profile.business_id;
-
-            if(!hasActiveSubscription(profile) && !repWithBusiness){
-                window.location.href = "pricing.html?resumeCheckout=1";
-                return;
-            }
-
-            window.location.href = profile.role === "admin" ? "admin.html" : "dashboard.html";
+            window.location.href = "pricing.html?resumeCheckout=1";
         }
 
         function showPasswordResetForm(){
