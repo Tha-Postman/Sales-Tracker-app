@@ -153,6 +153,10 @@ app.get("/api/auth/access", async (req, res) => {
             String(profile.subscription_status || profile.status || "").toLowerCase() === "active"
             && (!profile.subscription_expires_at || new Date(profile.subscription_expires_at) > new Date());
 
+        if (!business && profile.role === "admin" && profileActive) {
+            business = await createBusinessForActiveAdmin(profile, user.id);
+        }
+
         const businessActive =
             String(business?.subscription_status || business?.status || "").toLowerCase() === "active"
             && (!business?.subscription_expires_at || new Date(business.subscription_expires_at) > new Date());
@@ -193,6 +197,10 @@ app.get("/api/auth/access", async (req, res) => {
             }
 
             profile = updatedProfile;
+
+            if (profile.role === "admin") {
+                await migrateLegacyBusinessData(profile);
+            }
 
             res.json({
                 ok: true,
@@ -418,6 +426,10 @@ app.get("/api/team/business", async (req, res) => {
     try {
         const profile = await requireBusinessProfile(req);
         const business = await getOrCreateBusinessForProfile(profile);
+
+        if (profile.role === "admin") {
+            await migrateLegacyBusinessData(profile);
+        }
 
         res.json({
             ok: true,
@@ -803,6 +815,47 @@ app.post("/api/team/reps/:id/deactivate", async (req, res) => {
 
 
 
+async function createBusinessForActiveAdmin(profile, ownerId = profile.id) {
+    const businessName = profile.business_name
+        || (profile.full_name ? `${profile.full_name}'s Business` : "Sales Tracker Business");
+
+    const { data, error } = await supabaseAdmin
+        .from("businesses")
+        .insert({
+            business_name: businessName,
+            owner_id: ownerId,
+            plan: profile.subscription_plan || "starter-monthly",
+            subscription_status: profile.subscription_status || "active",
+            subscription_expires_at: profile.subscription_expires_at || null,
+            currency: profile.subscription_currency || "NGN",
+            receipt_footer: DEFAULT_RECEIPT_FOOTER,
+            low_stock_threshold: 5
+        })
+        .select("*")
+        .single();
+
+    if (error) throw error;
+
+    return data;
+}
+
+async function migrateLegacyBusinessData(profile) {
+    if (!profile?.business_id || profile.role !== "admin") return;
+
+    const tables = ["products", "customers"];
+
+    for (const table of tables) {
+        const { error } = await supabaseAdmin
+            .from(table)
+            .update({ business_id: profile.business_id })
+            .is("business_id", null);
+
+        if (error && !isMissingTableError(error)) {
+            console.warn(`Legacy ${table} migration skipped:`, error.message);
+        }
+    }
+}
+
 async function getOrCreateBusinessForProfile(profile) {
     const { data, error } = await supabaseAdmin
         .from("businesses")
@@ -1031,7 +1084,10 @@ async function ensureBusinessForOwner({ userId, plan, billingCycle, currency, re
                 owner_id: userId,
                 plan: `${plan}-${billingCycle}`,
                 subscription_status: "active",
-                subscription_expires_at: expiresAt
+                subscription_expires_at: expiresAt,
+                currency: currency || profile.subscription_currency || "NGN",
+                receipt_footer: DEFAULT_RECEIPT_FOOTER,
+                low_stock_threshold: 5
             })
             .select("id")
             .single();
@@ -1047,7 +1103,8 @@ async function ensureBusinessForOwner({ userId, plan, billingCycle, currency, re
             .update({
                 plan: `${plan}-${billingCycle}`,
                 subscription_status: "active",
-                subscription_expires_at: expiresAt
+                subscription_expires_at: expiresAt,
+                currency: currency || profile.subscription_currency || "NGN"
             })
             .eq("id", businessId);
 

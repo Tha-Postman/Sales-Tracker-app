@@ -182,7 +182,7 @@
 
         <h2><i class="fa-solid fa-cart-plus"></i> Cart</h2>
         <div id="cartList"></div>
-        <h4>Total: ₦<span id="cartTotal">0</span></h4>
+        <h4><span>Cart Total</span><strong id="cartTotal">NGN 0</strong></h4>
 
     </div>
 
@@ -1860,9 +1860,28 @@ function getCartItems(cartData){
     return Array.isArray(cartData) ? cartData : [];
 }
 
+function getBusinessCurrency(){
+    return String(
+        currentBusinessSettings?.currency
+        || currentProfile?.subscription_currency
+        || "NGN"
+    ).trim().toUpperCase();
+}
+
 function formatMoney(amount){
 
-    return `\u20a6${Number(amount || 0).toLocaleString()}`;
+    const currency = getBusinessCurrency();
+    const value = Number(amount || 0);
+
+    try {
+        return new Intl.NumberFormat(undefined, {
+            style: "currency",
+            currency,
+            maximumFractionDigits: 0
+        }).format(value);
+    } catch(error) {
+        return `${currency} ${value.toLocaleString()}`;
+    }
 }
 
 function getSaleAmount(sale){
@@ -2543,7 +2562,7 @@ function renderCart() {
 
     if(cart.length === 0){
 
-        cartTotal.innerText = "0";
+        cartTotal.innerText = formatMoney(0);
 
         cartList.innerHTML = `
             <div class="cart-empty">
@@ -2570,9 +2589,18 @@ function renderCart() {
             </div>
 
             <div class="cart-item-details">
-                <span>Price ${formatMoney(item.price * item.quantity)}</span>
-                <span>Discount ${formatMoney(item.discount || 0)}</span>
-                <strong>${formatMoney(item.total)}</strong>
+                <div class="cart-money-row">
+                    <span>Price</span>
+                    <strong>${formatMoney(item.price * item.quantity)}</strong>
+                </div>
+                <div class="cart-money-row">
+                    <span>Discount</span>
+                    <strong>${formatMoney(item.discount || 0)}</strong>
+                </div>
+                <div class="cart-money-row total">
+                    <span>Line total</span>
+                    <strong>${formatMoney(item.total)}</strong>
+                </div>
             </div>
 
             <button class="cart-remove" onclick="removeItem(${i})" title="Remove item">
@@ -2583,7 +2611,7 @@ function renderCart() {
     });
 
     cartTotal.innerText =
-    Number(total || 0).toLocaleString();
+    formatMoney(total || 0);
 
     updateAddButtonState();
 }

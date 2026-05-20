@@ -293,7 +293,15 @@
                 </div>
                 <div>
                     <label for="businessCurrencyInput">Currency</label>
-                    <input id="businessCurrencyInput" type="text" placeholder="NGN" maxlength="3">
+                    <select id="businessCurrencyInput">
+                        <option value="NGN">NGN - Nigerian Naira</option>
+                        <option value="USD">USD - US Dollar</option>
+                        <option value="GBP">GBP - British Pound</option>
+                        <option value="EUR">EUR - Euro</option>
+                        <option value="GHS">GHS - Ghanaian Cedi</option>
+                        <option value="KES">KES - Kenyan Shilling</option>
+                        <option value="ZAR">ZAR - South African Rand</option>
+                    </select>
                 </div>
                 <div>
                     <label for="lowStockThresholdInput">Low stock alert</label>
@@ -619,14 +627,25 @@ let chatSettings = {
     allow_attachments: true
 };
 
-const currencyFormatter = new Intl.NumberFormat("en-NG", {
-    style: "currency",
-    currency: "NGN",
-    maximumFractionDigits: 0
-});
+let businessCurrency = "NGN";
+
+function setBusinessCurrency(currency) {
+    const normalized = String(currency || "NGN").trim().toUpperCase();
+    businessCurrency = /^[A-Z]{3}$/.test(normalized) ? normalized : "NGN";
+}
 
 function formatCurrency(value) {
-    return currencyFormatter.format(Number(value || 0));
+    const amount = Number(value || 0);
+
+    try {
+        return new Intl.NumberFormat(undefined, {
+            style: "currency",
+            currency: businessCurrency,
+            maximumFractionDigits: 0
+        }).format(amount);
+    } catch(error) {
+        return `${businessCurrency} ${amount.toLocaleString()}`;
+    }
 }
 
 function escapeHtml(value = "") {
@@ -951,6 +970,20 @@ async function getTeamApi(path){
     return result;
 }
 
+async function refreshProfileAccess(){
+    try {
+        const result = await getTeamApi("/api/auth/access");
+
+        if(result.access === "active" && result.profile){
+            return result.profile;
+        }
+    } catch(error) {
+        console.log("Profile access refresh failed:", error.message);
+    }
+
+    return null;
+}
+
 // LOAD PRODUCT
 
 async function loadProducts(){
@@ -1004,7 +1037,7 @@ function populateProductDropdown() {
 
         const opt = document.createElement("option");
         opt.value = p.name;
-        opt.textContent = `${p.name} - ₦${p.price}`;
+        opt.textContent = `${p.name} - ${formatCurrency(p.price)}`;
         opt.dataset.price = p.price;
 
         select.appendChild(opt);
@@ -1121,6 +1154,8 @@ async function addProduct(){
 
         stock_quantity: stock,
 
+        available: stock > 0,
+
         business_id: businessId
 
     }]);
@@ -1137,7 +1172,7 @@ async function addProduct(){
         return;
     }
 
-    showNotification("Failed to add product");
+    showNotification(error.message || "Failed to add product", "error");
 
     return;
 }
@@ -1475,15 +1510,24 @@ async function init(){
     currentProfile = profile;
     currentBusinessId = profile.business_id;
 
+    if(!currentBusinessId || !hasActiveSubscription(currentProfile)){
+        const refreshedProfile = await refreshProfileAccess();
+
+        if(refreshedProfile){
+            currentProfile = refreshedProfile;
+            currentBusinessId = refreshedProfile.business_id;
+        }
+    }
+
     if(!currentBusinessId){
-        showNotification("Business account not found. Complete payment setup first.", "error");
+        showNotification("Business account not ready yet. If payment is active, refresh once or contact support.", "error");
         window.location.href =
         "pricing.html";
 
         return;
     }
 
-    if(profile.is_active === false || profile.status === "inactive"){
+    if(currentProfile.is_active === false || currentProfile.status === "inactive"){
         await supabaseClient.auth.signOut();
         alert("This account has been deactivated.");
         window.location.href =
@@ -1492,7 +1536,7 @@ async function init(){
         return;
     }
 
-    if(!hasActiveSubscription(profile)){
+    if(!hasActiveSubscription(currentProfile)){
 
         window.location.href =
         "pricing.html";
@@ -1500,7 +1544,7 @@ async function init(){
         return;
     }
 
-    if(profile.role !== "admin"){
+    if(currentProfile.role !== "admin"){
 
         alert("Admins only");
 
@@ -1513,7 +1557,7 @@ async function init(){
     document.getElementById(
         "welcomeName"
     ).innerText =
-    `Welcome, ${profile.full_name}`;
+    `Welcome, ${currentProfile.full_name}`;
 
     bindTeamForm();
     bindChatForm();
@@ -1523,6 +1567,7 @@ async function init(){
 
     setProductsOpen(false);
 
+    await loadBusinessSettings();
     await loadProducts();
 
     checkStockAlert(products);
@@ -2042,6 +2087,7 @@ async function loadBusinessSettings(){
     try {
         const result = await getTeamApi("/api/team/business");
         businessSettings = result.business || null;
+        setBusinessCurrency(businessSettings?.currency || currentProfile?.subscription_currency || "NGN");
         sessionStorage.setItem("salesTrackerBusinessSettings", JSON.stringify(businessSettings || {}));
 
         const name = document.getElementById("businessNameInput");
@@ -2050,7 +2096,7 @@ async function loadBusinessSettings(){
         const footer = document.getElementById("receiptFooterInput");
 
         if(name) name.value = businessSettings?.business_name || "";
-        if(currency) currency.value = businessSettings?.currency || currentProfile?.subscription_currency || "NGN";
+        if(currency) currency.value = businessCurrency;
         if(threshold) threshold.value = businessSettings?.low_stock_threshold ?? 5;
         if(footer) footer.value = businessSettings?.receipt_footer || "Thank you for your purchase.";
 
@@ -3035,7 +3081,7 @@ function renderPaymentChart() {
     const ctx = canvas.getContext("2d");
 
     paymentChart = new Chart(ctx, {
-        type: "bar",
+        type: "pie",
         data: {
             labels: ["Cash", "Transfer", "POS"],
             datasets: [{

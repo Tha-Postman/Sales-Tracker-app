@@ -164,8 +164,24 @@
     <main id="receiptRoot"></main>
 
     <script>
+        function getReceiptCurrency() {
+            const sale = JSON.parse(sessionStorage.getItem("salesTrackerReceipt") || "null");
+            return String(sale?.currency || "NGN").trim().toUpperCase();
+        }
+
         function formatMoney(amount) {
-            return `\u20a6${Number(amount || 0).toLocaleString()}`;
+            const currency = getReceiptCurrency();
+            const value = Number(amount || 0);
+
+            try {
+                return new Intl.NumberFormat(undefined, {
+                    style: "currency",
+                    currency,
+                    maximumFractionDigits: 0
+                }).format(value);
+            } catch(error) {
+                return `${currency} ${value.toLocaleString()}`;
+            }
         }
 
         function getCartItems(cart) {
