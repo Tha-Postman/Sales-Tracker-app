@@ -490,6 +490,7 @@ app.post("/api/team/business/settings", async (req, res) => {
 app.get("/api/team/reports", async (req, res) => {
     try {
         const profile = await requireAdminProfile(req);
+        await requireReportsPlan(profile);
         const { from, to, rep, status } = req.query;
 
         let query = supabaseAdmin
@@ -1007,6 +1008,26 @@ async function requireBusinessProfile(req) {
     }
 
     return profile;
+}
+
+async function requireReportsPlan(profile) {
+    if (getPlanLevel(profile.subscription_plan) >= PLAN_LEVELS.business) {
+        return true;
+    }
+
+    const { data: business } = await supabaseAdmin
+        .from("businesses")
+        .select("plan")
+        .eq("id", profile.business_id)
+        .maybeSingle();
+
+    if (getPlanLevel(business?.plan) >= PLAN_LEVELS.business) {
+        return true;
+    }
+
+    const error = new Error("Reports are available on the Business plan and above");
+    error.status = 402;
+    throw error;
 }
 
 async function requireProPlan(profile) {

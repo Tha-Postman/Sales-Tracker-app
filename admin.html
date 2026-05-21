@@ -200,9 +200,18 @@
             <canvas id="revenueChart"></canvas>
         </div>
         
-        <div class="chart-box">
-            <h3>Payment Methods</h3>
-            <canvas id="paymentChart"></canvas>
+        <div class="chart-box payment-method-chart-box">
+            <div class="chart-box-head payment-chart-head">
+                <div>
+                    <h3>Payment Methods</h3>
+                    <p>Paid revenue split by collection channel</p>
+                </div>
+                <span id="paymentChartTotal" class="payment-chart-total"></span>
+            </div>
+            <div class="payment-chart-wrap">
+                <canvas id="paymentChart"></canvas>
+            </div>
+            <div id="paymentChartDetails" class="payment-chart-details"></div>
         </div>
         
     </div>
@@ -313,6 +322,8 @@
                 </div>
                 <button type="submit"><i class="fa-solid fa-floppy-disk"></i> Save Settings</button>
             </form>
+
+            <div id="subscriptionPanel" class="subscription-panel"></div>
         </div>
     </section>
 
@@ -724,6 +735,13 @@ function isProPlan(){
     return getPlanLevel(currentProfile?.subscription_plan) >= 3;
 }
 
+function canUseReports(){
+    return Math.max(
+        getPlanLevel(currentProfile?.subscription_plan),
+        getPlanLevel(businessSettings?.plan)
+    ) >= 2;
+}
+
 function getPlanLevel(plan){
     const normalized = String(plan || "").toLowerCase();
 
@@ -771,6 +789,100 @@ function showAdminView(view){
     if(view === "audit"){
         loadAuditLogs();
     }
+}
+
+function getPlanName(plan){
+    const key = String(plan || "starter").toLowerCase();
+
+    if(key.includes("enterprise")) return "Enterprise";
+    if(key.includes("pro")) return "Pro";
+    if(key.includes("business")) return "Business";
+
+    return "Starter";
+}
+
+function getBillingCycle(plan){
+    const key = String(plan || "").toLowerCase();
+
+    if(key.includes("year")) return "Yearly";
+    if(key.includes("month")) return "Monthly";
+
+    return "Active";
+}
+
+function getSubscriptionEndDate(){
+    return currentProfile?.subscription_expires_at
+        || businessSettings?.subscription_expires_at
+        || null;
+}
+
+function updatePlanLockedFeatures(){
+    const reportsButton = document.querySelector('[data-view="reports"]');
+    const reportsPanel = document.querySelector('[data-view-panel="reports"]');
+    const locked = !canUseReports();
+
+    if(reportsButton){
+        reportsButton.classList.toggle("plan-locked", locked);
+        reportsButton.title = locked
+            ? "Reports unlock on the Business plan"
+            : "Reports";
+    }
+
+    if(reportsPanel){
+        reportsPanel.classList.toggle("feature-locked", locked);
+    }
+}
+
+function renderSubscriptionPanel(){
+    const panel = document.getElementById("subscriptionPanel");
+    if(!panel) return;
+
+    const plan = businessSettings?.plan || currentProfile?.subscription_plan || "starter-monthly";
+    const planName = getPlanName(plan);
+    const billingCycle = getBillingCycle(plan);
+    const status = currentProfile?.subscription_status || businessSettings?.subscription_status || "inactive";
+    const activatedAt = businessSettings?.created_at || currentProfile?.created_at || null;
+    const endsAt = getSubscriptionEndDate();
+    const isActive = String(status).toLowerCase() === "active";
+
+    panel.innerHTML = `
+        <div class="subscription-card">
+            <div class="subscription-main">
+                <span class="subscription-icon"><i class="fa-solid fa-crown"></i></span>
+                <div>
+                    <p class="section-kicker">Subscription</p>
+                    <h3>${planName} <span>${billingCycle}</span></h3>
+                    <small class="${isActive ? "sub-active" : "sub-inactive"}">${isActive ? "Active" : "Inactive"}</small>
+                </div>
+            </div>
+
+            <div class="subscription-meta">
+                <div>
+                    <span>Activated</span>
+                    <strong>${formatDate(activatedAt)}</strong>
+                </div>
+                <div>
+                    <span>Next billing / Ends</span>
+                    <strong>${formatDate(endsAt)}</strong>
+                </div>
+                <div>
+                    <span>Current access</span>
+                    <strong>${planName === "Starter" ? "Core dashboard" : planName === "Business" ? "Reports + team controls" : "Advanced workflow"}</strong>
+                </div>
+            </div>
+
+            <div class="subscription-actions">
+                <button type="button" onclick="goTo('pricing.html')">
+                    <i class="fa-solid fa-arrow-up-right-dots"></i>
+                    Upgrade Plan
+                </button>
+                <button type="button" class="secondary" onclick="loadBusinessSettings()">
+                    <i class="fa-solid fa-rotate"></i>
+                    Refresh
+                </button>
+            </div>
+        </div>
+    `;
 }
 
 function getSaleCartItems(sale) {
@@ -1587,6 +1699,8 @@ async function init(){
     renderPaymentChart();
     lastDashboardSignature = getDashboardSignature();
     setupChatAvailability();
+    updatePlanLockedFeatures();
+    renderSubscriptionPanel();
     renderBusinessTools();
 
     startAdminRealtime();
@@ -2101,6 +2215,8 @@ async function loadBusinessSettings(){
         if(footer) footer.value = businessSettings?.receipt_footer || "Thank you for your purchase.";
 
         renderOnboardingChecklist();
+        renderSubscriptionPanel();
+        updatePlanLockedFeatures();
     } catch(error) {
         console.log("Business settings load failed:", error.message);
     }
@@ -2151,6 +2267,28 @@ async function loadReports(){
     const summary = document.getElementById("reportSummary");
     const table = document.getElementById("reportTable");
     if(!summary || !table) return;
+
+    if(!canUseReports()){
+        summary.innerHTML = `
+            <div class="report-lock-showcase">
+                <i class="fa-solid fa-lock"></i>
+                <h3>Reports are available on Business</h3>
+                <p>Upgrade to unlock filtered sales reports, rep performance exports, revenue summaries, downloadable CSVs, and clearer business decisions.</p>
+                <div class="report-preview-grid">
+                    <span><i class="fa-solid fa-calendar-days"></i> Date filters</span>
+                    <span><i class="fa-solid fa-user-tie"></i> Rep reports</span>
+                    <span><i class="fa-solid fa-file-arrow-down"></i> CSV export</span>
+                    <span><i class="fa-solid fa-chart-line"></i> Revenue summaries</span>
+                </div>
+                <button type="button" onclick="goTo('pricing.html')">
+                    <i class="fa-solid fa-arrow-up-right-dots"></i>
+                    Upgrade to Business
+                </button>
+            </div>
+        `;
+        table.innerHTML = "";
+        return;
+    }
 
     summary.innerHTML = `<div class="empty-state">Loading report...</div>`;
     table.innerHTML = "";
@@ -2205,6 +2343,11 @@ async function loadReports(){
 }
 
 function exportReportCSV(){
+    if(!canUseReports()){
+        showNotification("Reports export is available on Business plan and above", "warning");
+        return;
+    }
+
     if(!reportRows.length){
         showNotification("No report rows to export", "warning");
         return;
@@ -3053,24 +3196,77 @@ function getPaymentMethods() {
     return methods;
 }
 
+function getPaymentMethodDetails() {
+    const details = {
+        cash: { label: "Cash", revenue: 0, count: 0 },
+        transfer: { label: "Transfer", revenue: 0, count: 0 },
+        pos: { label: "POS", revenue: 0, count: 0 }
+    };
+
+    allCustomers.forEach(sale => {
+        if ((sale.status || "").toLowerCase() !== "paid") return;
+
+        const method = (sale.payment_mode || "").toLowerCase();
+        if (!details[method]) return;
+
+        details[method].revenue += Number(sale.final_price || 0);
+        details[method].count += 1;
+    });
+
+    return details;
+}
+
+function renderPaymentChartDetails(details) {
+    const container = document.getElementById("paymentChartDetails");
+    if (!container) return;
+
+    const totalRevenue = Object.values(details).reduce((sum, item) => sum + item.revenue, 0);
+    const totalCount = Object.values(details).reduce((sum, item) => sum + item.count, 0);
+
+    if (!totalRevenue && !totalCount) {
+        container.innerHTML = `<div class="payment-detail-empty">No paid payment data yet</div>`;
+        return;
+    }
+
+    container.innerHTML = Object.values(details).map(item => {
+        const percent = totalRevenue ? Math.round((item.revenue / totalRevenue) * 100) : 0;
+
+        return `
+            <div class="payment-detail-card">
+                <span>${item.label}</span>
+                <strong>${formatCurrency(item.revenue)}</strong>
+                <small>${item.count} sale${item.count === 1 ? "" : "s"} • ${percent}%</small>
+            </div>
+        `;
+    }).join("");
+}
+
 
 // RENDER PAYMENT CHART
 
 function renderPaymentChart() {
-    const methods = getPaymentMethods();
+    const paymentDetails = getPaymentMethodDetails();
 
-    const values = [
-        methods.cash,
-        methods.transfer,
-        methods.pos
-    ];
+    const labels = ["Cash", "Transfer", "POS"];
+    const keys = ["cash", "transfer", "pos"];
+    const values = keys.map(key => paymentDetails[key].revenue);
+    const totalRevenue = values.reduce((sum, value) => sum + Number(value || 0), 0);
 
     const canvas = document.getElementById("paymentChart");
+    const totalEl = document.getElementById("paymentChartTotal");
     if (!canvas) return;
 
     if (paymentChart) {
         paymentChart.destroy();
         paymentChart = null;
+    }
+
+    renderPaymentChartDetails(paymentDetails);
+
+    if (totalEl) {
+        totalEl.textContent = totalRevenue
+            ? formatCurrency(totalRevenue)
+            : "No paid revenue";
     }
 
     if (values.every(v => v === 0)) {
@@ -3083,59 +3279,97 @@ function renderPaymentChart() {
     paymentChart = new Chart(ctx, {
         type: "pie",
         data: {
-            labels: ["Cash", "Transfer", "POS"],
+            labels,
             datasets: [{
                 label: "Payment Revenue",
                 data: values,
                 backgroundColor: [
-                    "rgba(34, 197, 94, 0.76)",
-                    "rgba(37, 99, 235, 0.76)",
-                    "rgba(250, 204, 21, 0.76)"
+                    "rgba(34, 197, 94, 0.86)",
+                    "rgba(59, 130, 246, 0.86)",
+                    "rgba(245, 158, 11, 0.88)"
                 ],
-                borderColor: [
-                    "rgba(74, 222, 128, 1)",
-                    "rgba(96, 165, 250, 1)",
-                    "rgba(250, 204, 21, 1)"
+                hoverBackgroundColor: [
+                    "rgba(74, 222, 128, 0.98)",
+                    "rgba(96, 165, 250, 0.98)",
+                    "rgba(251, 191, 36, 0.98)"
                 ],
-                borderWidth: 1,
-                borderRadius: 10,
-                maxBarThickness: 58
+                borderColor: "rgba(2, 6, 23, 0.95)",
+                hoverBorderColor: "rgba(248, 250, 252, 0.85)",
+                borderWidth: 3,
+                hoverBorderWidth: 4,
+                spacing: 3,
+                offset: context => context.active ? 8 : 0
             }]
         },
         options: {
             responsive: true,
             maintainAspectRatio: false,
-            animation: {
-                duration: 650,
-                easing: "easeOutQuart"
+            layout: {
+                padding: 8
             },
-            scales: {
-                x: {
-                    grid: {
-                        display: false
-                    },
-                    ticks: {
-                        color: "#94a3b8"
-                    }
-                },
-                y: {
-                    beginAtZero: true,
-                    grid: {
-                        color: "rgba(148, 163, 184, 0.1)"
-                    },
-                    ticks: {
-                        color: "#94a3b8",
-                        callback: value => formatCurrency(value)
-                    }
-                }
+            animation: {
+                animateRotate: true,
+                animateScale: true,
+                duration: 850,
+                easing: "easeOutQuart"
             },
             plugins: {
                 legend: {
-                    display: false
+                    display: true,
+                    position: "bottom",
+                    labels: {
+                        color: "#dbeafe",
+                        usePointStyle: true,
+                        pointStyle: "circle",
+                        boxWidth: 8,
+                        boxHeight: 8,
+                        padding: 18,
+                        font: {
+                            size: 12,
+                            weight: "600"
+                        },
+                        generateLabels: chart => {
+                            const dataset = chart.data.datasets[0];
+                            const total = dataset.data.reduce((sum, item) => sum + Number(item || 0), 0);
+
+                            return chart.data.labels.map((label, index) => {
+                                const value = Number(dataset.data[index] || 0);
+                                const percent = total ? Math.round((value / total) * 100) : 0;
+                                const meta = chart.getDatasetMeta(0);
+
+                                return {
+                                    text: `${label} ${percent}%`,
+                                    fillStyle: dataset.backgroundColor[index],
+                                    strokeStyle: dataset.borderColor,
+                                    lineWidth: 0,
+                                    hidden: meta.data[index]?.hidden || false,
+                                    index
+                                };
+                            });
+                        }
+                    }
                 },
                 tooltip: {
+                    backgroundColor: "rgba(15, 23, 42, 0.96)",
+                    borderColor: "rgba(148, 163, 184, 0.25)",
+                    borderWidth: 1,
+                    padding: 12,
+                    displayColors: true,
                     callbacks: {
-                        label: context => `${context.label}: ${formatCurrency(context.parsed.y)}`
+                        title: context => context[0]?.label || "Payment",
+                        label: context => {
+                            const value = Number(context.parsed || 0);
+                            const total = context.dataset.data.reduce((sum, item) => sum + Number(item || 0), 0);
+                            const percent = total ? Math.round((value / total) * 100) : 0;
+                            const key = keys[context.dataIndex];
+                            const count = paymentDetails[key]?.count || 0;
+
+                            return [
+                                `Revenue: ${formatCurrency(value)}`,
+                                `Sales: ${count}`,
+                                `Share: ${percent}%`
+                            ];
+                        }
                     }
                 }
             }
