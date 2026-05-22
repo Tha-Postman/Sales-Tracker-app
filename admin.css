@@ -3252,3 +3252,119 @@ body:not(.sidebar-collapsed)::after {
         min-height: 380px;
     }
 }
+
+
+/* INVENTORY + REP ACTION UPGRADES */
+.bulk-product-import {
+    align-items: center;
+    background: rgba(15, 23, 42, 0.55);
+    border: 1px dashed rgba(125, 211, 252, 0.28);
+    border-radius: 16px;
+    display: grid;
+    gap: 12px;
+    grid-template-columns: minmax(180px, 1fr) minmax(180px, auto) auto;
+    margin-top: 14px;
+    padding: 14px;
+}
+
+.bulk-product-import strong,
+.bulk-product-import span {
+    display: block;
+}
+
+.bulk-product-import span,
+.stock-reference {
+    color: #94a3b8;
+    font-size: 12px;
+    font-weight: 700;
+}
+
+.bulk-product-import input {
+    color: #cbd5e1;
+}
+
+.bulk-product-import button {
+    min-height: 42px;
+    border: 0;
+    border-radius: 12px;
+    color: white;
+    background: linear-gradient(135deg, #0f766e, #2563eb);
+    cursor: pointer;
+    font-weight: 900;
+    padding: 10px 14px;
+}
+
+.stock-mini-grid {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 8px;
+    margin: 12px 0 8px;
+}
+
+.stock-mini-grid div {
+    background: rgba(2, 6, 23, 0.38);
+    border: 1px solid rgba(148, 163, 184, 0.12);
+    border-radius: 12px;
+    padding: 9px;
+}
+
+.stock-mini-grid small,
+.stock-mini-grid strong {
+    display: block;
+}
+
+.stock-mini-grid small {
+    color: #94a3b8;
+    font-size: 11px;
+    font-weight: 800;
+}
+
+.stock-mini-grid strong {
+    color: #f8fafc;
+    font-size: 16px;
+    margin-top: 2px;
+}
+
+.product-stock-tag.low {
+    color: #fde68a;
+    border-color: rgba(250, 204, 21, 0.35);
+    background: rgba(250, 204, 21, 0.1);
+}
+
+.product-stock-tag.out {
+    color: #fecaca;
+    border-color: rgba(248, 113, 113, 0.35);
+    background: rgba(248, 113, 113, 0.1);
+}
+
+.confirm-modal-content {
+    max-width: 500px;
+}
+
+.confirm-modal-copy {
+    color: #cbd5e1;
+    margin-top: 8px;
+}
+
+.confirm-field {
+    color: #94a3b8;
+    display: grid;
+    font-size: 12px;
+    font-weight: 900;
+    gap: 8px;
+}
+
+.confirm-field select {
+    min-height: 44px;
+    border: 1px solid rgba(148, 163, 184, 0.2);
+    border-radius: 12px;
+    background: rgba(2, 6, 23, 0.7);
+    color: #f8fafc;
+    padding: 10px 12px;
+}
+
+@media (max-width: 760px) {
+    .bulk-product-import {
+        grid-template-columns: 1fr;
+    }
+}

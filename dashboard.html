@@ -267,6 +267,20 @@
         <div id="list"></div>
 
         <!-- TOAST -->
+        <div id="saleConfirmModal" class="sale-confirm-modal hidden">
+            <div class="sale-confirm-card">
+                <div class="sale-confirm-icon" id="saleConfirmIcon">
+                    <i class="fa-solid fa-triangle-exclamation"></i>
+                </div>
+                <h3 id="saleConfirmTitle">Confirm action</h3>
+                <p id="saleConfirmMessage"></p>
+                <div class="sale-confirm-actions">
+                    <button type="button" class="confirm-cancel-btn" onclick="closeSaleConfirmModal()">Keep Sale</button>
+                    <button type="button" class="confirm-danger-btn" id="saleConfirmActionBtn" onclick="confirmSaleAction()">Confirm</button>
+                </div>
+            </div>
+        </div>
+
         <div id="notificationContainer"></div>
 
 
@@ -1093,15 +1107,97 @@ function saveSaleOffline(saleData){
 
     renderCustomers(allCustomers);
 
-    updateStats(allCustomers);
-
+    updateStats(allCustomers);
     cart = [];
+
+
 
     renderCart();
 
     clearForm();
 
     showToast("Saved offline");
+}
+
+function getProductStock(productId){
+    const product = productsMap[productId] || products.find(p => String(p.id) === String(productId));
+    return Number(product?.stock_quantity || 0);
+}
+
+function getCartQuantityForProduct(productId){
+    return cart
+        .filter(item => String(item.productId) === String(productId))
+        .reduce((sum, item) => sum + Number(item.quantity || 0), 0);
+}
+
+function validateCartStock(){
+    for(const item of cart){
+        const stock = getProductStock(item.productId);
+        if(Number(item.quantity || 0) > stock){
+            showToast(`${item.product} has only ${stock} left in stock`);
+            return false;
+        }
+    }
+
+    return true;
+}
+
+async function recordStockMovement(item, before, after, reason, saleId = null){
+    try {
+        await supabaseClient
+            .from("stock_movements")
+            .insert([{
+                business_id: getBusinessId(),
+                product_id: item.productId,
+                product_name: item.product,
+                change_type: reason,
+                quantity_changed: Number(item.quantity || 0),
+                stock_before: before,
+                stock_after: after,
+                sale_id: saleId,
+                created_by: currentProfile?.full_name || currentUser?.email || "Sales Rep"
+            }]);
+    } catch(error) {
+        console.log("Stock movement log skipped:", error.message);
+    }
+}
+
+async function deductStockForSale(saleData, saleId = null){
+    for(const item of saleData.cart || []){
+        const product = productsMap[item.productId] || products.find(p => String(p.id) === String(item.productId));
+        if(!product) continue;
+
+        const before = Number(product.stock_quantity || 0);
+        const quantity = Number(item.quantity || 0);
+        const after = Math.max(0, before - quantity);
+
+        let query = supabaseClient
+            .from("products")
+            .update({
+                stock_quantity: after,
+                available: after > 0
+            })
+            .eq("id", item.productId);
+
+        const businessId = getBusinessId();
+        if(businessId) query = query.eq("business_id", businessId);
+
+        const { error } = await query;
+
+        if(error){
+            throw error;
+        }
+
+        product.stock_quantity = after;
+        product.available = after > 0;
+        item.stock_before = before;
+        item.stock_after = after;
+
+        await recordStockMovement(item, before, after, "sale", saleId);
+    }
+
+    localStorage.setItem("offlineProducts", JSON.stringify(products));
+    populateProductDropdown();
 }
 
 async function addCustomer(){
@@ -1118,7 +1214,19 @@ async function addCustomer(){
         return;
     }
 
+    if(!validateCartStock()){
+
+
+        return;
+
+
+    }
+
+
+
     btn.disabled = true;
+
+
 
     btn.innerText = "Processing...";
 
@@ -1269,10 +1377,12 @@ if(!online){
 
         saleData.user_id = user.id;
 
-        const { error } =
+        const { data: insertedSale, error } =
         await supabaseClient
         .from("customers")
-        .insert([saleData]);
+        .insert([saleData])
+        .select("id")
+        .single();
 
         if(error){
 
@@ -1292,6 +1402,8 @@ if(!online){
 
             return;
         }
+
+        await deductStockForSale(saleData, insertedSale?.id || null);
 
         cart = [];
 
@@ -1527,8 +1639,11 @@ function populateProductDropdown(){
 
         option.value = String(product.id);
 
+        const stock = Number(product.stock_quantity || 0);
+        const stockLabel = stock <= 0 ? "Out of stock" : stock <= 5 ? `${stock} left` : "Available";
+
         option.textContent =
-        `${product.name} - ${formatMoney(product.price)}`;
+        `${product.name} - ${formatMoney(product.price)} - ${stockLabel}`;
 
         option.dataset.id =
         product.id;
@@ -1538,6 +1653,13 @@ function populateProductDropdown(){
 
         option.dataset.price =
         product.price;
+
+        option.dataset.stock =
+        product.stock_quantity || 0;
+
+        if(Number(product.stock_quantity || 0) <= 0){
+            option.disabled = true;
+        }
 
         select.appendChild(option);
     });
@@ -1728,10 +1850,48 @@ window.addEventListener(
 // =======================
 // DELETE
 // =======================
-async function deleteCustomer(id) {
-    if (!confirm("Delete this customer?")) return;
+let pendingSaleAction = null;
 
-    let query = supabaseClient
+function openSaleConfirm(action, id){
+    const sale = allCustomers.find(item => String(item.id) === String(id));
+    pendingSaleAction = { action, id };
+
+    const modal = document.getElementById("saleConfirmModal");
+    const title = document.getElementById("saleConfirmTitle");
+    const message = document.getElementById("saleConfirmMessage");
+    const button = document.getElementById("saleConfirmActionBtn");
+
+    if(title) title.textContent = action === "delete" ? "Delete sale?" : "Cancel sale?";
+    if(message) message.textContent = action === "delete"
+        ? `${sale?.customer_id || "This sale"} will be permanently removed from this business history.`
+        : `${sale?.customer_id || "This sale"} will be marked as cancelled.`;
+    if(button) button.textContent = action === "delete" ? "Delete Sale" : "Cancel Sale";
+    if(modal) modal.classList.remove("hidden");
+}
+
+function closeSaleConfirmModal(){
+    pendingSaleAction = null;
+    document.getElementById("saleConfirmModal")?.classList.add("hidden");
+}
+
+async function confirmSaleAction(){
+    if(!pendingSaleAction) return;
+    const { action, id } = pendingSaleAction;
+    closeSaleConfirmModal();
+
+    if(action === "delete"){
+        await deleteCustomer(id, true);
+    } else {
+        await cancelSale(id, true);
+    }
+}
+
+async function deleteCustomer(id, confirmed = false) {
+    if (!confirmed) {
+        openSaleConfirm("delete", id);
+        return;
+    }
+let query = supabaseClient
         .from("customers")
         .delete()
         .eq("id", id);
@@ -1755,12 +1915,12 @@ async function deleteCustomer(id) {
 
 
 // CANCEL SALE
-async function cancelSale(id){
+async function cancelSale(id, confirmed = false){
 
-    const confirmCancel =
-    confirm("Cancel this sale?");
-
-    if(!confirmCancel) return;
+    if(!confirmed){
+        openSaleConfirm("cancel", id);
+        return;
+    }
 
     // ======================
     // OFFLINE MODE
@@ -2421,7 +2581,55 @@ function calculateTotal(){
         document.getElementById("discount").value
     ) || 0;
 
+    if(!quantity || quantity < 1){
+
+
+        showToast("Enter a valid quantity");
+
+
+        return;
+
+
+    }
+
+
+
+    const availableStock = getProductStock(productId);
+
+
+    const alreadyInCart = getCartQuantityForProduct(productId);
+
+
+
+    if(availableStock <= 0){
+
+
+        showToast(`${product} is out of stock`);
+
+
+        return;
+
+
+    }
+
+
+
+    if(alreadyInCart + quantity > availableStock){
+
+
+        showToast(`Only ${availableStock} ${product} available. You already have ${alreadyInCart} in cart.`);
+
+
+        return;
+
+
+    }
+
+
+
     const total =
+
+
     (quantity * price) - discount;
 
     document.getElementById(

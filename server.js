@@ -125,6 +125,16 @@ app.get("/api/auth/access", async (req, res) => {
             profile = createdProfile;
         }
 
+        if (isDeveloperProfile(profile)) {
+            res.json({
+                ok: true,
+                access: "active",
+                destination: "developer.html",
+                profile
+            });
+            return;
+        }
+
         let business = null;
 
         if (profile.business_id) {
@@ -205,7 +215,7 @@ app.get("/api/auth/access", async (req, res) => {
             res.json({
                 ok: true,
                 access: "active",
-                destination: profile.role === "admin" ? "admin.html" : "dashboard.html",
+                destination: getProfileDestination(profile),
                 profile
             });
             return;
@@ -215,7 +225,7 @@ app.get("/api/auth/access", async (req, res) => {
             res.json({
                 ok: true,
                 access: "active",
-                destination: profile.role === "admin" ? "admin.html" : "dashboard.html",
+                destination: getProfileDestination(profile),
                 profile
             });
             return;
@@ -776,6 +786,8 @@ app.post("/api/team/reps/:id/deactivate", async (req, res) => {
     try {
         const adminProfile = await requireAdminProfile(req);
         const repId = req.params.id;
+        const mode = req.body?.mode || "deactivate";
+        const days = Number(req.body?.days || 0);
 
         const { data: rep, error: repError } = await supabaseAdmin
             .from("profiles")
@@ -793,12 +805,21 @@ app.post("/api/team/reps/:id/deactivate", async (req, res) => {
             return;
         }
 
+        const updates = mode === "suspend" && days > 0
+            ? {
+                is_active: true,
+                status: "suspended",
+                suspended_until: new Date(Date.now() + days * 24 * 60 * 60 * 1000).toISOString()
+            }
+            : {
+                is_active: false,
+                status: "inactive",
+                suspended_until: null
+            };
+
         const { error } = await supabaseAdmin
             .from("profiles")
-            .update({
-                is_active: false,
-                status: "inactive"
-            })
+            .update(updates)
             .eq("id", repId);
 
         if (error) {
@@ -930,6 +951,23 @@ async function logAudit(profile, action, targetType, targetId, details = {}) {
     }
 }
 
+async function logPlatformAudit(profile, action, targetType, targetId, details = {}) {
+    const { error } = await supabaseAdmin
+        .from("platform_audit_logs")
+        .insert({
+            actor_id: profile.id,
+            actor_name: profile.full_name || profile.email || "Developer",
+            action,
+            target_type: targetType,
+            target_id: targetId ? String(targetId) : null,
+            details
+        });
+
+    if (error && !isMissingTableError(error)) {
+        console.warn("Platform audit log failed:", error.message);
+    }
+}
+
 function getExpiryDate(billingCycle) {
     const date = new Date();
 
@@ -940,6 +978,58 @@ function getExpiryDate(billingCycle) {
     }
 
     return date.toISOString();
+}
+
+function isDeveloperProfile(profile) {
+    const role = String(profile?.role || "").toLowerCase();
+    const platformRole = String(profile?.platform_role || "").toLowerCase();
+
+    return profile?.is_platform_owner === true
+        || ["developer", "super_admin", "platform_owner"].includes(role)
+        || ["developer", "super_admin", "platform_owner"].includes(platformRole);
+}
+
+function getProfileDestination(profile) {
+    if (isDeveloperProfile(profile)) return "developer.html";
+    return profile?.role === "admin" ? "admin.html" : "dashboard.html";
+}
+
+async function requireDeveloperProfile(req) {
+    const authHeader = req.headers.authorization || "";
+    const token = authHeader.startsWith("Bearer ")
+        ? authHeader.slice(7)
+        : null;
+
+    if (!token) {
+        const error = new Error("Developer login required");
+        error.status = 401;
+        throw error;
+    }
+
+    const {
+        data: { user },
+        error: userError
+    } = await supabaseAdmin.auth.getUser(token);
+
+    if (userError || !user) {
+        const error = new Error("Invalid developer login session");
+        error.status = 401;
+        throw error;
+    }
+
+    const { data: profile, error: profileError } = await supabaseAdmin
+        .from("profiles")
+        .select("*")
+        .eq("id", user.id)
+        .single();
+
+    if (profileError || !profile || !isDeveloperProfile(profile)) {
+        const error = new Error("Platform owner access required");
+        error.status = 403;
+        throw error;
+    }
+
+    return profile;
 }
 
 async function requireAdminProfile(req) {
@@ -991,6 +1081,12 @@ async function requireBusinessProfile(req) {
 
     if (!profile.business_id) {
         const error = new Error("Business access required");
+        error.status = 403;
+        throw error;
+    }
+
+    if (profile.suspended_until && new Date(profile.suspended_until) > new Date()) {
+        const error = new Error("Account is temporarily suspended");
         error.status = 403;
         throw error;
     }
@@ -1216,6 +1312,193 @@ async function activateSubscriptionFromPaystack(payment) {
 
     return data;
 }
+
+app.get("/api/developer/overview", async (req, res) => {
+    try {
+        await requireDeveloperProfile(req);
+
+        const [
+            businessesResult,
+            profilesResult,
+            customersResult,
+            productsResult
+        ] = await Promise.all([
+            supabaseAdmin.from("businesses").select("*"),
+            supabaseAdmin.from("profiles").select("id, role, business_id, status, is_active, subscription_status, subscription_plan, created_at"),
+            supabaseAdmin.from("customers").select("id, business_id, final_price, price, status, created_at"),
+            supabaseAdmin.from("products").select("id, business_id, stock_quantity")
+        ]);
+
+        for (const result of [businessesResult, profilesResult, customersResult, productsResult]) {
+            if (result.error) throw result.error;
+        }
+
+        const businesses = businessesResult.data || [];
+        const profiles = profilesResult.data || [];
+        const customers = customersResult.data || [];
+        const products = productsResult.data || [];
+
+        const activeBusinesses = businesses.filter(business =>
+            String(business.subscription_status || business.status || "").toLowerCase() === "active"
+            && (!business.subscription_expires_at || new Date(business.subscription_expires_at) > new Date())
+        );
+
+        const paidSales = customers.filter(sale => String(sale.status || "").toLowerCase() === "paid");
+        const revenue = paidSales.reduce((sum, sale) => sum + Number(sale.final_price || sale.price || 0), 0);
+        const lowStockProducts = products.filter(product => Number(product.stock_quantity || 0) <= 5).length;
+        const planCounts = businesses.reduce((counts, business) => {
+            const plan = getPlanKey(business.plan || "starter");
+            counts[plan] = (counts[plan] || 0) + 1;
+            return counts;
+        }, {});
+
+        res.json({
+            metrics: {
+                total_businesses: businesses.length,
+                active_businesses: activeBusinesses.length,
+                total_users: profiles.length,
+                total_reps: profiles.filter(profile => profile.role === "rep").length,
+                total_sales: customers.length,
+                paid_revenue: revenue,
+                total_products: products.length,
+                low_stock_products: lowStockProducts
+            },
+            plan_counts: planCounts,
+            recent_businesses: businesses
+                .sort((a, b) => new Date(b.created_at || 0) - new Date(a.created_at || 0))
+                .slice(0, 8)
+        });
+    } catch (error) {
+        console.error("Developer overview failed:", error);
+        res.status(error.status || 500).json({ error: error.message || "Could not load developer overview" });
+    }
+});
+
+app.get("/api/developer/businesses", async (req, res) => {
+    try {
+        await requireDeveloperProfile(req);
+
+        const { data: businesses, error } = await supabaseAdmin
+            .from("businesses")
+            .select("*")
+            .order("created_at", { ascending: false });
+
+        if (error) throw error;
+
+        const businessIds = (businesses || []).map(business => business.id);
+
+        const [profilesResult, customersResult, productsResult] = await Promise.all([
+            businessIds.length
+                ? supabaseAdmin.from("profiles").select("id, business_id, role").in("business_id", businessIds)
+                : { data: [], error: null },
+            businessIds.length
+                ? supabaseAdmin.from("customers").select("id, business_id, final_price, price, status").in("business_id", businessIds)
+                : { data: [], error: null },
+            businessIds.length
+                ? supabaseAdmin.from("products").select("id, business_id, stock_quantity").in("business_id", businessIds)
+                : { data: [], error: null }
+        ]);
+
+        for (const result of [profilesResult, customersResult, productsResult]) {
+            if (result.error) throw result.error;
+        }
+
+        const profiles = profilesResult.data || [];
+        const customers = customersResult.data || [];
+        const products = productsResult.data || [];
+
+        const rows = (businesses || []).map(business => {
+            const businessProfiles = profiles.filter(profile => profile.business_id === business.id);
+            const businessSales = customers.filter(sale => sale.business_id === business.id);
+            const paidRevenue = businessSales
+                .filter(sale => String(sale.status || "").toLowerCase() === "paid")
+                .reduce((sum, sale) => sum + Number(sale.final_price || sale.price || 0), 0);
+
+            return {
+                ...business,
+                user_count: businessProfiles.length,
+                rep_count: businessProfiles.filter(profile => profile.role === "rep").length,
+                sale_count: businessSales.length,
+                paid_revenue: paidRevenue,
+                product_count: products.filter(product => product.business_id === business.id).length
+            };
+        });
+
+        res.json({ businesses: rows });
+    } catch (error) {
+        console.error("Developer businesses failed:", error);
+        res.status(error.status || 500).json({ error: error.message || "Could not load businesses" });
+    }
+});
+
+app.post("/api/developer/businesses/:id/status", async (req, res) => {
+    try {
+        const developer = await requireDeveloperProfile(req);
+        const businessId = req.params.id;
+        const status = String(req.body?.status || "").toLowerCase();
+
+        if (!["active", "inactive", "suspended"].includes(status)) {
+            res.status(400).json({ error: "Use active, inactive, or suspended" });
+            return;
+        }
+
+        const subscriptionStatus = status === "active" ? "active" : "inactive";
+
+        const { data: business, error } = await supabaseAdmin
+            .from("businesses")
+            .update({
+                status,
+                subscription_status: subscriptionStatus
+            })
+            .eq("id", businessId)
+            .select("*")
+            .single();
+
+        if (error) throw error;
+
+        await supabaseAdmin
+            .from("profiles")
+            .update({
+                status: status === "active" ? "active" : "inactive",
+                is_active: status === "active"
+            })
+            .eq("business_id", businessId);
+
+        await logPlatformAudit(developer, "business_status_changed", "business", businessId, { status });
+
+        res.json({ ok: true, business });
+    } catch (error) {
+        console.error("Developer business status failed:", error);
+        res.status(error.status || 500).json({ error: error.message || "Could not update business status" });
+    }
+});
+
+app.get("/api/developer/activity", async (req, res) => {
+    try {
+        await requireDeveloperProfile(req);
+
+        const { data, error } = await supabaseAdmin
+            .from("platform_audit_logs")
+            .select("*")
+            .order("created_at", { ascending: false })
+            .limit(30);
+
+        if (error) {
+            if (isMissingTableError(error)) {
+                res.json({ activity: [] });
+                return;
+            }
+
+            throw error;
+        }
+
+        res.json({ activity: data || [] });
+    } catch (error) {
+        console.error("Developer activity failed:", error);
+        res.status(error.status || 500).json({ error: error.message || "Could not load platform activity" });
+    }
+});
+
 
 app.use(express.static(__dirname, {
     extensions: ["html"]

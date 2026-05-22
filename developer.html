@@ -1,0 +1,275 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <link rel="icon" type="image/svg+xml" href="img/favicon.svg">
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Sales Tracker Developer</title>
+    <link rel="stylesheet" href="developer.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+</head>
+<body>
+    <div id="notificationContainer"></div>
+
+    <main class="dev-shell">
+        <aside class="dev-sidebar">
+            <div class="dev-brand">
+                <span><i class="fa-solid fa-chart-line"></i></span>
+                <div>
+                    <strong>Sales Tracker</strong>
+                    <small>Developer Console</small>
+                </div>
+            </div>
+
+            <button class="active" type="button" onclick="scrollToSection('overview')">
+                <i class="fa-solid fa-gauge-high"></i>
+                Overview
+            </button>
+            <button type="button" onclick="scrollToSection('businesses')">
+                <i class="fa-solid fa-building"></i>
+                Businesses
+            </button>
+            <button type="button" onclick="scrollToSection('activity')">
+                <i class="fa-solid fa-clock-rotate-left"></i>
+                Activity
+            </button>
+            <button type="button" onclick="logout()">
+                <i class="fa-solid fa-right-from-bracket"></i>
+                Logout
+            </button>
+        </aside>
+
+        <section class="dev-main">
+            <header class="dev-topbar">
+                <div>
+                    <p>Platform Owner</p>
+                    <h1>Developer Dashboard</h1>
+                </div>
+                <div class="dev-status">
+                    <span></span>
+                    Live operations
+                </div>
+            </header>
+
+            <section id="overview" class="dev-section">
+                <div class="section-head">
+                    <div>
+                        <p>System Health</p>
+                        <h2>Overview</h2>
+                    </div>
+                    <button type="button" onclick="loadDeveloperDashboard()">
+                        <i class="fa-solid fa-rotate"></i>
+                        Refresh
+                    </button>
+                </div>
+                <div id="metricsGrid" class="metrics-grid"></div>
+                <div id="planGrid" class="plan-grid"></div>
+            </section>
+
+            <section id="businesses" class="dev-section">
+                <div class="section-head">
+                    <div>
+                        <p>Tenants</p>
+                        <h2>Businesses</h2>
+                    </div>
+                    <input id="businessSearch" type="search" placeholder="Search business, plan, status..." oninput="renderBusinesses()">
+                </div>
+                <div id="businessList" class="business-list"></div>
+            </section>
+
+            <section id="activity" class="dev-section">
+                <div class="section-head">
+                    <div>
+                        <p>Control Log</p>
+                        <h2>Platform Activity</h2>
+                    </div>
+                </div>
+                <div id="activityList" class="activity-list"></div>
+            </section>
+        </section>
+    </main>
+
+<script>
+const supabaseUrl = "https://nihqmpimzvhjglwkmhfl.supabase.co";
+const supabaseKey = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im5paHFtcGltenZoamdsd2ttaGZsIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Nzc5MzM4MjgsImV4cCI6MjA5MzUwOTgyOH0.PU0egVoNGXsloErw5hGwb9JrLHnn02F1nh6jsudsJ8w";
+const API_URL = "https://sales-tracker-app-cd7k.onrender.com";
+const supabaseClient = supabase.createClient(supabaseUrl, supabaseKey);
+
+let allBusinesses = [];
+let activity = [];
+
+function formatMoney(amount){
+    return new Intl.NumberFormat(undefined, {
+        style: "currency",
+        currency: "NGN",
+        maximumFractionDigits: 0
+    }).format(Number(amount || 0));
+}
+
+function showNotification(message, type = "info"){
+    const container = document.getElementById("notificationContainer");
+    const item = document.createElement("div");
+    item.className = `notification ${type}`;
+    item.textContent = message;
+    container.appendChild(item);
+    setTimeout(() => item.remove(), 3500);
+}
+
+async function getToken(){
+    const { data: { session } } = await supabaseClient.auth.getSession();
+    if(!session){
+        window.location.href = "signin.html";
+        return null;
+    }
+    return session.access_token;
+}
+
+async function devFetch(path, options = {}){
+    const token = await getToken();
+    if(!token) throw new Error("Login required");
+
+    const response = await fetch(`${API_URL}${path}`, {
+        ...options,
+        headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${token}`,
+            ...(options.headers || {})
+        }
+    });
+
+    const result = await response.json().catch(() => ({}));
+
+    if(!response.ok){
+        throw new Error(result.error || "Developer request failed");
+    }
+
+    return result;
+}
+
+async function loadDeveloperDashboard(){
+    try {
+        const [overview, businesses, activityResult] = await Promise.all([
+            devFetch("/api/developer/overview"),
+            devFetch("/api/developer/businesses"),
+            devFetch("/api/developer/activity")
+        ]);
+
+        allBusinesses = businesses.businesses || [];
+        activity = activityResult.activity || [];
+
+        renderMetrics(overview.metrics || {});
+        renderPlans(overview.plan_counts || {});
+        renderBusinesses();
+        renderActivity();
+    } catch(error) {
+        showNotification(error.message, "error");
+        if(error.message.toLowerCase().includes("access")){
+            setTimeout(() => window.location.href = "admin.html", 1200);
+        }
+    }
+}
+
+function renderMetrics(metrics){
+    const cards = [
+        ["Businesses", metrics.total_businesses, "fa-building"],
+        ["Active", metrics.active_businesses, "fa-circle-check"],
+        ["Users", metrics.total_users, "fa-users"],
+        ["Sales", metrics.total_sales, "fa-receipt"],
+        ["Paid Revenue", formatMoney(metrics.paid_revenue), "fa-money-bill-trend-up"],
+        ["Low Stock", metrics.low_stock_products, "fa-box-open"]
+    ];
+
+    document.getElementById("metricsGrid").innerHTML = cards.map(([label, value, icon]) => `
+        <article class="metric-card">
+            <i class="fa-solid ${icon}"></i>
+            <span>${label}</span>
+            <strong>${value ?? 0}</strong>
+        </article>
+    `).join("");
+}
+
+function renderPlans(planCounts){
+    const plans = ["starter", "business", "pro", "enterprise"];
+    document.getElementById("planGrid").innerHTML = plans.map(plan => `
+        <article>
+            <span>${plan}</span>
+            <strong>${planCounts[plan] || 0}</strong>
+        </article>
+    `).join("");
+}
+
+function renderBusinesses(){
+    const query = document.getElementById("businessSearch").value.toLowerCase().trim();
+    const filtered = allBusinesses.filter(business => {
+        const text = [
+            business.business_name,
+            business.plan,
+            business.subscription_status,
+            business.status
+        ].join(" ").toLowerCase();
+
+        return text.includes(query);
+    });
+
+    document.getElementById("businessList").innerHTML = filtered.map(business => {
+        const status = business.subscription_status || business.status || "inactive";
+        return `
+            <article class="business-card">
+                <div>
+                    <span class="status-pill ${status}">${status}</span>
+                    <h3>${business.business_name || "Unnamed business"}</h3>
+                    <p>${business.plan || "No plan"} • expires ${business.subscription_expires_at ? new Date(business.subscription_expires_at).toLocaleDateString() : "not set"}</p>
+                </div>
+                <div class="business-metrics">
+                    <span>${business.user_count || 0} users</span>
+                    <span>${business.rep_count || 0} reps</span>
+                    <span>${business.sale_count || 0} sales</span>
+                    <span>${formatMoney(business.paid_revenue)}</span>
+                </div>
+                <div class="business-actions">
+                    <button type="button" onclick="updateBusinessStatus('${business.id}', 'active')">Activate</button>
+                    <button type="button" onclick="updateBusinessStatus('${business.id}', 'suspended')">Suspend</button>
+                    <button type="button" class="danger" onclick="updateBusinessStatus('${business.id}', 'inactive')">Deactivate</button>
+                </div>
+            </article>
+        `;
+    }).join("") || `<div class="empty-state">No businesses found.</div>`;
+}
+
+async function updateBusinessStatus(id, status){
+    try {
+        await devFetch(`/api/developer/businesses/${id}/status`, {
+            method: "POST",
+            body: JSON.stringify({ status })
+        });
+        showNotification("Business status updated", "success");
+        await loadDeveloperDashboard();
+    } catch(error) {
+        showNotification(error.message, "error");
+    }
+}
+
+function renderActivity(){
+    document.getElementById("activityList").innerHTML = activity.map(item => `
+        <article>
+            <strong>${item.action}</strong>
+            <span>${item.actor_name || "Developer"} • ${item.created_at ? new Date(item.created_at).toLocaleString() : ""}</span>
+            <small>${item.target_type || ""} ${item.target_id || ""}</small>
+        </article>
+    `).join("") || `<div class="empty-state">No platform activity yet.</div>`;
+}
+
+function scrollToSection(id){
+    document.getElementById(id)?.scrollIntoView({ behavior: "smooth", block: "start" });
+}
+
+async function logout(){
+    await supabaseClient.auth.signOut();
+    window.location.href = "signin.html";
+}
+
+loadDeveloperDashboard();
+</script>
+</body>
+</html>

@@ -2228,3 +2228,85 @@ body {
         text-align: left;
     }
 }
+
+
+/* STOCK-AWARE SALES + CUSTOM ACTION MODAL */
+.sale-confirm-modal {
+    position: fixed;
+    inset: 0;
+    z-index: 10050;
+    display: grid;
+    place-items: center;
+    padding: 18px;
+    background: rgba(2, 6, 23, 0.74);
+    backdrop-filter: blur(12px);
+}
+
+.sale-confirm-modal.hidden {
+    display: none !important;
+}
+
+.sale-confirm-card {
+    width: min(420px, 100%);
+    background: linear-gradient(145deg, rgba(15,23,42,0.98), rgba(2,6,23,0.96));
+    border: 1px solid rgba(148, 163, 184, 0.18);
+    border-radius: 22px;
+    box-shadow: 0 28px 80px rgba(0,0,0,0.38);
+    color: #f8fafc;
+    display: grid;
+    gap: 12px;
+    padding: 22px;
+    text-align: center;
+    animation: modalIn 0.24s ease both;
+}
+
+.sale-confirm-icon {
+    width: 48px;
+    height: 48px;
+    border-radius: 16px;
+    display: grid;
+    place-items: center;
+    justify-self: center;
+    color: #fed7aa;
+    background: rgba(249, 115, 22, 0.14);
+    border: 1px solid rgba(251, 146, 60, 0.26);
+}
+
+.sale-confirm-card p {
+    color: rgba(226, 232, 240, 0.78);
+    line-height: 1.5;
+}
+
+.sale-confirm-actions {
+    display: flex;
+    gap: 10px;
+    justify-content: center;
+    margin-top: 4px;
+}
+
+.confirm-cancel-btn,
+.confirm-danger-btn {
+    min-height: 42px;
+    border-radius: 12px;
+    cursor: pointer;
+    font-weight: 900;
+    padding: 10px 14px;
+}
+
+.confirm-cancel-btn {
+    color: #cbd5e1;
+    background: rgba(15, 23, 42, 0.72);
+    border: 1px solid rgba(148, 163, 184, 0.18);
+}
+
+.confirm-danger-btn {
+    color: #fff;
+    border: 0;
+    background: linear-gradient(135deg, #dc2626, #f97316);
+}
+
+@media (max-width: 520px) {
+    .sale-confirm-actions {
+        flex-direction: column-reverse;
+    }
+}

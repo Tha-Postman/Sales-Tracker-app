@@ -165,6 +165,18 @@
                 
             <button type="button" onclick="addProduct()">Add Product</button>
         </form>
+
+        <div class="bulk-product-import">
+            <div>
+                <strong>Bulk add products</strong>
+                <span>Upload CSV columns: name, price, stock</span>
+            </div>
+            <input id="bulkProductFile" type="file" accept=".csv,text/csv">
+            <button type="button" onclick="importProductsFromCSV()">
+                <i class="fa-solid fa-file-import"></i>
+                Import CSV
+            </button>
+        </div>
             
     </div>
 
@@ -514,6 +526,34 @@
     </div>
 </div>
 
+
+<div id="repActionModal" class="modal">
+    <div class="modal-content confirm-modal-content">
+        <div class="modal-top">
+            <div>
+                <p class="modal-kicker">Team Access</p>
+                <h3 id="repActionTitle">Manage Rep</h3>
+                <p id="repActionText" class="confirm-modal-copy"></p>
+            </div>
+            <button type="button" onclick="closeRepActionModal()" class="close-rep">×</button>
+        </div>
+
+        <label class="confirm-field">
+            Access action
+            <select id="repActionMode">
+                <option value="deactivate">Deactivate until reactivated manually</option>
+                <option value="1">Suspend for 1 day</option>
+                <option value="7">Suspend for 7 days</option>
+                <option value="30">Suspend for 30 days</option>
+            </select>
+        </label>
+
+        <div class="product-edit-actions">
+            <button type="button" class="modal-secondary-btn" onclick="closeRepActionModal()">Cancel</button>
+            <button type="button" id="confirmRepActionBtn" class="modal-danger-btn" onclick="confirmRepAction()">Apply</button>
+        </div>
+    </div>
+</div>
 
 <div id="productDeleteModal" class="modal product-delete-modal">
     <div class="modal-content product-delete-content">
@@ -1158,6 +1198,50 @@ function populateProductDropdown() {
 
 // RENDER PRODUCT
 
+function getLowStockThreshold(){
+    return Number(businessSettings?.low_stock_threshold ?? 5);
+}
+
+function getStockLabel(stock){
+    if (stock <= 0) return "Out of stock";
+    if (stock <= getLowStockThreshold()) return "Low stock";
+    return "In stock";
+}
+
+function getProductSoldQuantity(product){
+    return allCustomers.reduce((total, sale) => {
+        if ((sale.status || "").toLowerCase() === "cancelled") return total;
+
+        return total + getCartItems(sale.cart).reduce((sum, item) => {
+            const sameId = item.productId && String(item.productId) === String(product.id);
+            const sameName = String(item.product || "").toLowerCase() === String(product.name || "").toLowerCase();
+            return sameId || sameName ? sum + Number(item.quantity || 0) : sum;
+        }, 0);
+    }, 0);
+}
+
+function getProductLastMovement(product){
+    const dates = [];
+
+    if (product.updated_at) dates.push(new Date(product.updated_at));
+    if (product.created_at) dates.push(new Date(product.created_at));
+
+    allCustomers.forEach(sale => {
+        const match = getCartItems(sale.cart).some(item =>
+            String(item.productId || "") === String(product.id)
+            || String(item.product || "").toLowerCase() === String(product.name || "").toLowerCase()
+        );
+
+        if (match && sale.created_at) dates.push(new Date(sale.created_at));
+    });
+
+    const latest = dates
+        .filter(date => !Number.isNaN(date.getTime()))
+        .sort((a, b) => b - a)[0];
+
+    return latest ? latest.toLocaleString() : "No movement yet";
+}
+
 function renderProducts(list = products){
 
     const container = document.getElementById("productList");
@@ -1174,18 +1258,39 @@ function renderProducts(list = products){
     updateProductCount(list.length, products.length);
 
     list.forEach((p, index) => {
+        const stock = Number(p.stock_quantity || 0);
+        const sold = getProductSoldQuantity(p);
+        const initial = stock + sold;
+        const lastMovement = getProductLastMovement(p);
+        const stockClass = stock <= 0 ? "out" : stock <= getLowStockThreshold() ? "low" : "ok";
 
         const div = document.createElement("div");
-        div.className = "product-card";
+        div.className = `product-card stock-${stockClass}`;
 
         div.innerHTML = `
             <div class="product-card-top">
                 <span class="product-number">#${index + 1}</span>
-                <span class="product-stock-tag">${Number(p.stock_quantity || 0) > 0 ? "In stock" : "Out of stock"}</span>
+                <span class="product-stock-tag ${stockClass}">${getStockLabel(stock)}</span>
             </div>
             <h4>${escapeHtml(p.name)}</h4>
             <p>${formatCurrency(p.price)}</p>
-            <p>Stock: ${Number(p.stock_quantity || 0).toLocaleString()}</p>
+
+            <div class="stock-mini-grid">
+                <div>
+                    <small>Initial</small>
+                    <strong>${initial.toLocaleString()}</strong>
+                </div>
+                <div>
+                    <small>Sold</small>
+                    <strong>${sold.toLocaleString()}</strong>
+                </div>
+                <div>
+                    <small>Left</small>
+                    <strong>${stock.toLocaleString()}</strong>
+                </div>
+            </div>
+
+            <p class="stock-reference">Last movement: ${lastMovement}</p>
 
            <div class="product-actions">
 
@@ -1224,6 +1329,60 @@ function updateProductCount(showing, total){
 }
 
 // ADD PRODUCT
+
+async function importProductsFromCSV(){
+    const input = document.getElementById("bulkProductFile");
+    const file = input?.files?.[0];
+    const businessId = getBusinessId();
+
+    if(!businessId){
+        showNotification("Business account not ready", "error");
+        return;
+    }
+
+    if(!file){
+        showNotification("Choose a CSV file first", "warning");
+        return;
+    }
+
+    const text = await file.text();
+    const rows = text
+        .split(/\r?\n/)
+        .map(row => row.trim())
+        .filter(Boolean);
+
+    const productsToInsert = rows
+        .slice(rows[0]?.toLowerCase().includes("name") ? 1 : 0)
+        .map(row => {
+            const [name, price, stock] = row.split(",").map(cell => cell?.trim());
+            return {
+                name,
+                price: Number(price),
+                stock_quantity: Number(stock),
+                available: Number(stock) > 0,
+                business_id: businessId
+            };
+        })
+        .filter(item => item.name && !Number.isNaN(item.price) && !Number.isNaN(item.stock_quantity));
+
+    if(productsToInsert.length === 0){
+        showNotification("No valid products found. Use columns: name, price, stock", "error");
+        return;
+    }
+
+    const { error } = await supabaseClient
+        .from("products")
+        .insert(productsToInsert);
+
+    if(error){
+        showNotification(error.message || "Bulk import failed", "error");
+        return;
+    }
+
+    input.value = "";
+    showNotification(`${productsToInsert.length} products imported`, "success");
+    await loadProducts();
+}
 
 async function addProduct(){
 
@@ -1686,6 +1845,7 @@ async function init(){
 
     await loadProfiles();
     await loadCustomers();
+    renderProducts();
 
     renderLiveFeed();
 
@@ -2177,6 +2337,14 @@ function renderOnboardingChecklist(){
         { label: "Set receipt and currency", done: Boolean(businessSettings?.business_name) }
     ];
     const complete = items.filter(item => item.done).length;
+
+    if(complete === items.length){
+        container.innerHTML = "";
+        container.style.display = "none";
+        return;
+    }
+
+    container.style.display = "";
 
     container.innerHTML = `
         <div class="section-header">
@@ -2829,23 +2997,55 @@ function bindTeamForm(){
     });
 }
 
-async function deactivateRep(repId){
-    const rep = profiles.find(profile => profile.id === repId);
+let pendingRepActionId = null;
 
+function deactivateRep(repId){
+    const rep = profiles.find(profile => profile.id === repId);
     if(!rep || rep.role === "admin") return;
 
-    if(!confirm(`Deactivate ${rep.full_name || rep.email}? They will no longer access this business.`)){
-        return;
-    }
+    pendingRepActionId = repId;
+
+    const modal = document.getElementById("repActionModal");
+    const title = document.getElementById("repActionTitle");
+    const text = document.getElementById("repActionText");
+    const mode = document.getElementById("repActionMode");
+
+    if(title) title.textContent = `Manage ${rep.full_name || rep.email}`;
+    if(text) text.textContent = "Choose whether to deactivate this rep fully or suspend access for a short period.";
+    if(mode) mode.value = "deactivate";
+    if(modal) modal.style.display = "flex";
+}
+
+function closeRepActionModal(){
+    pendingRepActionId = null;
+    const modal = document.getElementById("repActionModal");
+    if(modal) modal.style.display = "none";
+}
+
+async function confirmRepAction(){
+    if(!pendingRepActionId) return;
+
+    const button = document.getElementById("confirmRepActionBtn");
+    const mode = document.getElementById("repActionMode")?.value || "deactivate";
+    const repId = pendingRepActionId;
+
+    if(button) button.disabled = true;
 
     try {
-        await callTeamApi(`/api/team/reps/${repId}/deactivate`, {});
+        const payload = mode === "deactivate"
+            ? { mode: "deactivate" }
+            : { mode: "suspend", days: Number(mode) };
 
-        showNotification("Rep deactivated");
+        await callTeamApi(`/api/team/reps/${repId}/deactivate`, payload);
+
+        showNotification(mode === "deactivate" ? "Rep deactivated" : "Rep suspended");
+        closeRepActionModal();
         await loadProfiles();
         loadRepStats();
     } catch(error) {
         showNotification(error.message, "error");
+    } finally {
+        if(button) button.disabled = false;
     }
 }
 
@@ -3277,7 +3477,7 @@ function renderPaymentChart() {
     const ctx = canvas.getContext("2d");
 
     paymentChart = new Chart(ctx, {
-        type: "pie",
+        type: "doughnut",
         data: {
             labels,
             datasets: [{
@@ -3304,6 +3504,8 @@ function renderPaymentChart() {
         options: {
             responsive: true,
             maintainAspectRatio: false,
+            cutout: "62%",
+            radius: "92%",
             layout: {
                 padding: 8
             },
