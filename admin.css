@@ -3122,6 +3122,7 @@ body:not(.sidebar-collapsed)::after {
 
 .payment-method-chart-box canvas {
     max-height: 260px;
+    color: white;
 }
 
 .payment-detail-card {
