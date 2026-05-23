@@ -3117,6 +3117,7 @@ body:not(.sidebar-collapsed)::after {
     min-height: 220px;
     position: relative;
     width: 100%;
+    color: white;
 }
 
 .payment-method-chart-box canvas {
