@@ -3368,3 +3368,129 @@ body:not(.sidebar-collapsed)::after {
         grid-template-columns: 1fr;
     }
 }
+
+/* PAYMENT DOUGHNUT COMPACT OVERRIDES */
+.chart-box.payment-method-chart-box {
+    color: #e5eefb;
+}
+
+.payment-method-chart-box .chart-box-head h3,
+.payment-chart-head h3 {
+    color: #f8fafc;
+}
+
+.payment-chart-head {
+    align-items: center;
+    gap: 10px;
+    margin-bottom: 6px;
+}
+
+.payment-chart-total {
+    color: #e0f2fe;
+    background: rgba(14, 165, 233, 0.13);
+    border-color: rgba(125, 211, 252, 0.28);
+    box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.05);
+}
+
+.payment-chart-wrap {
+    flex: 1 1 auto;
+    min-height: 245px;
+    max-height: 270px;
+    padding: 2px 0 0;
+}
+
+.payment-method-chart-box canvas {
+    max-height: 270px;
+}
+
+.payment-chart-details {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 6px;
+    margin-top: 6px;
+}
+
+.payment-detail-card,
+.payment-detail-empty {
+    display: grid;
+    gap: 2px;
+    min-height: 58px;
+    padding: 7px 9px;
+    border-radius: 11px;
+    background: rgba(15, 23, 42, 0.58);
+    border: 1px solid rgba(148, 163, 184, 0.16);
+    box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.035);
+}
+
+.payment-detail-card span,
+.payment-detail-card small,
+.payment-detail-empty {
+    color: #b6c3d4;
+    font-size: 10.5px;
+    font-weight: 800;
+    line-height: 1.15;
+}
+
+.payment-detail-card strong {
+    color: #f8fafc;
+    font-size: clamp(11px, 1.1vw, 13px);
+    line-height: 1.05;
+    margin: 0;
+}
+
+.payment-detail-card small {
+    color: #93c5fd;
+}
+
+.payment-detail-card:nth-child(1) small {
+    color: #86efac;
+}
+
+.payment-detail-card:nth-child(3) small {
+    color: #fde68a;
+}
+
+@media (max-width: 900px) {
+    .chart-box.payment-method-chart-box {
+        height: 380px;
+    }
+
+    .payment-chart-wrap,
+    .payment-method-chart-box canvas {
+        max-height: 245px !important;
+    }
+}
+
+@media (max-width: 700px) {
+    .payment-chart-wrap {
+        min-height: 230px;
+        max-height: 250px;
+    }
+
+    .payment-method-chart-box canvas {
+        max-height: 250px !important;
+    }
+}
+
+@media (max-width: 430px) {
+    .payment-chart-details {
+        grid-template-columns: repeat(3, minmax(0, 1fr));
+    }
+
+    .payment-detail-card,
+    .payment-detail-empty {
+        min-height: 52px;
+        padding: 6px;
+    }
+
+    .payment-detail-card strong {
+        font-size: 10.5px;
+    }
+
+    .payment-detail-card span,
+    .payment-detail-card small,
+    .payment-detail-empty {
+        font-size: 9.5px;
+    }
+}
+

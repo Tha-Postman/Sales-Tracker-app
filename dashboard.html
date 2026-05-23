@@ -342,7 +342,11 @@ let currentUserRole = "rep";
 let currentProfile = null;
 let currentBusinessId = null;
 let currentBusinessSettings = null;
-const TEAM_API_URL = "https://sales-tracker-app-cd7k.onrender.com";
+const TEAM_API_URL = (
+    ["localhost", "127.0.0.1"].includes(window.location.hostname)
+        ? "http://127.0.0.1:4242"
+        : "https://sales-tracker-app-cd7k.onrender.com"
+);
 let repChatSettings = {
     admin_only: false,
     allow_attachments: true

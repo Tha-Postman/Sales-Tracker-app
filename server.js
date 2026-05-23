@@ -12,7 +12,7 @@ const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
 const app = express();
 const port = process.env.PORT || 4242;
-const appUrl = process.env.APP_URL || "http://localhost:5500";
+const appUrl = process.env.APP_URL || "https://sales-tracker-app-cd7k.onrender.com";
 const supabaseUrl = process.env.SUPABASE_URL;
 const supabaseServiceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
 const paystackSecretKey = process.env.PAYSTACK_SECRET_KEY;
@@ -451,6 +451,50 @@ app.get("/api/team/business", async (req, res) => {
     }
 });
 
+
+app.get("/api/team/products", async (req, res) => {
+    try {
+        const profile = await requireBusinessProfile(req);
+
+        const { data, error } = await supabaseAdmin
+            .from("products")
+            .select("*")
+            .eq("business_id", profile.business_id)
+            .order("id", { ascending: false });
+
+        if (error) throw error;
+
+        res.json({
+            ok: true,
+            products: data || []
+        });
+    } catch (error) {
+        console.error("Load team products failed:", error);
+        res.status(error.status || 500).json({ error: error.message || "Could not load products" });
+    }
+});
+
+app.get("/api/team/customers", async (req, res) => {
+    try {
+        const profile = await requireBusinessProfile(req);
+
+        const { data, error } = await supabaseAdmin
+            .from("customers")
+            .select("*")
+            .eq("business_id", profile.business_id)
+            .order("id", { ascending: false });
+
+        if (error) throw error;
+
+        res.json({
+            ok: true,
+            customers: data || []
+        });
+    } catch (error) {
+        console.error("Load team customers failed:", error);
+        res.status(error.status || 500).json({ error: error.message || "Could not load customers" });
+    }
+});
 
 app.post("/api/team/business/settings", async (req, res) => {
     try {
@@ -1324,9 +1368,9 @@ app.get("/api/developer/overview", async (req, res) => {
             productsResult
         ] = await Promise.all([
             supabaseAdmin.from("businesses").select("*"),
-            supabaseAdmin.from("profiles").select("id, role, business_id, status, is_active, subscription_status, subscription_plan, created_at"),
-            supabaseAdmin.from("customers").select("id, business_id, final_price, price, status, created_at"),
-            supabaseAdmin.from("products").select("id, business_id, stock_quantity")
+            supabaseAdmin.from("profiles").select("*"),
+            supabaseAdmin.from("customers").select("*"),
+            supabaseAdmin.from("products").select("*")
         ]);
 
         for (const result of [businessesResult, profilesResult, customersResult, productsResult]) {
@@ -1389,13 +1433,13 @@ app.get("/api/developer/businesses", async (req, res) => {
 
         const [profilesResult, customersResult, productsResult] = await Promise.all([
             businessIds.length
-                ? supabaseAdmin.from("profiles").select("id, business_id, role").in("business_id", businessIds)
+                ? supabaseAdmin.from("profiles").select("*").in("business_id", businessIds)
                 : { data: [], error: null },
             businessIds.length
-                ? supabaseAdmin.from("customers").select("id, business_id, final_price, price, status").in("business_id", businessIds)
+                ? supabaseAdmin.from("customers").select("*").in("business_id", businessIds)
                 : { data: [], error: null },
             businessIds.length
-                ? supabaseAdmin.from("products").select("id, business_id, stock_quantity").in("business_id", businessIds)
+                ? supabaseAdmin.from("products").select("*").in("business_id", businessIds)
                 : { data: [], error: null }
         ]);
 
@@ -1447,7 +1491,6 @@ app.post("/api/developer/businesses/:id/status", async (req, res) => {
         const { data: business, error } = await supabaseAdmin
             .from("businesses")
             .update({
-                status,
                 subscription_status: subscriptionStatus
             })
             .eq("id", businessId)

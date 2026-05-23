@@ -93,7 +93,11 @@
 <script>
 const supabaseUrl = "https://nihqmpimzvhjglwkmhfl.supabase.co";
 const supabaseKey = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im5paHFtcGltenZoamdsd2ttaGZsIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Nzc5MzM4MjgsImV4cCI6MjA5MzUwOTgyOH0.PU0egVoNGXsloErw5hGwb9JrLHnn02F1nh6jsudsJ8w";
-const API_URL = "https://sales-tracker-app-cd7k.onrender.com";
+const API_URL = (
+    ["localhost", "127.0.0.1"].includes(window.location.hostname)
+        ? "http://127.0.0.1:4242"
+        : "https://sales-tracker-app-cd7k.onrender.com"
+);
 const supabaseClient = supabase.createClient(supabaseUrl, supabaseKey);
 
 let allBusinesses = [];

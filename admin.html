@@ -652,7 +652,11 @@ let allCustomers = [];
 let profiles = [];
 let currentProfile = null;
 let currentBusinessId = null;
-const TEAM_API_URL = "https://sales-tracker-app-cd7k.onrender.com";
+const TEAM_API_URL = (
+    ["localhost", "127.0.0.1"].includes(window.location.hostname)
+        ? "http://127.0.0.1:4242"
+        : "https://sales-tracker-app-cd7k.onrender.com"
+);
 
 let revenueChart;
 let paymentChart;
@@ -925,17 +929,25 @@ function renderSubscriptionPanel(){
     `;
 }
 
-function getSaleCartItems(sale) {
-    if (!sale.cart) return [];
+function getCartItems(cartData) {
+    if (!cartData) return [];
 
-    if (Array.isArray(sale.cart)) return sale.cart;
+    if (Array.isArray(cartData)) return cartData;
 
-    try {
-        const parsed = JSON.parse(sale.cart);
-        return Array.isArray(parsed) ? parsed : [];
-    } catch(err) {
-        return [];
+    if (typeof cartData === "string") {
+        try {
+            const parsed = JSON.parse(cartData);
+            return Array.isArray(parsed) ? parsed : [];
+        } catch(err) {
+            return [];
+        }
     }
+
+    return [];
+}
+
+function getSaleCartItems(sale) {
+    return getCartItems(sale?.cart);
 }
 
 function getSaleProductsText(sale) {
@@ -1143,6 +1155,16 @@ async function loadProducts(){
     const businessId = getBusinessId();
     if(!businessId) return;
 
+    try {
+        const result = await getTeamApi("/api/team/products");
+        products = result.products || [];
+        filterProducts();
+        populateProductDropdown();
+        return;
+    } catch(error) {
+        console.log("Team API products load failed, using Supabase fallback:", error.message);
+    }
+
     const { data, error } =
     await supabaseClient
     .from("products")
@@ -1153,9 +1175,8 @@ async function loadProducts(){
     });
 
     if(error){
-
-        console.log(error);
-
+        console.log("Product load failed:", error);
+        showNotification("Products could not load. Check backend deployment or database access.", "error");
         return;
     }
 
@@ -1839,18 +1860,19 @@ async function init(){
     setProductsOpen(false);
 
     await loadBusinessSettings();
-    await loadProducts();
+    await Promise.all([
+        loadProducts(),
+        loadProfiles(),
+        loadCustomers()
+    ]);
 
     checkStockAlert(products);
-
-    await loadProfiles();
-    await loadCustomers();
     renderProducts();
 
     renderLiveFeed();
 
     updateStats();
-    await loadBusinessSettings();
+    loadBusinessSettings();
     loadRepStats();
     renderOnboardingChecklist();
     populateReportRepFilter();
@@ -1912,6 +1934,14 @@ async function loadCustomers(){
     const businessId = getBusinessId();
     if(!businessId) return;
 
+    try {
+        const result = await getTeamApi("/api/team/customers");
+        allCustomers = result.customers || [];
+        return;
+    } catch(error) {
+        console.log("Team API customers load failed, using Supabase fallback:", error.message);
+    }
+
     const { data, error } =
     await supabaseClient
     .from("customers")
@@ -1922,9 +1952,8 @@ async function loadCustomers(){
     });
 
     if(error){
-
-        console.log(error);
-
+        console.log("Customer load failed:", error);
+        showNotification("Sales could not load. Check backend deployment or database access.", "error");
         return;
     }
 
@@ -3277,7 +3306,7 @@ function renderRevenueChart() {
                         color: "rgba(148, 163, 184, 0.08)"
                     },
                     ticks: {
-                        color: "#94a3b8"
+                        color: "#ffffff"
                     }
                 },
                 y: {
@@ -3286,16 +3315,22 @@ function renderRevenueChart() {
                         color: "rgba(148, 163, 184, 0.1)"
                     },
                     ticks: {
-                        color: "#94a3b8",
+                        color: "#ffffff",
                         callback: value => formatCurrency(value)
                     }
                 }
             },
             plugins: {
                 legend: {
-                    display: false
+                    display: false,
+                    labels: {
+                        color: "#ffffff"
+                    }
                 },
                 tooltip: {
+                    titleColor: "#ffffff",
+                    bodyColor: "#ffffff",
+                    footerColor: "#ffffff",
                     callbacks: {
                         label: context => `Revenue: ${formatCurrency(context.parsed.y)}`
                     }
@@ -3520,7 +3555,7 @@ function renderPaymentChart() {
                     display: true,
                     position: "bottom",
                     labels: {
-                        color: "#dbeafe",
+                        color: "#ffffff",
                         usePointStyle: true,
                         pointStyle: "circle",
                         boxWidth: 8,
@@ -3557,6 +3592,9 @@ function renderPaymentChart() {
                     borderWidth: 1,
                     padding: 12,
                     displayColors: true,
+                    titleColor: "#ffffff",
+                    bodyColor: "#ffffff",
+                    footerColor: "#ffffff",
                     callbacks: {
                         title: context => context[0]?.label || "Payment",
                         label: context => {
