@@ -22,21 +22,25 @@
                 </div>
             </div>
 
-            <button class="active" type="button" onclick="scrollToSection('overview')">
+            <button class="active" type="button" data-section-target="overview" onclick="scrollToSection('overview')">
                 <i class="fa-solid fa-gauge-high"></i>
                 Overview
             </button>
-            <button type="button" onclick="scrollToSection('businesses')">
+            <button type="button" data-section-target="businesses" onclick="scrollToSection('businesses')">
                 <i class="fa-solid fa-building"></i>
                 Businesses
             </button>
-            <button type="button" onclick="scrollToSection('activity')">
+            <button type="button" data-section-target="activity" onclick="scrollToSection('activity')">
                 <i class="fa-solid fa-clock-rotate-left"></i>
                 Activity
             </button>
-            <button type="button" onclick="scrollToSection('tools')">
+            <button type="button" data-section-target="tools" onclick="scrollToSection('tools')">
                 <i class="fa-solid fa-screwdriver-wrench"></i>
                 Tools
+            </button>
+            <button type="button" data-section-target="security" onclick="scrollToSection('security')">
+                <i class="fa-solid fa-shield-halved"></i>
+                Security
             </button>
             <button type="button" onclick="logout()">
                 <i class="fa-solid fa-right-from-bracket"></i>
@@ -109,6 +113,38 @@
                     <button type="button" onclick="openPricingPage()"><i class="fa-solid fa-tags"></i> Open Pricing</button>
                 </div>
                 <div id="developerInsight" class="developer-insight"></div>
+            </section>
+
+
+            <section id="security" class="dev-section">
+                <div class="section-head">
+                    <div>
+                        <p>Account Security</p>
+                        <h2>Password</h2>
+                    </div>
+                </div>
+
+                <form id="developerPasswordForm" class="security-form" onsubmit="changeDeveloperPassword(event)">
+                    <label>
+                        Current password
+                        <input id="developerCurrentPassword" type="password" autocomplete="current-password" required>
+                    </label>
+
+                    <label>
+                        New password
+                        <input id="developerNewPassword" type="password" autocomplete="new-password" minlength="6" required>
+                    </label>
+
+                    <label>
+                        Confirm password
+                        <input id="developerConfirmPassword" type="password" autocomplete="new-password" minlength="6" required>
+                    </label>
+
+                    <button type="submit">
+                        <i class="fa-solid fa-key"></i>
+                        Update Password
+                    </button>
+                </form>
             </section>
 
             <section id="activity" class="dev-section">
@@ -376,8 +412,99 @@ function openPricingPage(){
     window.open("pricing.html", "_blank", "noopener");
 }
 
+
+function setActiveDevNav(id){
+    document.querySelectorAll(".dev-sidebar [data-section-target]").forEach(button => {
+        const active = button.dataset.sectionTarget === id;
+        button.classList.toggle("active", active);
+        if(active){
+            button.setAttribute("aria-current", "page");
+        } else {
+            button.removeAttribute("aria-current");
+        }
+    });
+}
+
+function setupDeveloperNavObserver(){
+    const sections = document.querySelectorAll(".dev-section[id]");
+
+    if(!("IntersectionObserver" in window) || sections.length === 0){
+        setActiveDevNav("overview");
+        return;
+    }
+
+    const observer = new IntersectionObserver(entries => {
+        const visible = entries
+            .filter(entry => entry.isIntersecting)
+            .sort((a, b) => b.intersectionRatio - a.intersectionRatio)[0];
+
+        if(visible?.target?.id){
+            setActiveDevNav(visible.target.id);
+        }
+    }, {
+        root: null,
+        rootMargin: "-20% 0px -55% 0px",
+        threshold: [0.12, 0.25, 0.5, 0.75]
+    });
+
+    sections.forEach(section => observer.observe(section));
+}
+
 function scrollToSection(id){
+    setActiveDevNav(id);
     document.getElementById(id)?.scrollIntoView({ behavior: "smooth", block: "start" });
+}
+
+
+async function changeDeveloperPassword(event){
+    event.preventDefault();
+
+    const currentPassword = document.getElementById("developerCurrentPassword").value;
+    const newPassword = document.getElementById("developerNewPassword").value;
+    const confirmPassword = document.getElementById("developerConfirmPassword").value;
+    const button = event.target.querySelector("button[type='submit']");
+
+    if(newPassword.length < 6){
+        showNotification("New password must be at least 6 characters", "error");
+        return;
+    }
+
+    if(newPassword !== confirmPassword){
+        showNotification("New passwords do not match", "error");
+        return;
+    }
+
+    if(button) button.disabled = true;
+
+    try {
+        const { data: { user }, error: userError } = await supabaseClient.auth.getUser();
+
+        if(userError || !user?.email){
+            throw new Error("Login session expired");
+        }
+
+        const { error: verifyError } = await supabaseClient.auth.signInWithPassword({
+            email: user.email,
+            password: currentPassword
+        });
+
+        if(verifyError){
+            throw new Error("Current password is not correct");
+        }
+
+        const { error: updateError } = await supabaseClient.auth.updateUser({
+            password: newPassword
+        });
+
+        if(updateError) throw updateError;
+
+        event.target.reset();
+        showNotification("Developer password updated", "success");
+    } catch(error) {
+        showNotification(error.message, "error");
+    } finally {
+        if(button) button.disabled = false;
+    }
 }
 
 async function logout(){
@@ -385,6 +512,8 @@ async function logout(){
     window.location.href = "signin.html";
 }
 
+setupDeveloperNavObserver();
+setActiveDevNav("overview");
 loadDeveloperDashboard();
 </script>
 </body>

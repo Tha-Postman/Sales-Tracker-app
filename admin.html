@@ -561,6 +561,33 @@
     </div>
 </div>
 
+
+<div id="repDeleteModal" class="modal">
+    <div class="modal-content confirm-modal-content rep-delete-content">
+        <div class="modal-top">
+            <div>
+                <p class="modal-kicker">Permanent Delete</p>
+                <h3>Delete Rep</h3>
+                <p id="repDeleteText" class="confirm-modal-copy"></p>
+            </div>
+            <button type="button" onclick="closeRepDeleteModal()" class="close-rep">x</button>
+        </div>
+
+        <div class="rep-delete-warning">
+            <i class="fa-solid fa-triangle-exclamation"></i>
+            <div>
+                <strong>This cannot be undone.</strong>
+                <span>The rep will lose access immediately. Existing sales records stay in your dashboard for reporting.</span>
+            </div>
+        </div>
+
+        <div class="product-edit-actions">
+            <button type="button" class="modal-secondary-btn" onclick="closeRepDeleteModal()">Cancel</button>
+            <button type="button" id="confirmRepDeleteBtn" class="modal-danger-btn" onclick="deleteRepPermanently()">Delete Permanently</button>
+        </div>
+    </div>
+</div>
+
 <div id="productDeleteModal" class="modal product-delete-modal">
     <div class="modal-content product-delete-content">
         <div class="modal-top">
@@ -2997,6 +3024,15 @@ function loadRepStats(){
             <i class="fa-solid fa-user-check"></i>
         </button>
         ` : ""}
+
+        ${rep.role === "rep" ? `
+        <button
+        class="rep-action delete"
+        onclick="confirmPermanentDeleteRep('${rep.id}')">
+            <span>Delete Permanently</span>
+            <i class="fa-solid fa-trash"></i>
+        </button>
+        ` : ""}
         `;
 
         container.appendChild(card);
@@ -3249,6 +3285,59 @@ async function confirmRepAction(){
         showNotification(error.message, "error");
     } finally {
         if(button) button.disabled = false;
+    }
+}
+
+
+let pendingRepDeleteId = null;
+
+function confirmPermanentDeleteRep(repId){
+    const rep = profiles.find(profile => profile.id === repId);
+
+    if(!rep || rep.role === "admin") return;
+
+    pendingRepDeleteId = repId;
+
+    const modal = document.getElementById("repDeleteModal");
+    const text = document.getElementById("repDeleteText");
+
+    if(text){
+        text.textContent = `Delete ${rep.full_name || rep.email || "this rep"} from your business permanently?`;
+    }
+
+    if(modal) modal.style.display = "flex";
+}
+
+function closeRepDeleteModal(){
+    pendingRepDeleteId = null;
+    const modal = document.getElementById("repDeleteModal");
+    if(modal) modal.style.display = "none";
+}
+
+async function deleteRepPermanently(){
+    if(!pendingRepDeleteId) return;
+
+    const button = document.getElementById("confirmRepDeleteBtn");
+    const repId = pendingRepDeleteId;
+
+    if(button){
+        button.disabled = true;
+        button.textContent = "Deleting...";
+    }
+
+    try {
+        await callTeamApi(`/api/team/reps/${repId}/delete`, {});
+        showNotification("Rep deleted permanently", "success");
+        closeRepDeleteModal();
+        await loadProfiles();
+        loadRepStats();
+    } catch(error) {
+        showNotification(error.message, "error");
+    } finally {
+        if(button){
+            button.disabled = false;
+            button.textContent = "Delete Permanently";
+        }
     }
 }
 

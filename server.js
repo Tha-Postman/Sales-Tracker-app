@@ -874,6 +874,57 @@ app.post("/api/team/chat/settings", async (req, res) => {
     }
 });
 
+
+app.post("/api/team/reps/:id/delete", async (req, res) => {
+    try {
+        const adminProfile = await requireAdminProfile(req);
+        const repId = req.params.id;
+
+        const { data: rep, error: repError } = await supabaseAdmin
+            .from("profiles")
+            .select("id, role, business_id, full_name, email")
+            .eq("id", repId)
+            .single();
+
+        if (repError || !rep) {
+            res.status(404).json({ error: "Rep not found" });
+            return;
+        }
+
+        if (rep.business_id !== adminProfile.business_id || rep.role !== "rep") {
+            res.status(403).json({ error: "You can only delete reps in your business" });
+            return;
+        }
+
+        const { error: authError } = await supabaseAdmin.auth.admin.deleteUser(repId);
+
+        if (authError && !String(authError.message || "").toLowerCase().includes("not found")) {
+            throw authError;
+        }
+
+        const { error: profileError } = await supabaseAdmin
+            .from("profiles")
+            .delete()
+            .eq("id", repId)
+            .eq("business_id", adminProfile.business_id)
+            .eq("role", "rep");
+
+        if (profileError) {
+            throw profileError;
+        }
+
+        await logAudit(adminProfile, "rep_permanently_deleted", "profile", repId, {
+            rep_name: rep.full_name,
+            rep_email: rep.email
+        });
+
+        res.json({ ok: true });
+    } catch (error) {
+        console.error("Delete rep failed:", error);
+        res.status(error.status || 500).json({ error: error.message || "Could not delete rep" });
+    }
+});
+
 app.post("/api/team/reps/:id/reactivate", async (req, res) => {
     try {
         const adminProfile = await requireAdminProfile(req);

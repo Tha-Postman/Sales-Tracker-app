@@ -64,6 +64,7 @@ body {
 }
 
 .dev-sidebar button {
+    position: relative;
     width: 100%;
     min-height: 44px;
     display: flex;
@@ -73,12 +74,32 @@ body {
     margin-bottom: 8px;
     color: #cbd5e1;
     background: transparent;
+    transition: color 180ms ease, background 180ms ease, transform 180ms ease, box-shadow 180ms ease;
 }
 
 .dev-sidebar button.active,
 .dev-sidebar button:hover {
     color: #fff;
     background: rgba(59, 130, 246, 0.16);
+}
+
+.dev-sidebar button.active {
+    transform: translateX(3px);
+    background: linear-gradient(135deg, rgba(37, 99, 235, 0.28), rgba(20, 184, 166, 0.16));
+    box-shadow: inset 0 0 0 1px rgba(125, 211, 252, 0.16), 0 12px 30px rgba(2, 132, 199, 0.12);
+}
+
+.dev-sidebar button.active::before {
+    content: "";
+    width: 7px;
+    height: 7px;
+    border-radius: 999px;
+    background: #22c55e;
+    box-shadow: 0 0 0 6px rgba(34, 197, 94, 0.12);
+}
+
+.dev-sidebar button.active i {
+    color: #67e8f9;
 }
 
 .dev-main {
@@ -417,6 +438,64 @@ h3 {
 
 @media (max-width: 760px) {
     .pricing-editor {
+        grid-template-columns: 1fr;
+    }
+}
+
+
+/* DEVELOPER SECURITY FORM */
+.security-form {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr)) auto;
+    gap: 12px;
+    align-items: end;
+}
+
+.security-form label {
+    display: grid;
+    gap: 7px;
+    color: #cbd5e1;
+    font-size: 12px;
+    font-weight: 900;
+}
+
+.security-form input {
+    min-height: 44px;
+    border: 1px solid rgba(148, 163, 184, 0.18);
+    border-radius: 12px;
+    background: rgba(2, 6, 23, 0.62);
+    color: #fff;
+    padding: 10px 12px;
+}
+
+.security-form input:focus {
+    outline: none;
+    border-color: rgba(56, 189, 248, 0.55);
+    box-shadow: 0 0 0 4px rgba(56, 189, 248, 0.12);
+}
+
+.security-form button {
+    min-height: 44px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    border: 0;
+    border-radius: 12px;
+    color: #fff;
+    background: linear-gradient(135deg, #2563eb, #14b8a6);
+    font-weight: 900;
+    cursor: pointer;
+    padding: 10px 14px;
+}
+
+.security-form button:disabled {
+    cursor: wait;
+    opacity: 0.7;
+}
+
+@media (max-width: 920px) {
+    .security-form {
         grid-template-columns: 1fr;
     }
 }

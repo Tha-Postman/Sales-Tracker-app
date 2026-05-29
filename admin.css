@@ -3534,3 +3534,49 @@ body:not(.sidebar-collapsed)::after {
     margin-top: 8px;
     color: #dbeafe;
 }
+
+
+/* PERMANENT REP DELETE */
+.rep-card button.delete {
+    margin-top: 10px;
+    background: rgba(127, 29, 29, 0.26);
+    border: 1px solid rgba(248, 113, 113, 0.32);
+    color: #fecaca;
+}
+
+.rep-card button.delete:hover {
+    background: rgba(153, 27, 27, 0.42);
+}
+
+.rep-delete-content {
+    border-color: rgba(248, 113, 113, 0.22);
+}
+
+.rep-delete-warning {
+    display: flex;
+    gap: 12px;
+    align-items: flex-start;
+    margin: 16px 0;
+    padding: 14px;
+    border-radius: 14px;
+    color: #fecaca;
+    background: rgba(127, 29, 29, 0.18);
+    border: 1px solid rgba(248, 113, 113, 0.22);
+}
+
+.rep-delete-warning i {
+    color: #f87171;
+    margin-top: 2px;
+}
+
+.rep-delete-warning strong,
+.rep-delete-warning span {
+    display: block;
+}
+
+.rep-delete-warning span {
+    margin-top: 4px;
+    color: #cbd5e1;
+    font-size: 13px;
+    line-height: 1.45;
+}
