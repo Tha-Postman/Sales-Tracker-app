@@ -34,6 +34,10 @@
                 <i class="fa-solid fa-clock-rotate-left"></i>
                 Activity
             </button>
+            <button type="button" onclick="scrollToSection('tools')">
+                <i class="fa-solid fa-screwdriver-wrench"></i>
+                Tools
+            </button>
             <button type="button" onclick="logout()">
                 <i class="fa-solid fa-right-from-bracket"></i>
                 Logout
@@ -76,6 +80,22 @@
                     <input id="businessSearch" type="search" placeholder="Search business, plan, status..." oninput="renderBusinesses()">
                 </div>
                 <div id="businessList" class="business-list"></div>
+            </section>
+
+            <section id="tools" class="dev-section">
+                <div class="section-head">
+                    <div>
+                        <p>Owner Utilities</p>
+                        <h2>Developer Tools</h2>
+                    </div>
+                </div>
+                <div class="dev-tools-grid">
+                    <button type="button" onclick="checkApiHealth()"><i class="fa-solid fa-heart-pulse"></i> Check API Health</button>
+                    <button type="button" onclick="exportBusinessesCSV()"><i class="fa-solid fa-file-csv"></i> Export Businesses CSV</button>
+                    <button type="button" onclick="copyApiUrl()"><i class="fa-solid fa-link"></i> Copy API URL</button>
+                    <button type="button" onclick="openPricingPage()"><i class="fa-solid fa-tags"></i> Open Pricing</button>
+                </div>
+                <div id="developerInsight" class="developer-insight"></div>
             </section>
 
             <section id="activity" class="dev-section">
@@ -166,6 +186,7 @@ async function loadDeveloperDashboard(){
         renderPlans(overview.plan_counts || {});
         renderBusinesses();
         renderActivity();
+        renderDeveloperInsight(overview.metrics || {});
     } catch(error) {
         showNotification(error.message, "error");
         if(error.message.toLowerCase().includes("access")){
@@ -181,7 +202,9 @@ function renderMetrics(metrics){
         ["Users", metrics.total_users, "fa-users"],
         ["Sales", metrics.total_sales, "fa-receipt"],
         ["Paid Revenue", formatMoney(metrics.paid_revenue), "fa-money-bill-trend-up"],
-        ["Low Stock", metrics.low_stock_products, "fa-box-open"]
+        ["Low Stock", metrics.low_stock_products, "fa-box-open"],
+        ["Suspended", metrics.suspended_businesses, "fa-ban"],
+        ["Inactive", metrics.inactive_businesses, "fa-circle-xmark"]
     ];
 
     document.getElementById("metricsGrid").innerHTML = cards.map(([label, value, icon]) => `
@@ -217,11 +240,12 @@ function renderBusinesses(){
     });
 
     document.getElementById("businessList").innerHTML = filtered.map(business => {
-        const status = business.subscription_status || business.status || "inactive";
+        const status = business.status || business.subscription_status || "inactive";
+        const displayStatus = status === "suspended" ? "suspended" : status;
         return `
-            <article class="business-card">
+            <article class="business-card ${displayStatus}">
                 <div>
-                    <span class="status-pill ${status}">${status}</span>
+                    <span class="status-pill ${displayStatus}">${displayStatus}</span>
                     <h3>${business.business_name || "Unnamed business"}</h3>
                     <p>${business.plan || "No plan"} • expires ${business.subscription_expires_at ? new Date(business.subscription_expires_at).toLocaleDateString() : "not set"}</p>
                 </div>
@@ -262,6 +286,49 @@ function renderActivity(){
             <small>${item.target_type || ""} ${item.target_id || ""}</small>
         </article>
     `).join("") || `<div class="empty-state">No platform activity yet.</div>`;
+}
+
+function renderDeveloperInsight(metrics){
+    const panel = document.getElementById("developerInsight");
+    if(!panel) return;
+    const total = Number(metrics.total_businesses || 0);
+    const suspended = Number(metrics.suspended_businesses || 0);
+    const inactive = Number(metrics.inactive_businesses || 0);
+    const active = Number(metrics.active_businesses || 0);
+    const healthScore = total ? Math.round((active / total) * 100) : 0;
+    panel.innerHTML = `<div><span>Platform health</span><strong>${healthScore}% active</strong><small>${suspended} suspended - ${inactive} inactive</small></div><div><span>Operations note</span><strong>${suspended ? "Review suspended tenants" : "No suspended tenants"}</strong><small>Use business cards to activate, suspend, or deactivate accounts.</small></div>`;
+}
+
+async function checkApiHealth(){
+    try {
+        const response = await fetch(`${API_URL}/api/health`);
+        const result = await response.json();
+        showNotification(result.ok ? "API health is OK" : "API health check returned an issue", result.ok ? "success" : "error");
+    } catch(error) {
+        showNotification("API health check failed", "error");
+    }
+}
+
+function exportBusinessesCSV(){
+    const headers = ["Business", "Plan", "Status", "Users", "Reps", "Sales", "Revenue"];
+    const rows = allBusinesses.map(business => [business.business_name || "Unnamed business", business.plan || "", business.status || business.subscription_status || "inactive", business.user_count || 0, business.rep_count || 0, business.sale_count || 0, business.paid_revenue || 0]);
+    const csv = [headers, ...rows].map(row => row.map(value => `"${String(value).replaceAll('"', '""')}"`).join(",")).join("\n");
+    const blob = new Blob([csv], { type: "text/csv;charset=utf-8" });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement("a");
+    link.href = url;
+    link.download = "sales-tracker-businesses.csv";
+    link.click();
+    URL.revokeObjectURL(url);
+}
+
+async function copyApiUrl(){
+    await navigator.clipboard.writeText(API_URL);
+    showNotification("API URL copied", "success");
+}
+
+function openPricingPage(){
+    window.open("pricing.html", "_blank", "noopener");
 }
 
 function scrollToSection(id){

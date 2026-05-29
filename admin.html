@@ -1901,11 +1901,7 @@ async function loadProfiles(){
         const result =
         await getTeamApi("/api/team/profiles");
 
-        profiles = (result.profiles || []).filter(profile =>
-            profile.is_active !== false
-            &&
-            profile.status !== "inactive"
-        );
+        profiles = result.profiles || [];
 
         return;
     } catch(error) {
@@ -1918,11 +1914,7 @@ async function loadProfiles(){
     .select("*")
     .eq("business_id", businessId);
 
-    profiles = (data || []).filter(profile =>
-        profile.is_active !== false
-        &&
-        profile.status !== "inactive"
-    );
+    profiles = data || [];
 }
 
 // ========================
@@ -2695,6 +2687,22 @@ function renderLiveFeed(){
 // REP CARDS
 // ========================
 
+function getRepAccessState(rep){
+    const suspendedUntil = rep.suspended_until ? new Date(rep.suspended_until) : null;
+    const isSuspendedByDate = suspendedUntil && !Number.isNaN(suspendedUntil.getTime()) && suspendedUntil > new Date();
+    const status = String(rep.status || "").toLowerCase();
+
+    if(isSuspendedByDate || status === "suspended"){
+        return { key: "suspended", label: isSuspendedByDate ? `Suspended until ${formatDate(suspendedUntil)}` : "Suspended" };
+    }
+
+    if(rep.is_active === false || status === "inactive"){
+        return { key: "inactive", label: "Inactive" };
+    }
+
+    return { key: "active", label: "Active" };
+}
+
 function loadRepStats(){
 
     const container =
@@ -2785,13 +2793,14 @@ function loadRepStats(){
             .sort((a, b) => b - a)[0];
 
         const roleLabel = rep.role === "admin" ? "Admin" : "Sales Rep";
+        const access = getRepAccessState(rep);
 
         // CARD
         const card =
         document.createElement("div");
 
         card.className =
-        "rep-card";
+        `rep-card access-${access.key}`;
 
         card.innerHTML = `
         <div class="rep-card-top">
@@ -2800,9 +2809,10 @@ function loadRepStats(){
             <div class="rep-title">
                 <h3>${escapeHtml(rep.full_name || "Unnamed")}</h3>
                 <p>${escapeHtml(roleLabel)}</p>
+                <span class="rep-access-badge ${access.key}">${escapeHtml(access.label)}</span>
             </div>
 
-            <span class="rep-score">${conversionRate}% paid</span>
+            <span class="rep-score ${access.key}">${access.key === "active" ? String(conversionRate) + "% paid" : escapeHtml(access.label)}</span>
         </div>
 
         <div class="rep-highlight">
@@ -2844,12 +2854,21 @@ function loadRepStats(){
             <i class="fa-solid fa-arrow-right"></i>
         </button>
 
-        ${rep.role === "rep" ? `
+        ${rep.role === "rep" && access.key === "active" ? `
         <button
         class="rep-action danger"
         onclick="deactivateRep('${rep.id}')">
-            <span>Deactivate Rep</span>
+            <span>Manage Access</span>
             <i class="fa-solid fa-user-slash"></i>
+        </button>
+        ` : ""}
+
+        ${rep.role === "rep" && access.key !== "active" ? `
+        <button
+        class="rep-action reactivate"
+        onclick="reactivateRep('${rep.id}')">
+            <span>Reactivate Rep</span>
+            <i class="fa-solid fa-user-check"></i>
         </button>
         ` : ""}
         `;
@@ -3049,6 +3068,17 @@ function closeRepActionModal(){
     pendingRepActionId = null;
     const modal = document.getElementById("repActionModal");
     if(modal) modal.style.display = "none";
+}
+
+async function reactivateRep(repId){
+    try {
+        await callTeamApi(`/api/team/reps/${repId}/reactivate`, {});
+        showNotification("Rep reactivated", "success");
+        await loadProfiles();
+        loadRepStats();
+    } catch(error) {
+        showNotification(error.message, "error");
+    }
 }
 
 async function confirmRepAction(){
@@ -3578,6 +3608,8 @@ function renderPaymentChart() {
                                     text: `${label} ${percent}%`,
                                     fillStyle: dataset.backgroundColor[index],
                                     strokeStyle: dataset.borderColor,
+                                    fontColor: "#ffffff",
+                                    color: "#ffffff",
                                     lineWidth: 0,
                                     hidden: meta.data[index]?.hidden || false,
                                     index

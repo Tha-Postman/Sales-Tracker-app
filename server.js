@@ -413,7 +413,7 @@ app.get("/api/team/profiles", async (req, res) => {
 
         const { data, error } = await supabaseAdmin
             .from("profiles")
-            .select("id, full_name, email, role, business_id, is_active, status, subscription_status, subscription_plan, subscription_expires_at")
+            .select("id, full_name, email, role, business_id, is_active, status, suspended_until, subscription_status, subscription_plan, subscription_expires_at")
             .eq("business_id", adminProfile.business_id)
             .order("role", { ascending: true })
             .order("full_name", { ascending: true });
@@ -823,6 +823,42 @@ app.post("/api/team/chat/settings", async (req, res) => {
     } catch (error) {
         console.error("Update team chat settings failed:", error);
         res.status(error.status || 500).json({ error: error.message || "Could not update chat settings" });
+    }
+});
+
+app.post("/api/team/reps/:id/reactivate", async (req, res) => {
+    try {
+        const adminProfile = await requireAdminProfile(req);
+        const repId = req.params.id;
+
+        const { data: rep, error: repError } = await supabaseAdmin
+            .from("profiles")
+            .select("id, role, business_id")
+            .eq("id", repId)
+            .single();
+
+        if (repError || !rep) {
+            res.status(404).json({ error: "Rep not found" });
+            return;
+        }
+
+        if (rep.business_id !== adminProfile.business_id || rep.role !== "rep") {
+            res.status(403).json({ error: "You can only reactivate reps in your business" });
+            return;
+        }
+
+        const { error } = await supabaseAdmin
+            .from("profiles")
+            .update({ is_active: true, status: "active", suspended_until: null })
+            .eq("id", repId);
+
+        if (error) throw error;
+
+        await logAudit(adminProfile, "rep_reactivated", "profile", repId, {});
+        res.json({ ok: true });
+    } catch (error) {
+        console.error("Reactivate rep failed:", error);
+        res.status(error.status || 500).json({ error: error.message || "Could not reactivate rep" });
     }
 });
 
@@ -1382,10 +1418,22 @@ app.get("/api/developer/overview", async (req, res) => {
         const customers = customersResult.data || [];
         const products = productsResult.data || [];
 
+        const getBusinessStatus = business =>
+            String(business.status || business.subscription_status || "").toLowerCase();
+
         const activeBusinesses = businesses.filter(business =>
-            String(business.subscription_status || business.status || "").toLowerCase() === "active"
+            getBusinessStatus(business) === "active"
             && (!business.subscription_expires_at || new Date(business.subscription_expires_at) > new Date())
         );
+
+        const suspendedBusinesses = businesses.filter(business =>
+            getBusinessStatus(business) === "suspended"
+        );
+
+        const inactiveBusinesses = businesses.filter(business => {
+            const status = getBusinessStatus(business);
+            return status === "inactive" || status === "cancelled" || status === "expired";
+        });
 
         const paidSales = customers.filter(sale => String(sale.status || "").toLowerCase() === "paid");
         const revenue = paidSales.reduce((sum, sale) => sum + Number(sale.final_price || sale.price || 0), 0);
@@ -1400,6 +1448,8 @@ app.get("/api/developer/overview", async (req, res) => {
             metrics: {
                 total_businesses: businesses.length,
                 active_businesses: activeBusinesses.length,
+                suspended_businesses: suspendedBusinesses.length,
+                inactive_businesses: inactiveBusinesses.length,
                 total_users: profiles.length,
                 total_reps: profiles.filter(profile => profile.role === "rep").length,
                 total_sales: customers.length,
@@ -1488,16 +1538,27 @@ app.post("/api/developer/businesses/:id/status", async (req, res) => {
 
         const subscriptionStatus = status === "active" ? "active" : "inactive";
 
-        const { data: business, error } = await supabaseAdmin
+        let { data: business, error } = await supabaseAdmin
             .from("businesses")
-            .update({
-                subscription_status: subscriptionStatus
-            })
+            .update({ status, subscription_status: subscriptionStatus })
             .eq("id", businessId)
             .select("*")
             .single();
 
+        if (error && String(error.message || "").includes("status")) {
+            const retry = await supabaseAdmin
+                .from("businesses")
+                .update({ subscription_status: subscriptionStatus })
+                .eq("id", businessId)
+                .select("*")
+                .single();
+
+            business = retry.data ? { ...retry.data, status } : null;
+            error = retry.error;
+        }
+
         if (error) throw error;
+        if (business) business.status = business.status || status;
 
         await supabaseAdmin
             .from("profiles")

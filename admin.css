@@ -3117,12 +3117,10 @@ body:not(.sidebar-collapsed)::after {
     min-height: 220px;
     position: relative;
     width: 100%;
-    color: white;
 }
 
 .payment-method-chart-box canvas {
     max-height: 260px;
-    color: white;
 }
 
 .payment-detail-card {
@@ -3496,3 +3494,10 @@ body:not(.sidebar-collapsed)::after {
     }
 }
 
+
+/* REP ACCESS STATE POLISH */
+.rep-card.access-inactive, .rep-card.access-suspended { opacity: 0.88; border-color: rgba(251, 191, 36, 0.28); }
+.rep-access-badge { display: inline-flex; width: fit-content; margin-top: 6px; padding: 4px 8px; border-radius: 999px; font-size: 11px; font-weight: 900; color: #bbf7d0; background: rgba(34, 197, 94, 0.12); border: 1px solid rgba(34, 197, 94, 0.2); }
+.rep-access-badge.inactive, .rep-score.inactive { color: #fecaca; background: rgba(239, 68, 68, 0.12); border-color: rgba(248, 113, 113, 0.28); }
+.rep-access-badge.suspended, .rep-score.suspended { color: #fde68a; background: rgba(245, 158, 11, 0.12); border-color: rgba(251, 191, 36, 0.28); }
+.rep-card button.reactivate { background: linear-gradient(135deg, #16a34a, #0d9488); border: 1px solid rgba(74, 222, 128, 0.26); }
