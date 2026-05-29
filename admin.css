@@ -3580,3 +3580,112 @@ body:not(.sidebar-collapsed)::after {
     font-size: 13px;
     line-height: 1.45;
 }
+
+
+/* PRODUCT IMAGES */
+.product-image-wrap {
+    width: 100%;
+    aspect-ratio: 16 / 10;
+    display: grid;
+    place-items: center;
+    overflow: hidden;
+    margin: 10px 0 12px;
+    border-radius: 14px;
+    background: rgba(2, 6, 23, 0.42);
+    border: 1px solid rgba(148, 163, 184, 0.16);
+}
+
+.product-image {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    display: block;
+}
+
+.product-image-fallback {
+    width: 100%;
+    height: 100%;
+    display: grid;
+    place-items: center;
+    color: #94a3b8;
+    background:
+        linear-gradient(135deg, rgba(37, 99, 235, 0.14), rgba(20, 184, 166, 0.12));
+    font-size: 24px;
+}
+
+.product-image-edit-row {
+    grid-column: 1 / -1;
+}
+
+.product-image-preview {
+    grid-column: 1 / -1;
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    color: #cbd5e1;
+    font-size: 13px;
+}
+
+.product-image-preview .product-image-wrap {
+    width: 92px;
+    height: 64px;
+    aspect-ratio: auto;
+    margin: 0;
+    flex: 0 0 auto;
+}
+
+
+/* PRODUCT IMAGE UPLOAD */
+.product-image-input-row {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto;
+    gap: 10px;
+    align-items: center;
+}
+
+.product-file-input {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    opacity: 0;
+    pointer-events: none;
+}
+
+.product-file-picker {
+    min-height: 44px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    padding: 10px 13px;
+    border-radius: 12px;
+    color: #dbeafe;
+    background: rgba(37, 99, 235, 0.14);
+    border: 1px solid rgba(96, 165, 250, 0.24);
+    font-weight: 900;
+    cursor: pointer;
+    white-space: nowrap;
+    transition: transform 180ms ease, border-color 180ms ease, background 180ms ease;
+}
+
+.product-file-picker:hover {
+    transform: translateY(-1px);
+    border-color: rgba(96, 165, 250, 0.42);
+    background: rgba(37, 99, 235, 0.2);
+}
+
+.product-file-picker.inline {
+    width: fit-content;
+    margin-top: 8px;
+}
+
+@media (max-width: 640px) {
+    .product-image-input-row {
+        grid-template-columns: 1fr;
+    }
+
+    .product-file-picker,
+    .product-file-picker.inline {
+        width: 100%;
+    }
+}

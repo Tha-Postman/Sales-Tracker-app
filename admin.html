@@ -162,6 +162,19 @@
             required>
             
             <input type="number" id="productStock" placeholder="Stock Quantity" required>
+
+            <div class="product-image-input-row">
+                <input
+                type="url"
+                id="productImageUrl"
+                placeholder="Product image URL (optional)">
+
+                <label class="product-file-picker" for="productImageFile">
+                    <i class="fa-solid fa-cloud-arrow-up"></i>
+                    Upload image
+                </label>
+                <input id="productImageFile" class="product-file-input" type="file" accept="image/png,image/jpeg,image/webp,image/gif">
+            </div>
                 
             <button type="button" onclick="addProduct()">Add Product</button>
         </form>
@@ -169,7 +182,7 @@
         <div class="bulk-product-import">
             <div>
                 <strong>Bulk add products</strong>
-                <span>Upload CSV columns: name, price, stock</span>
+                <span>Upload CSV columns: name, price, stock, image_url</span>
             </div>
             <input id="bulkProductFile" type="file" accept=".csv,text/csv">
             <button type="button" onclick="importProductsFromCSV()">
@@ -517,6 +530,18 @@
                 <label for="editProductStock">Stock quantity</label>
                 <input id="editProductStock" type="number" min="0" step="1" placeholder="0" required>
             </div>
+
+            <div class="product-image-edit-row">
+                <label for="editProductImageUrl">Product image URL</label>
+                <input id="editProductImageUrl" type="url" placeholder="https://...">
+                <label class="product-file-picker inline" for="editProductImageFile">
+                    <i class="fa-solid fa-cloud-arrow-up"></i>
+                    Upload replacement
+                </label>
+                <input id="editProductImageFile" class="product-file-input" type="file" accept="image/png,image/jpeg,image/webp,image/gif">
+            </div>
+
+            <div id="editProductImagePreview" class="product-image-preview"></div>
 
             <label class="product-availability-toggle">
                 <input id="editProductAvailable" type="checkbox">
@@ -1256,6 +1281,33 @@ function populateProductDropdown() {
 
 // RENDER PRODUCT
 
+function getProductImageUrl(product){
+    return String(product?.image_url || product?.imageUrl || "").trim();
+}
+
+function renderProductImage(product, className = "product-image"){
+    const imageUrl = getProductImageUrl(product);
+
+    if(imageUrl){
+        return `<img class="${className}" src="${escapeHtml(imageUrl)}" alt="${escapeHtml(product?.name || "Product image")}" loading="lazy" onerror="this.closest('.product-image-wrap')?.classList.add('image-error'); this.remove();">`;
+    }
+
+    return `<div class="${className} product-image-fallback"><i class="fa-solid fa-image"></i></div>`;
+}
+
+function updateEditProductImagePreview(){
+    const preview = document.getElementById("editProductImagePreview");
+    const input = document.getElementById("editProductImageUrl");
+
+    if(!preview || !input) return;
+
+    const imageUrl = input.value.trim();
+
+    preview.innerHTML = imageUrl
+        ? `<div class="product-image-wrap"><img src="${escapeHtml(imageUrl)}" alt="Product preview" onerror="this.parentElement.innerHTML='<div class=\'product-image-fallback\'><i class=\'fa-solid fa-image\'></i></div>';"></div><span>Image preview</span>`
+        : `<div class="product-image-wrap"><div class="product-image-fallback"><i class="fa-solid fa-image"></i></div></div><span>No image yet</span>`;
+}
+
 function getLowStockThreshold(){
     return Number(businessSettings?.low_stock_threshold ?? 5);
 }
@@ -1329,6 +1381,9 @@ function renderProducts(list = products){
             <div class="product-card-top">
                 <span class="product-number">#${index + 1}</span>
                 <span class="product-stock-tag ${stockClass}">${getStockLabel(stock)}</span>
+            </div>
+            <div class="product-image-wrap">
+                ${renderProductImage(p)}
             </div>
             <h4>${escapeHtml(p.name)}</h4>
             <p>${formatCurrency(p.price)}</p>
@@ -1412,11 +1467,12 @@ async function importProductsFromCSV(){
     const productsToInsert = rows
         .slice(rows[0]?.toLowerCase().includes("name") ? 1 : 0)
         .map(row => {
-            const [name, price, stock] = row.split(",").map(cell => cell?.trim());
+            const [name, price, stock, imageUrl] = row.split(",").map(cell => cell?.trim());
             return {
                 name,
                 price: Number(price),
                 stock_quantity: Number(stock),
+                image_url: imageUrl || null,
                 available: Number(stock) > 0,
                 business_id: businessId
             };
@@ -1424,7 +1480,7 @@ async function importProductsFromCSV(){
         .filter(item => item.name && !Number.isNaN(item.price) && !Number.isNaN(item.stock_quantity));
 
     if(productsToInsert.length === 0){
-        showNotification("No valid products found. Use columns: name, price, stock", "error");
+        showNotification("No valid products found. Use columns: name, price, stock, image_url", "error");
         return;
     }
 
@@ -1461,6 +1517,64 @@ async function logAdminAudit(action, targetType, targetId, details = {}){
     }
 }
 
+async function uploadProductImageIfNeeded(fileInputId, urlInputId, productName = "product"){
+    const fileInput = document.getElementById(fileInputId);
+    const urlInput = document.getElementById(urlInputId);
+    const file = fileInput?.files?.[0];
+
+    if(!file) return urlInput?.value.trim() || "";
+
+    const allowedTypes = ["image/png", "image/jpeg", "image/webp", "image/gif"];
+
+    if(!allowedTypes.includes(file.type)){
+        showNotification("Upload a PNG, JPG, WEBP, or GIF product image", "error");
+        return "";
+    }
+
+    if(file.size > 2 * 1024 * 1024){
+        showNotification("Product image must be 2MB or less", "error");
+        return "";
+    }
+
+    const businessId = getBusinessId();
+
+    if(!businessId){
+        showNotification("Business account not ready", "error");
+        return "";
+    }
+
+    const extension = (file.name.split(".").pop() || "jpg").toLowerCase().replace(/[^a-z0-9]/g, "") || "jpg";
+    const safeName = String(productName || "product")
+        .toLowerCase()
+        .replace(/[^a-z0-9]+/g, "-")
+        .replace(/^-|-$/g, "")
+        .slice(0, 48) || "product";
+    const filePath = `${businessId}/${safeName}-${Date.now()}.${extension}`;
+
+    const { error } = await supabaseClient.storage
+        .from("product-images")
+        .upload(filePath, file, {
+            cacheControl: "3600",
+            upsert: true
+        });
+
+    if(error){
+        showNotification(error.message || "Product image upload failed. Check the product-images storage bucket.", "error");
+        return "";
+    }
+
+    const { data } = supabaseClient.storage
+        .from("product-images")
+        .getPublicUrl(filePath);
+
+    const publicUrl = data?.publicUrl || "";
+
+    if(urlInput) urlInput.value = publicUrl;
+    if(fileInput) fileInput.value = "";
+
+    return publicUrl;
+}
+
 async function addProduct(){
 
     const businessId = getBusinessId();
@@ -1483,12 +1597,17 @@ async function addProduct(){
         document.getElementById("productStock").value
     );
 
+    let imageUrl =
+    document.getElementById("productImageUrl")?.value.trim() || "";
+
     if(!name || Number.isNaN(price) || Number.isNaN(stock) || price < 0 || stock < 0){
 
         showNotification("Enter a valid product name, price, and stock");
 
         return;
     }
+
+    imageUrl = await uploadProductImageIfNeeded("productImageFile", "productImageUrl", name);
     
 
     const { error } =
@@ -1501,6 +1620,8 @@ async function addProduct(){
         price,
 
         stock_quantity: stock,
+
+        image_url: imageUrl || null,
 
         available: stock > 0,
 
@@ -1527,7 +1648,7 @@ async function addProduct(){
     
 
     showNotification("Product added");
-    await logAdminAudit("product_added", "product", name, { name, price, stock });
+    await logAdminAudit("product_added", "product", name, { name, price, stock, image_url: imageUrl || null });
 
     clearProductForm();
 
@@ -1575,7 +1696,9 @@ function editProduct(id){
     document.getElementById("editProductName").value = product.name || "";
     document.getElementById("editProductPrice").value = Number(product.price || 0);
     document.getElementById("editProductStock").value = Number(product.stock_quantity || 0);
+    document.getElementById("editProductImageUrl").value = getProductImageUrl(product);
     document.getElementById("editProductAvailable").checked = product.available !== false && Number(product.stock_quantity || 0) > 0;
+    updateEditProductImagePreview();
 
     const hint = document.getElementById("productEditHint");
     if(hint){
@@ -1593,6 +1716,44 @@ function closeProductEditModal(){
     }
 }
 
+function bindProductUploadPreview(){
+    const pairs = [
+        ["productImageFile", "productImageUrl"],
+        ["editProductImageFile", "editProductImageUrl"]
+    ];
+
+    pairs.forEach(([fileId, urlId]) => {
+        const fileInput = document.getElementById(fileId);
+        const urlInput = document.getElementById(urlId);
+
+        if(!fileInput || fileInput.dataset.bound === "true") return;
+
+        fileInput.dataset.bound = "true";
+        fileInput.addEventListener("change", () => {
+            const file = fileInput.files?.[0];
+
+            if(!file) return;
+
+            if(urlInput) urlInput.value = file.name;
+
+            if(fileId === "editProductImageFile"){
+                const preview = document.getElementById("editProductImagePreview");
+                if(preview){
+                    const objectUrl = URL.createObjectURL(file);
+                    preview.innerHTML = `<div class="product-image-wrap"><img src="${objectUrl}" alt="Product preview" onload="URL.revokeObjectURL('${objectUrl}')"></div><span>Ready to upload</span>`;
+                }
+            }
+        });
+    });
+}
+
+function bindProductImagePreview(){
+    const input = document.getElementById("editProductImageUrl");
+    if(!input || input.dataset.bound === "true") return;
+    input.dataset.bound = "true";
+    input.addEventListener("input", updateEditProductImagePreview);
+}
+
 function bindProductEditForm(){
     const form = document.getElementById("productEditForm");
 
@@ -1607,6 +1768,7 @@ function bindProductEditForm(){
         const name = document.getElementById("editProductName").value.trim();
         const price = Number(document.getElementById("editProductPrice").value);
         const stock = Number(document.getElementById("editProductStock").value);
+        let imageUrl = document.getElementById("editProductImageUrl").value.trim();
         const available = document.getElementById("editProductAvailable").checked && stock > 0;
         const button = form.querySelector("button[type='submit']");
 
@@ -1618,6 +1780,9 @@ function bindProductEditForm(){
         button.disabled = true;
         button.innerHTML = `<i class="fa-solid fa-spinner fa-spin"></i> Saving...`;
 
+        imageUrl = await uploadProductImageIfNeeded("editProductImageFile", "editProductImageUrl", name);
+        updateEditProductImagePreview();
+
         const { error } =
         await supabaseClient
         .from("products")
@@ -1625,6 +1790,7 @@ function bindProductEditForm(){
             name,
             price,
             stock_quantity: stock,
+            image_url: imageUrl || null,
             available
         })
         .eq("id", id)
@@ -1640,7 +1806,7 @@ function bindProductEditForm(){
         }
 
         showNotification("Product updated", "success");
-        await logAdminAudit("product_updated", "product", id, { name, price, stock, available });
+        await logAdminAudit("product_updated", "product", id, { name, price, stock, image_url: imageUrl || null, available });
         closeProductEditModal();
         await loadProducts();
     });
@@ -1941,6 +2107,8 @@ async function init(){
     bindChatForm();
     bindBusinessSettingsForm();
     bindProductEditForm();
+    bindProductImagePreview();
+    bindProductUploadPreview();
     bindPasswordForm();
 
     setProductsOpen(false);

@@ -114,6 +114,7 @@
                 
 
                 <select title="Select product" id="product" onchange="setPrice()"></select>
+                            <div id="selectedProductPreview" class="selected-product-preview"></div>
             </div>
 
             <!-- QUANTITY -->
@@ -1123,6 +1124,44 @@ function saveSaleOffline(saleData){
     showToast("Saved offline");
 }
 
+function getProductImageUrl(product){
+    return String(product?.image_url || product?.imageUrl || product?.image || "").trim();
+}
+
+function renderProductThumb(product, className = "product-thumb"){
+    const imageUrl = getProductImageUrl(product);
+
+    if(imageUrl){
+        return `<img class="${className}" src="${escapeHtml(imageUrl)}" alt="${escapeHtml(product?.name || product?.product || "Product")}" loading="lazy" onerror="this.replaceWith(Object.assign(document.createElement('div'), { className: '${className} product-thumb-fallback', innerHTML: '<i class=\'fa-solid fa-image\'></i>' }))">`;
+    }
+
+    return `<div class="${className} product-thumb-fallback"><i class="fa-solid fa-image"></i></div>`;
+}
+
+function updateSelectedProductPreview(product){
+    const preview = document.getElementById("selectedProductPreview");
+
+    if(!preview) return;
+
+    if(!product){
+        preview.innerHTML = "";
+        preview.classList.remove("show");
+        return;
+    }
+
+    const stock = Number(product.stock_quantity || 0);
+    const stockLabel = stock <= 0 ? "Out of stock" : `${stock} left`;
+
+    preview.innerHTML = `
+        ${renderProductThumb(product)}
+        <div>
+            <strong>${escapeHtml(product.name || "Product")}</strong>
+            <span>${formatMoney(product.price)} · ${stockLabel}</span>
+        </div>
+    `;
+    preview.classList.add("show");
+}
+
 function getProductStock(productId){
     const product = productsMap[productId] || products.find(p => String(p.id) === String(productId));
     return Number(product?.stock_quantity || 0);
@@ -1658,6 +1697,9 @@ function populateProductDropdown(){
         option.dataset.price =
         product.price;
 
+        option.dataset.image =
+        getProductImageUrl(product);
+
         option.dataset.stock =
         product.stock_quantity || 0;
 
@@ -1685,7 +1727,36 @@ function populateProductDropdown(){
 
             itemSelectText: "",
 
-            shouldSort: false
+            shouldSort: false,
+
+            callbackOnCreateTemplates: function(template) {
+                return {
+                    item: ({ classNames }, data) => {
+                        const product = productsMap[data.value] || {};
+                        const imageUrl = getProductImageUrl(product);
+                        return template(`
+                            <div class="${classNames.item} ${data.highlighted ? classNames.highlightedState : classNames.itemSelectable} product-choice-selected"
+                                data-item data-id="${data.id}" data-value="${escapeHtml(data.value)}" ${data.active ? 'aria-selected="true"' : ''} ${data.disabled ? 'aria-disabled="true"' : ''}>
+                                ${imageUrl ? `<img src="${escapeHtml(imageUrl)}" alt="">` : `<span><i class="fa-solid fa-image"></i></span>`}
+                                <strong>${escapeHtml(data.label)}</strong>
+                            </div>
+                        `);
+                    },
+                    choice: ({ classNames }, data) => {
+                        const product = productsMap[data.value] || {};
+                        const imageUrl = getProductImageUrl(product);
+                        return template(`
+                            <div class="${classNames.item} ${classNames.itemChoice} ${data.disabled ? classNames.itemDisabled : classNames.itemSelectable} product-choice-option"
+                                data-select-text="${this.config.itemSelectText}" data-choice ${data.disabled ? 'data-choice-disabled aria-disabled="true"' : 'data-choice-selectable'} data-id="${data.id}" data-value="${escapeHtml(data.value)}" ${data.groupId > 0 ? 'role="treeitem"' : 'role="option"'}>
+                                ${imageUrl ? `<img src="${escapeHtml(imageUrl)}" alt="">` : `<span><i class="fa-solid fa-image"></i></span>`}
+                                <div>
+                                    <strong>${escapeHtml(data.label)}</strong>
+                                </div>
+                            </div>
+                        `);
+                    }
+                };
+            }
         });
 
     }, 100);
@@ -2559,12 +2630,15 @@ function setPrice(){
 
     if(!selected){
         document.getElementById("price").value = "";
+        updateSelectedProductPreview(null);
         calculateTotal();
         return;
     }
 
     document.getElementById("price").value =
     Number(selected.price || 0);
+
+    updateSelectedProductPreview(selected);
 
     calculateTotal();
 }
@@ -2660,6 +2734,9 @@ function addToCart() {
     const productId =
     selectedOption?.dataset.id || "";
 
+    const imageUrl =
+    selectedOption?.dataset.image || getProductImageUrl(productsMap[productId]) || "";
+
     const quantity =
     Number(
         document.getElementById("quantity").value
@@ -2697,6 +2774,9 @@ if(existingItem){
 
     existingItem.discount += discount;
 
+    
+    existingItem.image_url = existingItem.image_url || imageUrl;
+
     existingItem.total =
     (existingItem.quantity * existingItem.price)
     - existingItem.discount;
@@ -2709,6 +2789,9 @@ if(existingItem){
         productId,
 
         product,
+
+        
+        image_url: imageUrl,
 
         quantity,
 
@@ -2795,10 +2878,15 @@ function renderCart() {
 
         div.className = "cart-item";
 
+        const itemProduct = productsMap[item.productId] || item;
+
         div.innerHTML = `
-            <div class="cart-item-main">
-                <strong>${escapeHtml(item.product || "Product")}</strong>
-                <span>Qty ${item.quantity}</span>
+            <div class="cart-product-identity">
+                ${renderProductThumb(itemProduct, "cart-product-thumb")}
+                <div class="cart-item-main">
+                    <strong>${escapeHtml(item.product || "Product")}</strong>
+                    <span>Qty ${item.quantity}</span>
+                </div>
             </div>
 
             <div class="cart-item-details">
