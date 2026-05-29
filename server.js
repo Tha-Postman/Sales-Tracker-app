@@ -48,6 +48,11 @@ const PLAN_REP_LIMITS = {
 };
 
 const DEFAULT_RECEIPT_FOOTER = "Thank you for your purchase.";
+const DEFAULT_PLAN_PRICING = {
+    starter: { name: "Starter", monthly_ngn: 10000 },
+    business: { name: "Business", monthly_ngn: 25000 },
+    pro: { name: "Pro", monthly_ngn: 50000 }
+};
 
 const allowedOrigins = [
     appUrl,
@@ -70,6 +75,45 @@ app.use(cors({
 
 app.get("/api/health", (req, res) => {
     res.json({ ok: true });
+});
+
+function normalizePricingRows(rows = []) {
+    const pricing = { ...DEFAULT_PLAN_PRICING };
+
+    rows.forEach(row => {
+        const key = getPlanKey(row.plan_key || row.plan || "");
+        if (!pricing[key] || key === "enterprise") return;
+
+        pricing[key] = {
+            name: row.name || DEFAULT_PLAN_PRICING[key].name,
+            monthly_ngn: Number(row.monthly_ngn || row.monthlyNgn || DEFAULT_PLAN_PRICING[key].monthly_ngn)
+        };
+    });
+
+    return pricing;
+}
+
+async function loadPlatformPricing() {
+    const { data, error } = await supabaseAdmin
+        .from("platform_pricing")
+        .select("*");
+
+    if (error) {
+        if (isMissingTableError(error)) return DEFAULT_PLAN_PRICING;
+        throw error;
+    }
+
+    return normalizePricingRows(data || []);
+}
+
+app.get("/api/public/pricing", async (req, res) => {
+    try {
+        const pricing = await loadPlatformPricing();
+        res.json({ ok: true, pricing });
+    } catch (error) {
+        console.error("Load public pricing failed:", error);
+        res.json({ ok: true, pricing: DEFAULT_PLAN_PRICING });
+    }
 });
 
 app.get("/api/auth/access", async (req, res) => {
@@ -502,7 +546,9 @@ app.post("/api/team/business/settings", async (req, res) => {
         const businessName = String(req.body.business_name || "").trim();
         const currency = String(req.body.currency || "NGN").trim().toUpperCase();
         const receiptFooter = String(req.body.receipt_footer || DEFAULT_RECEIPT_FOOTER).trim();
+        const receiptLogoUrl = String(req.body.receipt_logo_url || "").trim();
         const lowStockThreshold = Number(req.body.low_stock_threshold || 5);
+        const canUseCustomLogo = getPlanLevel(profile.subscription_plan) >= PLAN_LEVELS.pro;
 
         if (!businessName) {
             res.status(400).json({ error: "Business name is required" });
@@ -517,6 +563,7 @@ app.post("/api/team/business/settings", async (req, res) => {
                 business_name: businessName,
                 currency,
                 receipt_footer: receiptFooter || DEFAULT_RECEIPT_FOOTER,
+                receipt_logo_url: canUseCustomLogo ? receiptLogoUrl : null,
                 low_stock_threshold: Number.isFinite(lowStockThreshold) ? Math.max(0, lowStockThreshold) : 5,
                 plan: profile.subscription_plan || "starter-monthly",
                 subscription_status: profile.subscription_status || "active",
@@ -531,7 +578,8 @@ app.post("/api/team/business/settings", async (req, res) => {
 
         await logAudit(profile, "business_settings_updated", "business", profile.business_id, {
             business_name: businessName,
-            currency
+            currency,
+            receipt_logo_url: canUseCustomLogo ? receiptLogoUrl : null
         });
 
         res.json({ ok: true, business: data });
@@ -1245,6 +1293,27 @@ function getRepLimit(profile) {
     return PLAN_REP_LIMITS[getPlanKey(profile?.subscription_plan)];
 }
 
+async function validatePaymentAmount({ plan, billingCycle, paidAmount }) {
+    const planKey = getPlanKey(plan);
+
+    if (planKey === "enterprise" || !DEFAULT_PLAN_PRICING[planKey]) {
+        throw new Error("Invalid subscription plan");
+    }
+
+    const pricing = await loadPlatformPricing();
+    const monthly = Number(pricing[planKey]?.monthly_ngn || DEFAULT_PLAN_PRICING[planKey].monthly_ngn);
+    const expectedNgn = billingCycle === "yearly"
+        ? Math.round(monthly * 11)
+        : monthly;
+
+    const expectedKobo = expectedNgn * 100;
+    const actualKobo = Number(paidAmount || 0);
+
+    if (!actualKobo || Math.abs(actualKobo - expectedKobo) > 100) {
+        throw new Error("Payment amount does not match the selected plan. Please restart checkout.");
+    }
+}
+
 function isMissingTableError(error) {
     const message = String(error?.message || "").toLowerCase();
     return error?.code === "42P01"
@@ -1327,6 +1396,12 @@ async function activateSubscriptionFromPaystack(payment) {
     if (!userId) {
         throw new Error("Paystack metadata is missing user_id");
     }
+
+    await validatePaymentAmount({
+        plan,
+        billingCycle,
+        paidAmount: payment.amount
+    });
 
     const { businessId, expiresAt } = await ensureBusinessForOwner({
         userId,
@@ -1574,6 +1649,46 @@ app.post("/api/developer/businesses/:id/status", async (req, res) => {
     } catch (error) {
         console.error("Developer business status failed:", error);
         res.status(error.status || 500).json({ error: error.message || "Could not update business status" });
+    }
+});
+
+app.get("/api/developer/pricing", async (req, res) => {
+    try {
+        await requireDeveloperProfile(req);
+        const pricing = await loadPlatformPricing();
+        res.json({ ok: true, pricing });
+    } catch (error) {
+        console.error("Developer pricing load failed:", error);
+        res.status(error.status || 500).json({ error: error.message || "Could not load pricing" });
+    }
+});
+
+app.post("/api/developer/pricing", async (req, res) => {
+    try {
+        const developer = await requireDeveloperProfile(req);
+        const pricing = req.body?.pricing || {};
+        const rows = ["starter", "business", "pro"].map(plan => {
+            const amount = Number(pricing[plan]?.monthly_ngn || pricing[plan]?.monthlyNgn || DEFAULT_PLAN_PRICING[plan].monthly_ngn);
+            return {
+                plan_key: plan,
+                name: DEFAULT_PLAN_PRICING[plan].name,
+                monthly_ngn: Math.max(1, Math.round(amount)),
+                updated_by: developer.id,
+                updated_at: new Date().toISOString()
+            };
+        });
+
+        const { error } = await supabaseAdmin
+            .from("platform_pricing")
+            .upsert(rows, { onConflict: "plan_key" });
+
+        if (error) throw error;
+
+        await logPlatformAudit(developer, "platform_pricing_updated", "pricing", "plans", { plans: rows });
+        res.json({ ok: true, pricing: normalizePricingRows(rows) });
+    } catch (error) {
+        console.error("Developer pricing save failed:", error);
+        res.status(error.status || 500).json({ error: error.message || "Could not save pricing. Run developer-dashboard-upgrade.sql first." });
     }
 });
 

@@ -147,7 +147,7 @@
         : "https://sales-tracker-app-cd7k.onrender.com"
 );
         const YEARLY_MONTHS = 11;
-        const plans = {
+        let plans = {
             starter: { name: "Starter", monthlyNgn: 10000 },
             business: { name: "Business", monthlyNgn: 25000 },
             pro: { name: "Pro", monthlyNgn: 50000 }
@@ -230,6 +230,22 @@
             return billingCycle === "yearly"
                 ? Math.round(base * YEARLY_MONTHS)
                 : base;
+        }
+
+        async function loadPlanPricing() {
+            try {
+                const response = await fetch(`${PAYMENT_API_URL}/api/public/pricing`);
+                const result = await response.json();
+                if(!response.ok || !result.pricing) return;
+
+                plans = {
+                    starter: { name: "Starter", monthlyNgn: Number(result.pricing.starter?.monthly_ngn || result.pricing.starter?.monthlyNgn || plans.starter.monthlyNgn) },
+                    business: { name: "Business", monthlyNgn: Number(result.pricing.business?.monthly_ngn || result.pricing.business?.monthlyNgn || plans.business.monthlyNgn) },
+                    pro: { name: "Pro", monthlyNgn: Number(result.pricing.pro?.monthly_ngn || result.pricing.pro?.monthlyNgn || plans.pro.monthlyNgn) }
+                };
+            } catch(error) {
+                console.log("Pricing defaults active:", error.message);
+            }
         }
 
         function renderPrices() {
@@ -341,6 +357,7 @@
                     plan,
                     billing_cycle: billingCycle,
                     currency: selectedCurrency,
+                    expected_amount_ngn: getPlanPriceNgn(plan),
                     user_id: user.id
                 },
                 callback: response => activateSubscription(plan, response.reference),
@@ -352,9 +369,11 @@
 
         selectedCurrency = detectCurrency();
         document.getElementById("currencySelect").value = selectedCurrency;
-        renderPrices();
+        loadPlanPricing().then(renderPrices);
 
         window.addEventListener("load", async () => {
+            await loadPlanPricing();
+            renderPrices();
             const params = new URLSearchParams(window.location.search);
             const shouldResumeCheckout = params.get("resumeCheckout") === "1";
             const pendingPlan = localStorage.getItem("pendingPlan");

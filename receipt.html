@@ -48,6 +48,15 @@
             margin-bottom: 8px;
         }
 
+        .receipt-logo-img {
+            width: 58px;
+            height: 58px;
+            object-fit: contain;
+            border-radius: 14px;
+            border: 1px solid #e2e8f0;
+            background: #ffffff;
+        }
+
         .receipt-logo .logo-mark {
             width: 42px;
             height: 42px;
@@ -237,7 +246,9 @@
 
             const logo = document.createElement("div");
             logo.className = "receipt-logo";
-            logo.innerHTML = `<span class="logo-mark"><i class="fa-solid fa-chart-simple"></i></span><span>Sales Tracker</span>`;
+            logo.innerHTML = sale.receipt_logo_url
+                ? `<img class="receipt-logo-img" src="${sale.receipt_logo_url}" alt="${sale.business_name || "Business"} logo"><span>${sale.business_name || "Receipt"}</span>`
+                : `<span class="logo-mark"><i class="fa-solid fa-chart-simple"></i></span><span>Sales Tracker</span>`;
             head.appendChild(logo);
             addText(head, "p", sale.business_name ? `${sale.business_name} - Official Receipt` : "Official Receipt", "muted");
 

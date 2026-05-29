@@ -3501,3 +3501,36 @@ body:not(.sidebar-collapsed)::after {
 .rep-access-badge.inactive, .rep-score.inactive { color: #fecaca; background: rgba(239, 68, 68, 0.12); border-color: rgba(248, 113, 113, 0.28); }
 .rep-access-badge.suspended, .rep-score.suspended { color: #fde68a; background: rgba(245, 158, 11, 0.12); border-color: rgba(251, 191, 36, 0.28); }
 .rep-card button.reactivate { background: linear-gradient(135deg, #16a34a, #0d9488); border: 1px solid rgba(74, 222, 128, 0.26); }
+
+
+/* PRO RECEIPT LOGO SETTING */
+.pro-logo-setting small {
+    display: block;
+    margin-top: 6px;
+    color: #93c5fd;
+    font-size: 12px;
+    font-weight: 800;
+}
+
+.pro-logo-setting label span {
+    margin-left: 6px;
+    padding: 3px 7px;
+    border-radius: 999px;
+    color: #fde68a;
+    background: rgba(245, 158, 11, 0.14);
+    font-size: 11px;
+}
+
+.pro-logo-setting.locked {
+    opacity: 0.62;
+}
+
+.pro-logo-setting.locked input {
+    pointer-events: none;
+}
+
+
+.pro-logo-setting input[type="file"] {
+    margin-top: 8px;
+    color: #dbeafe;
+}

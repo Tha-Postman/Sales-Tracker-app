@@ -89,6 +89,19 @@
                         <h2>Developer Tools</h2>
                     </div>
                 </div>
+                <form id="pricingEditor" class="pricing-editor" onsubmit="savePlatformPricing(event)">
+                    <label>Starter monthly
+                        <input id="priceStarter" type="number" min="1" step="1">
+                    </label>
+                    <label>Business monthly
+                        <input id="priceBusiness" type="number" min="1" step="1">
+                    </label>
+                    <label>Pro monthly
+                        <input id="pricePro" type="number" min="1" step="1">
+                    </label>
+                    <button type="submit"><i class="fa-solid fa-floppy-disk"></i> Save Pricing</button>
+                </form>
+
                 <div class="dev-tools-grid">
                     <button type="button" onclick="checkApiHealth()"><i class="fa-solid fa-heart-pulse"></i> Check API Health</button>
                     <button type="button" onclick="exportBusinessesCSV()"><i class="fa-solid fa-file-csv"></i> Export Businesses CSV</button>
@@ -187,6 +200,7 @@ async function loadDeveloperDashboard(){
         renderBusinesses();
         renderActivity();
         renderDeveloperInsight(overview.metrics || {});
+        await loadPlatformPricingEditor();
     } catch(error) {
         showNotification(error.message, "error");
         if(error.message.toLowerCase().includes("access")){
@@ -297,6 +311,37 @@ function renderDeveloperInsight(metrics){
     const active = Number(metrics.active_businesses || 0);
     const healthScore = total ? Math.round((active / total) * 100) : 0;
     panel.innerHTML = `<div><span>Platform health</span><strong>${healthScore}% active</strong><small>${suspended} suspended - ${inactive} inactive</small></div><div><span>Operations note</span><strong>${suspended ? "Review suspended tenants" : "No suspended tenants"}</strong><small>Use business cards to activate, suspend, or deactivate accounts.</small></div>`;
+}
+
+async function loadPlatformPricingEditor(){
+    try {
+        const result = await devFetch("/api/developer/pricing");
+        const pricing = result.pricing || {};
+        document.getElementById("priceStarter").value = pricing.starter?.monthly_ngn || pricing.starter?.monthlyNgn || 10000;
+        document.getElementById("priceBusiness").value = pricing.business?.monthly_ngn || pricing.business?.monthlyNgn || 25000;
+        document.getElementById("pricePro").value = pricing.pro?.monthly_ngn || pricing.pro?.monthlyNgn || 50000;
+    } catch(error) {
+        showNotification(error.message, "error");
+    }
+}
+
+async function savePlatformPricing(event){
+    event.preventDefault();
+    try {
+        await devFetch("/api/developer/pricing", {
+            method: "POST",
+            body: JSON.stringify({
+                pricing: {
+                    starter: { monthly_ngn: Number(document.getElementById("priceStarter").value || 0) },
+                    business: { monthly_ngn: Number(document.getElementById("priceBusiness").value || 0) },
+                    pro: { monthly_ngn: Number(document.getElementById("pricePro").value || 0) }
+                }
+            })
+        });
+        showNotification("Pricing updated", "success");
+    } catch(error) {
+        showNotification(error.message, "error");
+    }
 }
 
 async function checkApiHealth(){

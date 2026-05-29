@@ -2359,6 +2359,7 @@ function printReceipt(id) {
         ...c,
         business_name: currentBusinessSettings?.business_name || "Sales Tracker",
         receipt_footer: currentBusinessSettings?.receipt_footer || "Thank you for your purchase.",
+        receipt_logo_url: currentBusinessSettings?.receipt_logo_url || "",
         currency: currentBusinessSettings?.currency || currentProfile?.subscription_currency || "NGN",
         created_by: c.created_by || currentProfile?.full_name || "Sales Rep"
     }));

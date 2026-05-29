@@ -332,6 +332,12 @@
                     <label for="receiptFooterInput">Receipt footer</label>
                     <input id="receiptFooterInput" type="text" placeholder="Thank you for your purchase.">
                 </div>
+                <div class="settings-wide pro-logo-setting" id="receiptLogoSetting">
+                    <label for="receiptLogoInput">Receipt logo URL <span>Pro</span></label>
+                    <input id="receiptLogoInput" type="url" placeholder="https://yourdomain.com/logo.png">
+                    <input id="receiptLogoFile" type="file" accept="image/png,image/jpeg,image/webp,image/svg+xml">
+                    <small>Pro businesses can upload a logo or paste a public image URL for printed receipts.</small>
+                </div>
                 <button type="submit"><i class="fa-solid fa-floppy-disk"></i> Save Settings</button>
             </form>
 
@@ -916,9 +922,13 @@ function renderSubscriptionPanel(){
             </div>
 
             <div class="subscription-actions">
-                <button type="button" onclick="goTo('pricing.html')">
+                <button type="button" onclick="goTo('pricing.html?checkout=1')">
                     <i class="fa-solid fa-arrow-up-right-dots"></i>
-                    Upgrade Plan
+                    Change Plan
+                </button>
+                <button type="button" class="secondary" onclick="exportBusinessBackup()">
+                    <i class="fa-solid fa-box-archive"></i>
+                    Backup
                 </button>
                 <button type="button" class="secondary" onclick="loadBusinessSettings()">
                     <i class="fa-solid fa-rotate"></i>
@@ -1405,6 +1415,25 @@ async function importProductsFromCSV(){
     await loadProducts();
 }
 
+async function logAdminAudit(action, targetType, targetId, details = {}){
+    try {
+        await supabaseClient
+            .from("audit_logs")
+            .insert({
+                business_id: getBusinessId(),
+                actor_id: currentProfile?.id || null,
+                actor_name: currentProfile?.full_name || currentProfile?.email || "Admin",
+                actor_role: currentProfile?.role || "admin",
+                action,
+                target_type: targetType,
+                target_id: targetId,
+                details
+            });
+    } catch(error) {
+        console.log("Audit log skipped:", error.message);
+    }
+}
+
 async function addProduct(){
 
     const businessId = getBusinessId();
@@ -1471,6 +1500,7 @@ async function addProduct(){
     
 
     showNotification("Product added");
+    await logAdminAudit("product_added", "product", name, { name, price, stock });
 
     clearProductForm();
 
@@ -1583,12 +1613,41 @@ function bindProductEditForm(){
         }
 
         showNotification("Product updated", "success");
+        await logAdminAudit("product_updated", "product", id, { name, price, stock, available });
         closeProductEditModal();
         await loadProducts();
     });
 }
 
 // EXPORT EXCEL
+
+function downloadJson(filename, data){
+    const blob = new Blob([JSON.stringify(data, null, 2)], { type: "application/json" });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement("a");
+    link.href = url;
+    link.download = filename;
+    link.click();
+    URL.revokeObjectURL(url);
+}
+
+function exportBusinessBackup(){
+    const stamp = new Date().toISOString().slice(0, 10);
+    downloadJson(`sales-tracker-backup-${stamp}.json`, {
+        business: businessSettings,
+        profile: currentProfile,
+        products,
+        customers: allCustomers,
+        team: profiles,
+        exported_at: new Date().toISOString()
+    });
+    showNotification("Backup downloaded", "success");
+    logAdminAudit("business_backup_exported", "business", getBusinessId(), {
+        products: products.length,
+        customers: allCustomers.length,
+        team: profiles.length
+    });
+}
 
 function exportExcel(){
 
@@ -2345,9 +2404,25 @@ function renderBusinessTools(){
 
 
 
+function dismissOnboardingChecklist(){
+    localStorage.setItem(`salesTrackerChecklistDismissed:${getBusinessId() || "default"}`, "1");
+    const container = document.getElementById("onboardingChecklist");
+    if(container){
+        container.innerHTML = "";
+        container.style.display = "none";
+    }
+}
+
 function renderOnboardingChecklist(){
     const container = document.getElementById("onboardingChecklist");
     if(!container) return;
+
+    const checklistKey = `salesTrackerChecklistDismissed:${getBusinessId() || "default"}`;
+    if(localStorage.getItem(checklistKey) === "1"){
+        container.innerHTML = "";
+        container.style.display = "none";
+        return;
+    }
 
     const reps = profiles.filter(profile => profile.role === "rep");
     const items = [
@@ -2360,6 +2435,7 @@ function renderOnboardingChecklist(){
     const complete = items.filter(item => item.done).length;
 
     if(complete === items.length){
+        localStorage.setItem(`salesTrackerChecklistDismissed:${getBusinessId() || "default"}`, "1");
         container.innerHTML = "";
         container.style.display = "none";
         return;
@@ -2373,7 +2449,10 @@ function renderOnboardingChecklist(){
                 <p class="section-kicker">Launch Checklist</p>
                 <h2>${complete}/${items.length} ready</h2>
             </div>
-            <span class="section-badge">Owner onboarding</span>
+            <button type="button" class="section-action subtle" onclick="dismissOnboardingChecklist()">
+                <i class="fa-solid fa-xmark"></i>
+                Dismiss
+            </button>
         </div>
         <div class="onboarding-items">
             ${items.map(item => `
@@ -2397,11 +2476,15 @@ async function loadBusinessSettings(){
         const currency = document.getElementById("businessCurrencyInput");
         const threshold = document.getElementById("lowStockThresholdInput");
         const footer = document.getElementById("receiptFooterInput");
+        const logo = document.getElementById("receiptLogoInput");
+        const logoSetting = document.getElementById("receiptLogoSetting");
 
         if(name) name.value = businessSettings?.business_name || "";
         if(currency) currency.value = businessCurrency;
         if(threshold) threshold.value = businessSettings?.low_stock_threshold ?? 5;
         if(footer) footer.value = businessSettings?.receipt_footer || "Thank you for your purchase.";
+        if(logo) logo.value = businessSettings?.receipt_logo_url || "";
+        if(logoSetting) logoSetting.classList.toggle("locked", !isProPlan());
 
         renderOnboardingChecklist();
         renderSubscriptionPanel();
@@ -2409,6 +2492,47 @@ async function loadBusinessSettings(){
     } catch(error) {
         console.log("Business settings load failed:", error.message);
     }
+}
+
+async function uploadReceiptLogoIfNeeded(){
+    const fileInput = document.getElementById("receiptLogoFile");
+    const file = fileInput?.files?.[0];
+
+    if(!file) return document.getElementById("receiptLogoInput")?.value || "";
+
+    if(!isProPlan()){
+        showNotification("Custom receipt logos are available on Pro", "warning");
+        return "";
+    }
+
+    if(file.size > 1024 * 1024){
+        showNotification("Logo must be 1MB or less", "error");
+        return "";
+    }
+
+    const businessId = getBusinessId();
+    const extension = (file.name.split(".").pop() || "png").toLowerCase();
+    const safeExtension = ["png", "jpg", "jpeg", "webp", "svg"].includes(extension) ? extension : "png";
+    const filePath = `${businessId}/receipt-logo-${Date.now()}.${safeExtension}`;
+
+    const { error } = await supabaseClient.storage
+        .from("business-assets")
+        .upload(filePath, file, {
+            cacheControl: "3600",
+            upsert: true
+        });
+
+    if(error){
+        showNotification(error.message || "Logo upload failed. Check Supabase Storage bucket.", "error");
+        return "";
+    }
+
+    const { data } = supabaseClient.storage
+        .from("business-assets")
+        .getPublicUrl(filePath);
+
+    if(fileInput) fileInput.value = "";
+    return data?.publicUrl || "";
 }
 
 function bindBusinessSettingsForm(){
@@ -2422,11 +2546,13 @@ function bindBusinessSettingsForm(){
         button.disabled = true;
 
         try {
+            const uploadedLogoUrl = await uploadReceiptLogoIfNeeded();
             const result = await callTeamApi("/api/team/business/settings", {
                 business_name: document.getElementById("businessNameInput").value,
                 currency: document.getElementById("businessCurrencyInput").value,
                 low_stock_threshold: document.getElementById("lowStockThresholdInput").value,
-                receipt_footer: document.getElementById("receiptFooterInput").value
+                receipt_footer: document.getElementById("receiptFooterInput").value,
+                receipt_logo_url: uploadedLogoUrl || document.getElementById("receiptLogoInput")?.value || ""
             });
 
             businessSettings = result.business;
@@ -2999,6 +3125,23 @@ function setRevenuePeriod(period){
     renderRevenueChart();
 }
 
+function openRepInviteEmail(email, password, name){
+    const subject = encodeURIComponent("Your Sales Tracker team access");
+    const body = encodeURIComponent([
+        `Hi ${name || "there"},`,
+        "",
+        "You have been added to Sales Tracker.",
+        `Login email: ${email}`,
+        `Temporary password: ${password}`,
+        "",
+        `Open: ${window.location.origin}/signin.html`,
+        "",
+        "Please sign in and change your password."
+    ].join("\n"));
+
+    window.open(`mailto:${encodeURIComponent(email)}?subject=${subject}&body=${body}`, "_blank");
+}
+
 function bindTeamForm(){
     const form = document.getElementById("repInviteForm");
 
@@ -3031,6 +3174,7 @@ function bindTeamForm(){
 
             form.reset();
             showNotification("Rep added successfully");
+            openRepInviteEmail(email, password, full_name);
             await loadProfiles();
             if(result.profile && !profiles.some(profile => profile.id === result.profile.id)){
                 profiles.push(result.profile);
@@ -3724,6 +3868,7 @@ async function confirmDeleteProduct(){
     closeProductDeleteModal();
 
     showNotification("Product deleted", "success");
+    await logAdminAudit("product_deleted", "product", id, {});
 
     await loadProducts();
 
