@@ -499,3 +499,34 @@ h3 {
         grid-template-columns: 1fr;
     }
 }
+
+
+/* RESPONSIVE HARDENING - DEVELOPER */
+html,
+body {
+    max-width: 100%;
+    overflow-x: hidden;
+}
+
+.dev-shell,
+.dev-main,
+.dev-section,
+.business-card {
+    min-width: 0;
+    max-width: 100%;
+}
+
+@media (max-width: 640px) {
+    .dev-main {
+        padding-inline: 12px;
+    }
+
+    .dev-sidebar {
+        overflow-x: auto;
+        flex-wrap: nowrap;
+    }
+
+    .dev-sidebar button {
+        flex: 0 0 auto;
+    }
+}

@@ -2393,3 +2393,68 @@ body {
         align-items: flex-start;
     }
 }
+
+
+/* RESPONSIVE HARDENING - SALES */
+html,
+body {
+    max-width: 100%;
+    overflow-x: hidden;
+}
+
+img,
+canvas,
+video,
+input,
+select,
+textarea,
+button {
+    max-width: 100%;
+}
+
+.sale-wrapper,
+.sale-entry,
+.cart-div,
+.stats-grid,
+.history-group,
+.team-chat-card,
+.dashboard-section-title,
+.sales-topbar {
+    min-width: 0;
+    max-width: 100%;
+}
+
+@media (max-width: 920px) {
+    .sale-grid {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+}
+
+@media (max-width: 620px) {
+    body {
+        padding: 12px;
+    }
+
+    .sale-grid,
+    .cart-item,
+    .cart-item-details,
+    .sale-card-meta {
+        grid-template-columns: 1fr !important;
+    }
+
+    .sales-topbar,
+    .sale-header {
+        align-items: stretch;
+        flex-direction: column;
+    }
+
+    #customer_id {
+        color: #fff;
+        width: 100%;
+    }
+
+    .selected-product-preview,
+    .cart-product-identity {
+        align-items: flex-start;
+    }
+}

@@ -175,6 +175,8 @@
                 </label>
                 <input id="productImageFile" class="product-file-input" type="file" accept="image/png,image/jpeg,image/webp,image/gif">
             </div>
+
+            <div id="productImagePreview" class="product-image-preview add-product-image-preview"></div>
                 
             <button type="button" onclick="addProduct()">Add Product</button>
         </form>
@@ -1295,17 +1297,38 @@ function renderProductImage(product, className = "product-image"){
     return `<div class="${className} product-image-fallback"><i class="fa-solid fa-image"></i></div>`;
 }
 
-function updateEditProductImagePreview(){
-    const preview = document.getElementById("editProductImagePreview");
-    const input = document.getElementById("editProductImageUrl");
+function renderImagePreviewState(previewId, imageUrl, label = "Image preview"){
+    const preview = document.getElementById(previewId);
 
-    if(!preview || !input) return;
+    if(!preview) return;
 
-    const imageUrl = input.value.trim();
+    const safeUrl = String(imageUrl || "").trim();
 
-    preview.innerHTML = imageUrl
-        ? `<div class="product-image-wrap"><img src="${escapeHtml(imageUrl)}" alt="Product preview" onerror="this.parentElement.innerHTML='<div class=\'product-image-fallback\'><i class=\'fa-solid fa-image\'></i></div>';"></div><span>Image preview</span>`
+    preview.innerHTML = safeUrl
+        ? `<div class="product-image-wrap"><img src="${escapeHtml(safeUrl)}" alt="Product preview" onerror="this.parentElement.innerHTML='<div class=\'product-image-fallback\'><i class=\'fa-solid fa-image\'></i></div>';"></div><span>${escapeHtml(label)}</span>`
         : `<div class="product-image-wrap"><div class="product-image-fallback"><i class="fa-solid fa-image"></i></div></div><span>No image yet</span>`;
+}
+
+function renderFilePreviewState(previewId, file){
+    const preview = document.getElementById(previewId);
+
+    if(!preview || !file) return;
+
+    const objectUrl = URL.createObjectURL(file);
+    preview.innerHTML = `<div class="product-image-wrap"><img src="${objectUrl}" alt="Product preview"></div><span>${escapeHtml(file.name)} ready to upload</span>`;
+
+    const image = preview.querySelector("img");
+    if(image){
+        image.onload = () => URL.revokeObjectURL(objectUrl);
+    }
+}
+
+function updateAddProductImagePreview(){
+    renderImagePreviewState("productImagePreview", document.getElementById("productImageUrl")?.value || "");
+}
+
+function updateEditProductImagePreview(){
+    renderImagePreviewState("editProductImagePreview", document.getElementById("editProductImageUrl")?.value || "");
 }
 
 function getLowStockThreshold(){
@@ -1607,7 +1630,12 @@ async function addProduct(){
         return;
     }
 
+    const addHadImageFile = Boolean(document.getElementById("productImageFile")?.files?.[0]);
     imageUrl = await uploadProductImageIfNeeded("productImageFile", "productImageUrl", name);
+
+    if(addHadImageFile && !imageUrl){
+        return;
+    }
     
 
     const { error } =
@@ -1663,6 +1691,8 @@ function clearProductForm(){
         form.reset();
     }
 
+    updateAddProductImagePreview();
+
 }
 
 // FILTER PRODUCT
@@ -1697,6 +1727,7 @@ function editProduct(id){
     document.getElementById("editProductPrice").value = Number(product.price || 0);
     document.getElementById("editProductStock").value = Number(product.stock_quantity || 0);
     document.getElementById("editProductImageUrl").value = getProductImageUrl(product);
+    document.getElementById("editProductImageFile").value = "";
     document.getElementById("editProductAvailable").checked = product.available !== false && Number(product.stock_quantity || 0) > 0;
     updateEditProductImagePreview();
 
@@ -1734,24 +1765,27 @@ function bindProductUploadPreview(){
 
             if(!file) return;
 
-            if(urlInput) urlInput.value = file.name;
+            const previewId = fileId === "editProductImageFile"
+                ? "editProductImagePreview"
+                : "productImagePreview";
 
-            if(fileId === "editProductImageFile"){
-                const preview = document.getElementById("editProductImagePreview");
-                if(preview){
-                    const objectUrl = URL.createObjectURL(file);
-                    preview.innerHTML = `<div class="product-image-wrap"><img src="${objectUrl}" alt="Product preview" onload="URL.revokeObjectURL('${objectUrl}')"></div><span>Ready to upload</span>`;
-                }
-            }
+            renderFilePreviewState(previewId, file);
         });
     });
 }
 
 function bindProductImagePreview(){
-    const input = document.getElementById("editProductImageUrl");
-    if(!input || input.dataset.bound === "true") return;
-    input.dataset.bound = "true";
-    input.addEventListener("input", updateEditProductImagePreview);
+    const fields = [
+        ["productImageUrl", updateAddProductImagePreview],
+        ["editProductImageUrl", updateEditProductImagePreview]
+    ];
+
+    fields.forEach(([id, handler]) => {
+        const input = document.getElementById(id);
+        if(!input || input.dataset.bound === "true") return;
+        input.dataset.bound = "true";
+        input.addEventListener("input", handler);
+    });
 }
 
 function bindProductEditForm(){
@@ -1780,7 +1814,15 @@ function bindProductEditForm(){
         button.disabled = true;
         button.innerHTML = `<i class="fa-solid fa-spinner fa-spin"></i> Saving...`;
 
+        const editHadImageFile = Boolean(document.getElementById("editProductImageFile")?.files?.[0]);
         imageUrl = await uploadProductImageIfNeeded("editProductImageFile", "editProductImageUrl", name);
+
+        if(editHadImageFile && !imageUrl){
+            button.disabled = false;
+            button.innerHTML = `<i class="fa-solid fa-floppy-disk"></i> Save Changes`;
+            return;
+        }
+
         updateEditProductImagePreview();
 
         const { error } =

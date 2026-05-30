@@ -1,0 +1,41 @@
+
+
+/* RESPONSIVE HARDENING - PRICING */
+html,
+body {
+    max-width: 100%;
+    overflow-x: hidden;
+}
+
+.pricing-section,
+.pricing-grid,
+.pricing-card,
+.pricing-controls,
+.pricing-support {
+    min-width: 0;
+    max-width: 100%;
+}
+
+.pricing-grid,
+.four-plan-grid {
+    grid-template-columns: repeat(auto-fit, minmax(min(100%, 260px), 1fr)) !important;
+}
+
+@media (max-width: 640px) {
+    .pricing-section {
+        padding-inline: 14px;
+    }
+
+    .pricing-controls,
+    .billing-toggle,
+    .pricing-support {
+        align-items: stretch;
+        flex-direction: column;
+    }
+
+    .billing-toggle button,
+    .currency-control,
+    .plan-btn {
+        width: 100%;
+    }
+}

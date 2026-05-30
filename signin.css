@@ -573,3 +573,36 @@ body::before {
         transition-duration: 0.01ms !important;
     }
 }
+
+
+/* RESPONSIVE HARDENING - SIGNIN */
+html,
+body {
+    max-width: 100%;
+    overflow-x: hidden;
+}
+
+.container,
+.auth-card,
+.signin-shell,
+form,
+input,
+button {
+    max-width: 100%;
+}
+
+@media (max-width: 640px) {
+    body {
+        padding-inline: 14px;
+    }
+
+    .container {
+        width: 100%;
+    }
+
+    .feature-panel,
+    .signin-feature-panel,
+    .login-feature-panel {
+        display: none !important;
+    }
+}

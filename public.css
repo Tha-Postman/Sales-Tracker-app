@@ -757,3 +757,21 @@ body {
         font-size: 28px;
     }
 }
+
+
+/* RESPONSIVE HARDENING - PUBLIC */
+html,
+body {
+    max-width: 100%;
+    overflow-x: hidden;
+}
+
+img,
+canvas,
+video,
+input,
+select,
+textarea,
+button {
+    max-width: 100%;
+}
