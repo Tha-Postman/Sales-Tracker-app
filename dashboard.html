@@ -1195,26 +1195,31 @@ function renderProductChoiceDetails(product, mode = "option"){
     const image = renderProductThumb(product, "product-choice-thumb");
     const name = escapeHtml(product?.name || "Product");
     const price = formatMoney(product?.price || 0);
-    const rawId = String(product?.id || "").replace(/-/g, "");
-    const productCode = rawId ? rawId.slice(0, 6).toUpperCase() : "ITEM";
 
     if(mode === "selected"){
         return `
-            <div class="product-choice-selected-inner simple-selected-product">
-                <strong>${name}</strong>
-                <small>${price} · ${escapeHtml(stockMeta.label)}</small>
+            <div class="product-choice-selected-inner organized-product-selected">
+                <div class="product-selected-copy">
+                    <strong>${name}</strong>
+                    <span>
+                        <b>${price}</b>
+                        <em class="product-stock-pill ${stockMeta.className}">${escapeHtml(stockMeta.label)}</em>
+                    </span>
+                </div>
             </div>
         `;
     }
 
     return `
-        <div class="product-choice-option-inner clean-product-choice">
+        <div class="product-choice-option-inner organized-product-choice">
             ${image}
             <div class="product-choice-main">
                 <strong>${name}</strong>
-                <small>${price}</small>
+                <div class="product-choice-detail-row">
+                    <b>${price}</b>
+                    <span class="product-stock-pill ${stockMeta.className}">${escapeHtml(stockMeta.label)}</span>
+                </div>
             </div>
-            <span class="product-stock-pill ${stockMeta.className}">${escapeHtml(stockMeta.label)}</span>
         </div>
     `;
 }
