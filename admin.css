@@ -4557,3 +4557,350 @@ body::-webkit-scrollbar-thumb:hover,
         height: 7px;
     }
 }
+
+
+/* Mobile-safe admin products section */
+[data-view-panel="products"] {
+    min-width: 0;
+    width: 100%;
+    overflow-x: hidden;
+}
+
+[data-view-panel="products"].active {
+    display: block;
+}
+
+.product-panel {
+    width: 100%;
+    max-width: 100%;
+    min-width: 0;
+    overflow: visible;
+}
+
+.product-panel .panel-header {
+    min-width: 0;
+}
+
+#productList.panel-body {
+    max-height: min(72vh, 760px);
+    overflow-y: auto;
+    overflow-x: hidden;
+    -webkit-overflow-scrolling: touch;
+}
+
+@media (max-width: 760px) {
+    [data-view-panel="products"] {
+        padding-bottom: 24px;
+    }
+
+    .product-panel {
+        margin-top: 14px;
+        border-radius: 18px;
+    }
+
+    .product-panel .panel-header {
+        display: grid;
+        grid-template-columns: minmax(0, 1fr) 44px;
+        gap: 10px;
+        padding: 12px;
+        cursor: default;
+    }
+
+    .product-panel .panel-header h3 {
+        min-width: 0;
+        margin: 0;
+        overflow-wrap: anywhere;
+    }
+
+    .product-panel .product-search {
+        grid-column: 1 / -1;
+        min-height: 46px;
+        margin: 0;
+        width: 100%;
+    }
+
+    .product-panel #toggleBtn {
+        width: 44px;
+        min-width: 44px;
+        height: 44px;
+        padding: 0;
+        justify-self: end;
+    }
+
+    #productList.panel-body {
+        display: grid;
+        grid-template-columns: 1fr !important;
+        max-height: none;
+        padding: 10px;
+        gap: 14px;
+        overflow: visible;
+    }
+
+    #productList.panel-body.hidden {
+        display: none;
+    }
+
+    #productList .product-card {
+        width: 100%;
+        max-width: 100%;
+        padding: 14px;
+    }
+
+    #productList .product-card > .product-image-wrap {
+        width: 100%;
+        max-width: 100%;
+        aspect-ratio: 1 / 1;
+    }
+
+    #productList .stock-mini-grid {
+        grid-template-columns: repeat(3, minmax(0, 1fr));
+    }
+
+    #productList .stock-mini-grid div {
+        min-width: 0;
+    }
+
+    #productList .product-actions {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+    }
+}
+
+@media (max-width: 420px) {
+    #productList .stock-mini-grid {
+        grid-template-columns: 1fr;
+    }
+
+    #productList .product-actions {
+        grid-template-columns: 1fr;
+    }
+}
+
+
+/* Compact mobile admin product cards */
+@media (max-width: 560px) {
+    #productList.panel-body {
+        gap: 10px;
+        padding: 8px;
+    }
+
+    #productList .product-card {
+        display: grid;
+        grid-template-columns: 92px minmax(0, 1fr);
+        align-items: start;
+        column-gap: 12px;
+        row-gap: 8px;
+        padding: 12px;
+        border-radius: 16px;
+    }
+
+    #productList .product-card-top {
+        grid-column: 1 / -1;
+        margin-bottom: 0;
+    }
+
+    #productList .product-card > .product-image-wrap {
+        grid-column: 1;
+        grid-row: span 2;
+        width: 92px;
+        height: 92px;
+        min-height: 92px;
+        aspect-ratio: 1 / 1;
+        margin: 0;
+        border-radius: 14px;
+    }
+
+    #productList .product-card h4 {
+        grid-column: 2;
+        margin: 0;
+        font-size: 15px;
+        line-height: 1.25;
+        overflow-wrap: anywhere;
+    }
+
+    #productList .product-card > p:not(.stock-reference) {
+        grid-column: 2;
+        margin: 0;
+        font-size: 14px;
+        font-weight: 900;
+    }
+
+    #productList .stock-mini-grid {
+        grid-column: 1 / -1;
+        gap: 6px;
+        margin: 2px 0 0;
+    }
+
+    #productList .stock-mini-grid div {
+        border-radius: 10px;
+        padding: 7px 6px;
+    }
+
+    #productList .stock-mini-grid small {
+        font-size: 10px;
+    }
+
+    #productList .stock-mini-grid strong {
+        font-size: 14px;
+        margin-top: 0;
+    }
+
+    #productList .stock-reference {
+        grid-column: 1 / -1;
+        margin: 0;
+        font-size: 11px;
+        line-height: 1.35;
+    }
+
+    #productList .product-actions {
+        grid-column: 1 / -1;
+        display: grid;
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+        gap: 8px;
+        margin-top: 2px;
+    }
+
+    #productList .product-actions button {
+        min-height: 40px;
+        padding: 9px 10px;
+        font-size: 13px;
+    }
+}
+
+@media (max-width: 380px) {
+    #productList .product-card {
+        grid-template-columns: 78px minmax(0, 1fr);
+        column-gap: 10px;
+        padding: 10px;
+    }
+
+    #productList .product-card > .product-image-wrap {
+        width: 78px;
+        height: 78px;
+        min-height: 78px;
+    }
+
+    #productList .stock-mini-grid {
+        grid-template-columns: repeat(3, minmax(0, 1fr));
+    }
+}
+
+
+/* Product panel chevron toggle */
+.product-panel #toggleBtn {
+    display: inline-grid;
+    place-items: center;
+    width: 42px;
+    min-width: 42px;
+    height: 42px;
+    padding: 0;
+    border-radius: 14px;
+    border: 1px solid rgba(96, 165, 250, 0.28);
+    background: rgba(15, 23, 42, 0.74);
+    color: #dbeafe;
+    box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.08);
+    line-height: 1;
+}
+
+.product-panel #toggleBtn i {
+    font-size: 13px;
+    transition: transform 0.22s ease;
+}
+
+.product-panel #toggleBtn.is-open {
+    background: linear-gradient(135deg, #2563eb, #14b8a6);
+    color: #ffffff;
+    border-color: rgba(255, 255, 255, 0.24);
+    box-shadow: 0 12px 26px rgba(37, 99, 235, 0.22);
+}
+
+.product-panel #toggleBtn:hover {
+    transform: translateY(-1px);
+    border-color: rgba(96, 165, 250, 0.5);
+}
+
+@media (max-width: 560px) {
+    .product-panel #toggleBtn {
+        width: 38px;
+        min-width: 38px;
+        height: 38px;
+        border-radius: 12px;
+        justify-self: end;
+    }
+
+    .product-panel #toggleBtn i {
+        font-size: 12px;
+    }
+}
+
+
+/* Keep products toggle beside search on small screens */
+@media (max-width: 760px) {
+    .product-panel .panel-header {
+        grid-template-columns: minmax(0, 1fr) 38px;
+        align-items: center;
+    }
+
+    .product-panel .panel-header h3 {
+        grid-column: 1 / -1;
+    }
+
+    .product-panel .product-search {
+        grid-column: 1;
+        grid-row: 2;
+    }
+
+    .product-panel #toggleBtn {
+        grid-column: 2;
+        grid-row: 2;
+        align-self: stretch;
+        width: 38px;
+        min-width: 38px;
+        height: auto;
+        min-height: 46px;
+    }
+}
+
+@media (max-width: 380px) {
+    .product-panel .panel-header {
+        grid-template-columns: minmax(0, 1fr) 36px;
+        gap: 8px;
+    }
+
+    .product-panel #toggleBtn {
+        width: 36px;
+        min-width: 36px;
+    }
+}
+
+
+/* Tablet products search/toggle alignment */
+@media (min-width: 761px) and (max-width: 1024px) {
+    .product-panel .panel-header {
+        display: grid;
+        grid-template-columns: auto minmax(220px, 1fr) 42px;
+        align-items: center;
+        gap: 12px;
+    }
+
+    .product-panel .panel-header h3 {
+        grid-column: 1;
+        min-width: max-content;
+        margin: 0;
+    }
+
+    .product-panel .product-search {
+        grid-column: 2;
+        width: 100%;
+        min-height: 46px;
+        margin: 0;
+    }
+
+    .product-panel #toggleBtn {
+        grid-column: 3;
+        width: 42px;
+        min-width: 42px;
+        height: 46px;
+        justify-self: end;
+    }
+}

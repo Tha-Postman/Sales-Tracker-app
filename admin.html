@@ -202,7 +202,9 @@
             <h3>Products <span id="productCountBadge" class="product-count-badge">0</span></h3>
             <input type="text" id="productSearch" placeholder="Search products..." oninput="filterProducts()" class="product-search">
                 
-            <button id="toggleBtn" type="button" aria-expanded="false">▼</button>
+            <button id="toggleBtn" type="button" aria-expanded="false" aria-label="Expand products">
+                <i class="fa-solid fa-chevron-down"></i>
+            </button>
                 
         </div>
     
@@ -901,6 +903,10 @@ function showAdminView(view){
 
     if(view === "audit"){
         loadAuditLogs();
+    }
+
+    if(view === "products"){
+        setProductsOpen(true);
     }
 }
 
@@ -2454,7 +2460,7 @@ async function init(){
     bindProductAvailabilityControls();
     bindPasswordForm();
 
-    setProductsOpen(false);
+    setProductsOpen(window.matchMedia("(max-width: 760px)").matches);
 
     await loadBusinessSettings();
     await Promise.all([
