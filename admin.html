@@ -545,11 +545,20 @@
 
             <div id="editProductImagePreview" class="product-image-preview"></div>
 
-            <label class="product-availability-toggle">
-                <input id="editProductAvailable" type="checkbox">
-                <span></span>
-                Available for sale
-            </label>
+            <div class="product-availability-card">
+                <p class="availability-title">Product visibility</p>
+                <label class="product-availability-toggle" for="editProductAvailable">
+                    <input id="editProductAvailable" type="checkbox">
+                    <span class="availability-segment" aria-hidden="true">
+                        <span class="availability-option availability-visible">Visible to reps</span>
+                        <span class="availability-option availability-hidden">Hidden from sales</span>
+                    </span>
+                    <span class="availability-copy">
+                        <strong id="editProductAvailabilityLabel">Available to reps</strong>
+                        <small id="editProductAvailabilityHint">Reps can select and sell this product.</small>
+                    </span>
+                </label>
+            </div>
 
             <div class="product-edit-actions">
                 <button type="button" class="modal-secondary-btn" onclick="closeProductEditModal()">Cancel</button>
@@ -1309,18 +1318,206 @@ function renderImagePreviewState(previewId, imageUrl, label = "Image preview"){
         : `<div class="product-image-wrap"><div class="product-image-fallback"><i class="fa-solid fa-image"></i></div></div><span>No image yet</span>`;
 }
 
+const productImageCropState = {};
+
+function getCropInputId(previewId){
+    return previewId === "editProductImagePreview"
+        ? "editProductImageFile"
+        : "productImageFile";
+}
+
+function getCropPreviewId(fileInputId){
+    return fileInputId === "editProductImageFile"
+        ? "editProductImagePreview"
+        : "productImagePreview";
+}
+
+function getCropSourceRect(image, state){
+    const zoom = Math.max(1, Number(state?.zoom || 1));
+    const cropSize = Math.min(image.naturalWidth, image.naturalHeight) / zoom;
+    const maxX = Math.max(0, image.naturalWidth - cropSize);
+    const maxY = Math.max(0, image.naturalHeight - cropSize);
+
+    return {
+        x: Math.max(0, Math.min(maxX, maxX * (Number(state?.x || 50) / 100))),
+        y: Math.max(0, Math.min(maxY, maxY * (Number(state?.y || 50) / 100))),
+        size: cropSize
+    };
+}
+
+function paintProductImageBackground(ctx, outputSize){
+    ctx.fillStyle = "#ffffff";
+    ctx.fillRect(0, 0, outputSize, outputSize);
+}
+
+function drawCropCanvas(canvas, image, state, outputSize = 900){
+    if(!canvas || !image) return;
+
+    const ctx = canvas.getContext("2d");
+
+    canvas.width = outputSize;
+    canvas.height = outputSize;
+    ctx.clearRect(0, 0, outputSize, outputSize);
+
+    if((state?.mode || "fit") === "fit"){
+        paintProductImageBackground(ctx, outputSize);
+
+        const padding = outputSize * 0.12;
+        const maxSize = outputSize - (padding * 2);
+        const scale = Math.min(maxSize / image.naturalWidth, maxSize / image.naturalHeight);
+        const width = image.naturalWidth * scale;
+        const height = image.naturalHeight * scale;
+        const x = (outputSize - width) / 2;
+        const y = (outputSize - height) / 2;
+
+        ctx.drawImage(image, x, y, width, height);
+        return;
+    }
+
+    paintProductImageBackground(ctx, outputSize);
+
+    const rect = getCropSourceRect(image, state);
+    ctx.drawImage(image, rect.x, rect.y, rect.size, rect.size, 0, 0, outputSize, outputSize);
+}
+
+function updateCropPreview(previewId){
+    const state = productImageCropState[previewId];
+    const preview = document.getElementById(previewId);
+
+    if(!state || !preview) return;
+
+    const canvas = preview.querySelector(".product-crop-canvas");
+
+    if(canvas && state.image){
+        drawCropCanvas(canvas, state.image, state, 900);
+    }
+
+    preview.querySelectorAll("[data-crop-value]").forEach(value => {
+        const key = value.dataset.cropValue;
+        value.textContent = key === "zoom"
+            ? `${Number(state[key]).toFixed(1)}x`
+            : `${Math.round(state[key])}%`;
+    });
+}
+
+function bindCropControls(previewId){
+    const preview = document.getElementById(previewId);
+    const state = productImageCropState[previewId];
+
+    if(!preview || !state) return;
+
+    preview.querySelectorAll("[data-image-mode]").forEach(button => {
+        button.addEventListener("click", () => {
+            state.mode = button.dataset.imageMode;
+
+            preview.querySelectorAll("[data-image-mode]").forEach(item => {
+                item.classList.toggle("active", item.dataset.imageMode === state.mode);
+            });
+
+            const cropper = preview.querySelector(".product-cropper");
+            cropper?.classList.toggle("fit-mode", state.mode === "fit");
+            cropper?.classList.toggle("crop-mode", state.mode === "crop");
+            updateCropPreview(previewId);
+        });
+    });
+
+    preview.querySelectorAll("[data-crop-control]").forEach(input => {
+        input.addEventListener("input", () => {
+            const key = input.dataset.cropControl;
+            state[key] = Number(input.value);
+            updateCropPreview(previewId);
+        });
+    });
+
+    preview.querySelector("[data-crop-reset]")?.addEventListener("click", () => {
+        state.mode = "fit";
+        state.zoom = 1;
+        state.x = 50;
+        state.y = 50;
+
+        preview.querySelectorAll("[data-image-mode]").forEach(item => {
+            item.classList.toggle("active", item.dataset.imageMode === "fit");
+        });
+
+        const cropper = preview.querySelector(".product-cropper");
+        cropper?.classList.add("fit-mode");
+        cropper?.classList.remove("crop-mode");
+
+        preview.querySelectorAll("[data-crop-control]").forEach(input => {
+            input.value = state[input.dataset.cropControl];
+        });
+
+        updateCropPreview(previewId);
+    });
+}
+
 function renderFilePreviewState(previewId, file){
     const preview = document.getElementById(previewId);
 
     if(!preview || !file) return;
 
     const objectUrl = URL.createObjectURL(file);
-    preview.innerHTML = `<div class="product-image-wrap"><img src="${objectUrl}" alt="Product preview"></div><span>${escapeHtml(file.name)} ready to upload</span>`;
 
-    const image = preview.querySelector("img");
-    if(image){
-        image.onload = () => URL.revokeObjectURL(objectUrl);
-    }
+    productImageCropState[previewId] = {
+        objectUrl,
+        image: null,
+        mode: "fit",
+        zoom: 1,
+        x: 50,
+        y: 50
+    };
+
+    preview.innerHTML = `
+        <div class="product-cropper fit-mode">
+            <div class="product-crop-frame">
+                <canvas class="product-crop-canvas" aria-label="Product crop preview"></canvas>
+            </div>
+            <div class="product-crop-tools">
+                <div class="product-crop-head">
+                    <strong>Product image style</strong>
+                    <button type="button" data-crop-reset>Reset</button>
+                </div>
+                <div class="product-image-mode-toggle">
+                    <button type="button" class="active" data-image-mode="fit">Auto fit</button>
+                    <button type="button" data-image-mode="crop">Crop section</button>
+                </div>
+                <div class="crop-only-tools">
+                    <label>
+                        <span>Zoom <b data-crop-value="zoom">1.0x</b></span>
+                        <input type="range" min="1" max="3" step="0.05" value="1" data-crop-control="zoom">
+                    </label>
+                    <label>
+                        <span>Left / right <b data-crop-value="x">50%</b></span>
+                        <input type="range" min="0" max="100" step="1" value="50" data-crop-control="x">
+                    </label>
+                    <label>
+                        <span>Up / down <b data-crop-value="y">50%</b></span>
+                        <input type="range" min="0" max="100" step="1" value="50" data-crop-control="y">
+                    </label>
+                </div>
+                <small>Auto fit keeps the full product on a clean square background. Crop section is for close-ups.</small>
+                <small>${escapeHtml(file.name)} will upload as a consistent square product image.</small>
+            </div>
+        </div>
+    `;
+
+    const image = new Image();
+
+    image.onload = () => {
+        productImageCropState[previewId].image = image;
+        URL.revokeObjectURL(objectUrl);
+        updateCropPreview(previewId);
+    };
+
+    image.onerror = () => {
+        URL.revokeObjectURL(objectUrl);
+        showNotification("Unable to preview product image", "error");
+    };
+
+    image.src = objectUrl;
+
+    bindCropControls(previewId);
+    updateCropPreview(previewId);
 }
 
 function updateAddProductImagePreview(){
@@ -1540,10 +1737,55 @@ async function logAdminAudit(action, targetType, targetId, details = {}){
     }
 }
 
+function loadImageForCrop(file){
+    return new Promise((resolve, reject) => {
+        const url = URL.createObjectURL(file);
+        const image = new Image();
+
+        image.onload = () => {
+            URL.revokeObjectURL(url);
+            resolve(image);
+        };
+
+        image.onerror = () => {
+            URL.revokeObjectURL(url);
+            reject(new Error("Unable to read product image"));
+        };
+
+        image.src = url;
+    });
+}
+
+async function createCroppedProductImageFile(fileInputId, file){
+    const previewId = getCropPreviewId(fileInputId);
+    const state = productImageCropState[previewId] || { mode: "fit", zoom: 1, x: 50, y: 50 };
+    const image = state.image || await loadImageForCrop(file);
+    const size = 900;
+    const canvas = document.createElement("canvas");
+
+    drawCropCanvas(canvas, image, state, size);
+
+    const blob = await new Promise(resolve => {
+        canvas.toBlob(resolve, "image/webp", 0.86);
+    });
+
+    if(!blob){
+        throw new Error("Unable to crop product image");
+    }
+
+    const cleanName = (file.name || "product-image")
+        .replace(/\.[a-z0-9]+$/i, "")
+        .replace(/[^a-z0-9]+/gi, "-")
+        .replace(/^-|-$/g, "")
+        .toLowerCase() || "product-image";
+
+    return new File([blob], `${cleanName}-cropped.webp`, { type: "image/webp" });
+}
+
 async function uploadProductImageIfNeeded(fileInputId, urlInputId, productName = "product"){
     const fileInput = document.getElementById(fileInputId);
     const urlInput = document.getElementById(urlInputId);
-    const file = fileInput?.files?.[0];
+    let file = fileInput?.files?.[0];
 
     if(!file) return urlInput?.value.trim() || "";
 
@@ -1554,8 +1796,21 @@ async function uploadProductImageIfNeeded(fileInputId, urlInputId, productName =
         return "";
     }
 
+    if(file.size > 10 * 1024 * 1024){
+        showNotification("Product image must be 10MB or less before cropping", "error");
+        return "";
+    }
+
+    try {
+        file = await createCroppedProductImageFile(fileInputId, file);
+    } catch(err) {
+        console.log(err);
+        showNotification(err.message || "Could not crop product image", "error");
+        return "";
+    }
+
     if(file.size > 2 * 1024 * 1024){
-        showNotification("Product image must be 2MB or less", "error");
+        showNotification("Cropped product image is still too large", "error");
         return "";
     }
 
@@ -1594,6 +1849,7 @@ async function uploadProductImageIfNeeded(fileInputId, urlInputId, productName =
 
     if(urlInput) urlInput.value = publicUrl;
     if(fileInput) fileInput.value = "";
+    delete productImageCropState[getCropPreviewId(fileInputId)];
 
     return publicUrl;
 }
@@ -1691,6 +1947,7 @@ function clearProductForm(){
         form.reset();
     }
 
+    delete productImageCropState.productImagePreview;
     updateAddProductImagePreview();
 
 }
@@ -1715,7 +1972,36 @@ function filterProducts(options = {}){
 
 // EDIT PRODUCT
 
-function editProduct(id){
+function updateProductAvailabilityHint(){
+    const checkbox = document.getElementById("editProductAvailable");
+    const stockInput = document.getElementById("editProductStock");
+    const label = document.getElementById("editProductAvailabilityLabel");
+    const hint = document.getElementById("editProductAvailabilityHint");
+
+    if(!checkbox || !label || !hint) return;
+
+    const stock = Number(stockInput?.value || 0);
+
+    if(stock <= 0){
+        checkbox.checked = false;
+        checkbox.disabled = true;
+        label.textContent = "Unavailable";
+        hint.textContent = "Stock is 0, so reps cannot sell this product.";
+        return;
+    }
+
+    checkbox.disabled = false;
+
+    if(checkbox.checked){
+        label.textContent = "Available to reps";
+        hint.textContent = "Reps can select and sell this product.";
+    } else {
+        label.textContent = "Hidden from sales";
+        hint.textContent = "Reps will not see this product in the sales form.";
+    }
+}
+
+async function editProduct(id){
 
     const product =
     products.find(p => p.id == id);
@@ -1728,7 +2014,9 @@ function editProduct(id){
     document.getElementById("editProductStock").value = Number(product.stock_quantity || 0);
     document.getElementById("editProductImageUrl").value = getProductImageUrl(product);
     document.getElementById("editProductImageFile").value = "";
+    delete productImageCropState.editProductImagePreview;
     document.getElementById("editProductAvailable").checked = product.available !== false && Number(product.stock_quantity || 0) > 0;
+    updateProductAvailabilityHint();
     updateEditProductImagePreview();
 
     const hint = document.getElementById("productEditHint");
@@ -1745,6 +2033,18 @@ function closeProductEditModal(){
     if(modal){
         modal.style.display = "none";
     }
+}
+
+function bindProductAvailabilityControls(){
+    const checkbox = document.getElementById("editProductAvailable");
+    const stockInput = document.getElementById("editProductStock");
+
+    [checkbox, stockInput].forEach(control => {
+        if(!control || control.dataset.availabilityBound === "true") return;
+        control.dataset.availabilityBound = "true";
+        control.addEventListener("input", updateProductAvailabilityHint);
+        control.addEventListener("change", updateProductAvailabilityHint);
+    });
 }
 
 function bindProductUploadPreview(){
@@ -2151,6 +2451,7 @@ async function init(){
     bindProductEditForm();
     bindProductImagePreview();
     bindProductUploadPreview();
+    bindProductAvailabilityControls();
     bindPasswordForm();
 
     setProductsOpen(false);

@@ -1167,6 +1167,58 @@ function getProductStock(productId){
     return Number(product?.stock_quantity || 0);
 }
 
+function getProductStockMeta(product){
+    const stock = Number(product?.stock_quantity || 0);
+
+    if(stock <= 0){
+        return {
+            label: "Out of stock",
+            className: "out"
+        };
+    }
+
+    if(stock <= 5){
+        return {
+            label: `${stock} left`,
+            className: "low"
+        };
+    }
+
+    return {
+        label: `${stock} in stock`,
+        className: "ok"
+    };
+}
+
+function renderProductChoiceDetails(product, mode = "option"){
+    const stockMeta = getProductStockMeta(product);
+    const image = renderProductThumb(product, "product-choice-thumb");
+    const name = escapeHtml(product?.name || "Product");
+    const price = formatMoney(product?.price || 0);
+    const rawId = String(product?.id || "").replace(/-/g, "");
+    const productCode = rawId ? rawId.slice(0, 6).toUpperCase() : "ITEM";
+
+    if(mode === "selected"){
+        return `
+            <div class="product-choice-selected-inner simple-selected-product">
+                <strong>${name}</strong>
+                <small>${price} · ${escapeHtml(stockMeta.label)}</small>
+            </div>
+        `;
+    }
+
+    return `
+        <div class="product-choice-option-inner clean-product-choice">
+            ${image}
+            <div class="product-choice-main">
+                <strong>${name}</strong>
+                <small>${price}</small>
+            </div>
+            <span class="product-stock-pill ${stockMeta.className}">${escapeHtml(stockMeta.label)}</span>
+        </div>
+    `;
+}
+
 function getCartQuantityForProduct(productId){
     return cart
         .filter(item => String(item.productId) === String(productId))
@@ -1683,10 +1735,10 @@ function populateProductDropdown(){
         option.value = String(product.id);
 
         const stock = Number(product.stock_quantity || 0);
-        const stockLabel = stock <= 0 ? "Out of stock" : stock <= 5 ? `${stock} left` : "Available";
+        const stockMeta = getProductStockMeta(product);
 
         option.textContent =
-        `${product.name} - ${formatMoney(product.price)} - ${stockLabel}`;
+        `${product.name} ${formatMoney(product.price)} ${stockMeta.label}`;
 
         option.dataset.id =
         product.id;
@@ -1732,26 +1784,38 @@ function populateProductDropdown(){
             callbackOnCreateTemplates: function(template) {
                 return {
                     item: ({ classNames }, data) => {
+                        if(!data.value || data.placeholder){
+                            return template(`
+                                <div class="${classNames.item} ${classNames.placeholder} product-choice-placeholder"
+                                    data-item data-id="${data.id}" data-value="">
+                                    -- Select Product --
+                                </div>
+                            `);
+                        }
+
                         const product = productsMap[data.value] || {};
-                        const imageUrl = getProductImageUrl(product);
                         return template(`
                             <div class="${classNames.item} ${data.highlighted ? classNames.highlightedState : classNames.itemSelectable} product-choice-selected"
                                 data-item data-id="${data.id}" data-value="${escapeHtml(data.value)}" ${data.active ? 'aria-selected="true"' : ''} ${data.disabled ? 'aria-disabled="true"' : ''}>
-                                ${imageUrl ? `<img src="${escapeHtml(imageUrl)}" alt="">` : `<span><i class="fa-solid fa-image"></i></span>`}
-                                <strong>${escapeHtml(data.label)}</strong>
+                                ${renderProductChoiceDetails(product, "selected")}
                             </div>
                         `);
                     },
                     choice: ({ classNames }, data) => {
+                        if(!data.value || data.placeholder){
+                            return template(`
+                                <div class="${classNames.item} ${classNames.itemChoice} ${classNames.itemDisabled} product-choice-placeholder-option"
+                                    data-choice-disabled aria-disabled="true" data-id="${data.id}" data-value="" role="option">
+                                    -- Select Product --
+                                </div>
+                            `);
+                        }
+
                         const product = productsMap[data.value] || {};
-                        const imageUrl = getProductImageUrl(product);
                         return template(`
                             <div class="${classNames.item} ${classNames.itemChoice} ${data.disabled ? classNames.itemDisabled : classNames.itemSelectable} product-choice-option"
                                 data-select-text="${this.config.itemSelectText}" data-choice ${data.disabled ? 'data-choice-disabled aria-disabled="true"' : 'data-choice-selectable'} data-id="${data.id}" data-value="${escapeHtml(data.value)}" ${data.groupId > 0 ? 'role="treeitem"' : 'role="option"'}>
-                                ${imageUrl ? `<img src="${escapeHtml(imageUrl)}" alt="">` : `<span><i class="fa-solid fa-image"></i></span>`}
-                                <div>
-                                    <strong>${escapeHtml(data.label)}</strong>
-                                </div>
+                                ${renderProductChoiceDetails(product, "option")}
                             </div>
                         `);
                     }
