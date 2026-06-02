@@ -173,7 +173,7 @@
                     <i class="fa-solid fa-cloud-arrow-up"></i>
                     Upload image
                 </label>
-                <input id="productImageFile" class="product-file-input" type="file" accept="image/png,image/jpeg,image/webp,image/gif">
+                <input id="productImageFile" class="product-file-input" type="file" accept="image/*,.heic,.heif">
             </div>
 
             <div id="productImagePreview" class="product-image-preview add-product-image-preview"></div>
@@ -542,7 +542,7 @@
                     <i class="fa-solid fa-cloud-arrow-up"></i>
                     Upload replacement
                 </label>
-                <input id="editProductImageFile" class="product-file-input" type="file" accept="image/png,image/jpeg,image/webp,image/gif">
+                <input id="editProductImageFile" class="product-file-input" type="file" accept="image/*,.heic,.heif">
             </div>
 
             <div id="editProductImagePreview" class="product-image-preview"></div>
@@ -703,6 +703,7 @@
 <script src="https://unpkg.com/docx@8.5.0/build/index.umd.js"></script>
 
 <script src="https://cdnjs.cloudflare.com/ajax/libs/FileSaver.js/2.0.5/FileSaver.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/heic2any@0.0.4/dist/heic2any.min.js"></script>
 
 <script>
 
@@ -1457,20 +1458,75 @@ function bindCropControls(previewId){
     });
 }
 
-function renderFilePreviewState(previewId, file){
+function getProductImageExtension(file){
+    return String(file?.name || "")
+        .split(".")
+        .pop()
+        .toLowerCase();
+}
+
+function isHeicProductImage(file){
+    const type = String(file?.type || "").toLowerCase();
+    const extension = getProductImageExtension(file);
+    return type === "image/heic"
+        || type === "image/heif"
+        || extension === "heic"
+        || extension === "heif";
+}
+
+function isAcceptedProductImage(file){
+    const type = String(file?.type || "").toLowerCase();
+    const extension = getProductImageExtension(file);
+    const acceptedTypes = ["image/png", "image/jpeg", "image/jpg", "image/webp", "image/gif"];
+    const acceptedExtensions = ["png", "jpg", "jpeg", "webp", "gif", "heic", "heif"];
+
+    return acceptedTypes.includes(type)
+        || acceptedExtensions.includes(extension)
+        || type.startsWith("image/");
+}
+
+async function normalizeProductImageFile(file){
+    if(!isHeicProductImage(file)) return file;
+
+    if(typeof window.heic2any !== "function"){
+        throw new Error("This phone photo is HEIC format. Convert it to JPG or update the page before uploading.");
+    }
+
+    const converted = await window.heic2any({
+        blob: file,
+        toType: "image/jpeg",
+        quality: 0.9
+    });
+    const blob = Array.isArray(converted) ? converted[0] : converted;
+    const baseName = String(file.name || "product-image").replace(/\.(heic|heif)$/i, "");
+
+    return new File([blob], `${baseName}.jpg`, {
+        type: "image/jpeg",
+        lastModified: Date.now()
+    });
+}
+
+async function renderFilePreviewState(previewId, file){
     const preview = document.getElementById(previewId);
 
     if(!preview || !file) return;
 
-    const allowedTypes = ["image/png", "image/jpeg", "image/webp", "image/gif"];
-
-    if(!allowedTypes.includes(file.type)){
-        showNotification("Choose a PNG, JPG, WEBP, or GIF image", "error");
+    if(!isAcceptedProductImage(file)){
+        showNotification("Choose a phone photo, PNG, JPG, WEBP, or GIF image", "error");
         return;
     }
 
     if(file.size > 10 * 1024 * 1024){
         showNotification("Product image must be 10MB or less", "error");
+        return;
+    }
+
+    let previewFile = file;
+
+    try {
+        previewFile = await normalizeProductImageFile(file);
+    } catch(error) {
+        showNotification(error.message || "Unable to prepare this phone photo", "error");
         return;
     }
 
@@ -1557,7 +1613,7 @@ function renderFilePreviewState(previewId, file){
     };
 
     reader.onerror = showPreviewError;
-    reader.readAsDataURL(file);
+    reader.readAsDataURL(previewFile);
 }
 
 function updateAddProductImagePreview(){
@@ -1829,10 +1885,8 @@ async function uploadProductImageIfNeeded(fileInputId, urlInputId, productName =
 
     if(!file) return urlInput?.value.trim() || "";
 
-    const allowedTypes = ["image/png", "image/jpeg", "image/webp", "image/gif"];
-
-    if(!allowedTypes.includes(file.type)){
-        showNotification("Upload a PNG, JPG, WEBP, or GIF product image", "error");
+    if(!isAcceptedProductImage(file)){
+        showNotification("Upload a phone photo, PNG, JPG, WEBP, or GIF product image", "error");
         return "";
     }
 
@@ -1842,6 +1896,7 @@ async function uploadProductImageIfNeeded(fileInputId, urlInputId, productName =
     }
 
     try {
+        file = await normalizeProductImageFile(file);
         file = await createCroppedProductImageFile(fileInputId, file);
     } catch(err) {
         console.log(err);
@@ -1926,6 +1981,20 @@ async function addProduct(){
         return;
     }
 
+    const { data: existingProducts, error: existingProductError } = await supabaseClient
+        .from("products")
+        .select("id")
+        .eq("business_id", businessId)
+        .ilike("name", name)
+        .limit(1);
+
+    if(existingProductError){
+        console.log("Product duplicate check skipped:", existingProductError);
+    } else if(existingProducts?.length){
+        showNotification("A product with this name already exists in your inventory", "warning");
+        return;
+    }
+
     const addHadImageFile = Boolean(document.getElementById("productImageFile")?.files?.[0]);
     imageUrl = await uploadProductImageIfNeeded("productImageFile", "productImageUrl", name);
 
@@ -1957,11 +2026,11 @@ async function addProduct(){
 
     console.log(error);
 
-    // DUPLICATE PRODUCT
     if(error.code === "23505"){
-
-        showNotification("Product already exists");
-
+        showNotification(
+            "Product could not be saved because the database still has an old duplicate-name rule. Run product-name-business-scope.sql in Supabase.",
+            "error"
+        );
         return;
     }
 

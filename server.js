@@ -4,6 +4,8 @@ import { fileURLToPath } from "url";
 import cors from "cors";
 import dotenv from "dotenv";
 import express from "express";
+import helmet from "helmet";
+import { rateLimit } from "express-rate-limit";
 import { createClient } from "@supabase/supabase-js";
 
 dotenv.config();
@@ -54,6 +56,30 @@ const DEFAULT_PLAN_PRICING = {
     pro: { name: "Pro", monthly_ngn: 50000 }
 };
 
+app.set("trust proxy", 1);
+
+app.use(helmet({
+    contentSecurityPolicy: false,
+    crossOriginResourcePolicy: false
+}));
+
+const apiLimiter = rateLimit({
+    windowMs: 15 * 60 * 1000,
+    limit: 300,
+    standardHeaders: "draft-7",
+    legacyHeaders: false,
+    message: { error: "Too many requests. Please wait a moment and try again." },
+    skip: req => req.path === "/paystack/webhook"
+});
+
+const sensitiveLimiter = rateLimit({
+    windowMs: 15 * 60 * 1000,
+    limit: 30,
+    standardHeaders: "draft-7",
+    legacyHeaders: false,
+    message: { error: "Too many attempts. Please wait before trying again." }
+});
+
 const allowedOrigins = [
     appUrl,
     "https://use-sales-tracker.vercel.app",
@@ -76,6 +102,8 @@ app.use(cors({
 app.get("/api/health", (req, res) => {
     res.json({ ok: true });
 });
+
+app.use("/api", apiLimiter);
 
 function normalizePricingRows(rows = []) {
     const pricing = { ...DEFAULT_PLAN_PRICING };
@@ -318,17 +346,34 @@ app.post(
     }
 );
 
-app.use(express.json());
+app.use(express.json({ limit: "1mb" }));
 
-app.post("/api/verify-payment", async (req, res) => {
+app.post("/api/verify-payment", sensitiveLimiter, async (req, res) => {
     const { reference } = req.body;
+    const authHeader = req.headers.authorization || "";
+    const token = authHeader.startsWith("Bearer ") ? authHeader.slice(7) : null;
 
     if (!reference) {
         res.status(400).json({ error: "Payment reference is required" });
         return;
     }
 
+    if (!token) {
+        res.status(401).json({ error: "Login required" });
+        return;
+    }
+
     try {
+        const {
+            data: { user },
+            error: userError
+        } = await supabaseAdmin.auth.getUser(token);
+
+        if (userError || !user) {
+            res.status(401).json({ error: "Invalid login session" });
+            return;
+        }
+
         const response = await fetch(`https://api.paystack.co/transaction/verify/${encodeURIComponent(reference)}`, {
             headers: {
                 Authorization: `Bearer ${paystackSecretKey}`
@@ -342,6 +387,11 @@ app.post("/api/verify-payment", async (req, res) => {
             return;
         }
 
+        if (result.data.metadata?.user_id !== user.id) {
+            res.status(403).json({ error: "This payment does not belong to the signed-in account" });
+            return;
+        }
+
         const profile = await activateSubscriptionFromPaystack(result.data);
 
         res.json({
@@ -350,11 +400,11 @@ app.post("/api/verify-payment", async (req, res) => {
         });
     } catch (error) {
         console.error("Payment verification failed:", error);
-        res.status(500).json({ error: "Could not verify payment" });
+        res.status(error.status || 500).json({ error: error.message || "Could not verify payment" });
     }
 });
 
-app.post("/api/team/reps", async (req, res) => {
+app.post("/api/team/reps", sensitiveLimiter, async (req, res) => {
     try {
         const adminProfile = await requireAdminProfile(req);
         const { full_name, email, password } = req.body;
@@ -1436,6 +1486,107 @@ async function ensureBusinessForOwner({ userId, plan, billingCycle, currency, re
     };
 }
 
+async function claimPaymentReference(payment) {
+    const reference = String(payment?.reference || "").trim();
+
+    if (!reference) {
+        throw new Error("Paystack payment reference is missing");
+    }
+
+    const row = {
+        reference,
+        status: "processing",
+        provider: "paystack",
+        amount: Number(payment.amount || 0),
+        currency: payment.currency || "NGN",
+        user_id: payment.metadata?.user_id || null,
+        plan: payment.metadata?.plan || "starter",
+        billing_cycle: payment.metadata?.billing_cycle || "monthly",
+        payload: payment,
+        updated_at: new Date().toISOString()
+    };
+
+    const { data, error } = await supabaseAdmin
+        .from("payment_events")
+        .insert(row)
+        .select("*")
+        .single();
+
+    if (!error) {
+        return { paymentEvent: data, alreadyActivated: false };
+    }
+
+    if (error.code !== "23505") {
+        if (isMissingTableError(error)) {
+            throw new Error("Payment hardening migration is missing. Run launch-hardening.sql in Supabase.");
+        }
+
+        throw error;
+    }
+
+    const { data: existing, error: existingError } = await supabaseAdmin
+        .from("payment_events")
+        .select("*")
+        .eq("reference", reference)
+        .single();
+
+    if (existingError) throw existingError;
+
+    if (existing.status === "activated") {
+        return { paymentEvent: existing, alreadyActivated: true };
+    }
+
+    const updatedAt = new Date(existing.updated_at || existing.created_at || 0).getTime();
+    const isRecentProcessing =
+        existing.status === "processing"
+        && Number.isFinite(updatedAt)
+        && Date.now() - updatedAt < 2 * 60 * 1000;
+
+    if (isRecentProcessing) {
+        const error = new Error("Payment activation is already processing. Please try again shortly.");
+        error.status = 409;
+        throw error;
+    }
+
+    const { data: retryEvent, error: retryError } = await supabaseAdmin
+        .from("payment_events")
+        .update({ ...row, status: "processing" })
+        .eq("reference", reference)
+        .select("*")
+        .single();
+
+    if (retryError) throw retryError;
+
+    return { paymentEvent: retryEvent, alreadyActivated: false };
+}
+
+async function markPaymentEvent(reference, status, details = {}) {
+    const { error } = await supabaseAdmin
+        .from("payment_events")
+        .update({
+            status,
+            details,
+            updated_at: new Date().toISOString()
+        })
+        .eq("reference", reference);
+
+    if (error) {
+        console.error("Payment event update failed:", error);
+    }
+}
+
+async function getActivatedPaymentProfile(paymentEvent) {
+    if (!paymentEvent?.user_id) return null;
+
+    const { data } = await supabaseAdmin
+        .from("profiles")
+        .select("id, role, full_name, business_id, subscription_status, subscription_plan, subscription_expires_at")
+        .eq("id", paymentEvent.user_id)
+        .maybeSingle();
+
+    return data || null;
+}
+
 async function activateSubscriptionFromPaystack(payment) {
     const metadata = payment.metadata || {};
     const userId = metadata.user_id;
@@ -1453,6 +1604,12 @@ async function activateSubscriptionFromPaystack(payment) {
         billingCycle,
         paidAmount: payment.amount
     });
+
+    const { paymentEvent, alreadyActivated } = await claimPaymentReference(payment);
+
+    if (alreadyActivated) {
+        return await getActivatedPaymentProfile(paymentEvent);
+    }
 
     const { businessId, expiresAt } = await ensureBusinessForOwner({
         userId,
@@ -1513,8 +1670,15 @@ async function activateSubscriptionFromPaystack(payment) {
         .single();
 
     if (error) {
+        await markPaymentEvent(reference, "failed", { error: error.message });
         throw error;
     }
+
+    await markPaymentEvent(reference, "activated", {
+        business_id: businessId,
+        user_id: userId,
+        plan: `${plan}-${billingCycle}`
+    });
 
     return data;
 }

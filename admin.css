@@ -5361,3 +5361,33 @@ body::-webkit-scrollbar-thumb:hover,
         padding: 5px;
     }
 }
+
+
+/* Center inventory cards inside the products dropdown panel */
+#productList.panel-body {
+    justify-content: center;
+    justify-items: center;
+}
+
+#productList .product-card {
+    justify-self: center;
+}
+
+@media (min-width: 561px) and (max-width: 760px) {
+    #productList.panel-body {
+        grid-template-columns: repeat(2, minmax(0, 226px)) !important;
+        justify-content: center;
+    }
+}
+
+@media (max-width: 560px) {
+    #productList.panel-body {
+        grid-template-columns: minmax(0, 520px) !important;
+        justify-content: center;
+    }
+
+    #productList .product-card {
+        width: 100%;
+        max-width: 520px;
+    }
+}

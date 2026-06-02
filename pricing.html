@@ -290,6 +290,16 @@
                 return;
             }
 
+            const {
+                data: { session }
+            } = await supabaseClient.auth.getSession();
+
+            if (!session?.access_token) {
+                showToast("Please sign in again to confirm this payment");
+                window.location.href = "signin.html?tab=signin&plan=" + encodeURIComponent(plan);
+                return;
+            }
+
             let response;
             let result;
 
@@ -297,7 +307,8 @@
                 response = await fetch(`${PAYMENT_API_URL}/api/verify-payment`, {
                     method: "POST",
                     headers: {
-                        "Content-Type": "application/json"
+                        "Content-Type": "application/json",
+                        Authorization: `Bearer ${session.access_token}`
                     },
                     body: JSON.stringify({ reference })
                 });

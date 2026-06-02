@@ -530,3 +530,38 @@ body {
         flex: 0 0 auto;
     }
 }
+
+
+/* Keep long platform revenue values inside the overview card. */
+.metric-card {
+    min-width: 0;
+}
+
+.metric-card strong {
+    min-width: 0;
+    max-width: 100%;
+    color: #f8fafc;
+    overflow-wrap: anywhere;
+}
+
+.metric-card-revenue {
+    grid-column: span 2;
+}
+
+.metric-card-revenue strong {
+    font-size: clamp(18px, 1.75vw, 24px);
+    line-height: 1.18;
+    white-space: normal;
+}
+
+@media (max-width: 760px) {
+    .metric-card-revenue {
+        grid-column: span 2;
+    }
+}
+
+@media (max-width: 560px) {
+    .metric-card-revenue {
+        grid-column: auto;
+    }
+}

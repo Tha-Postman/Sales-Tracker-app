@@ -97,12 +97,16 @@
 
         <div class="sale-header">
             <h1>New Sale</h1>
-            <input
-                type="text"
-                id="customer_id"
-                readonly
-                placeholder="Customer ID"
-            />
+            <div class="customer-reference">
+                <span class="customer-reference-label">Customer ID</span>
+                <input
+                    type="text"
+                    id="customer_id"
+                    readonly
+                    placeholder="Generating ID..."
+                    aria-label="Customer ID"
+                />
+            </div>
         </div>
 
         <div class="sale-grid">
@@ -666,6 +670,23 @@ async function getProfile(){
 }
 
 // APPLY PERMISSIONS
+function ensureOfflineCacheOwner(){
+    const ownerKey = [
+        currentUser?.id || currentProfile?.id || "anonymous",
+        getBusinessId() || "no-business"
+    ].join(":");
+    const previousOwner = localStorage.getItem("offlineCacheOwner");
+
+    if(previousOwner && previousOwner !== ownerKey){
+        ["offlineSales", "offlineQueue", "offlineCustomers", "offlineProducts", "offlineProfile"]
+            .forEach(key => localStorage.removeItem(key));
+        offlineSales = [];
+        offlineQueue = [];
+    }
+
+    localStorage.setItem("offlineCacheOwner", ownerKey);
+}
+
 function applyPermissions(role){
 
     if(role !== "admin"){
@@ -774,6 +795,7 @@ async function loadProfileUI(){
     currentBusinessId = profile.business_id;
 
     currentUserRole = profile.role || "rep";
+    ensureOfflineCacheOwner();
 
     if(profile.is_active === false || profile.status === "inactive"){
         await supabaseClient.auth.signOut();
@@ -1096,6 +1118,9 @@ function saveSaleOffline(saleData){
         offline: true
     };
 
+    offlineSale.offline_sync_key = getSaleSyncKey(offlineSale);
+
+
     const savedOffline =
     JSON.parse(
         localStorage.getItem("offlineSales")
@@ -1300,6 +1325,39 @@ async function deductStockForSale(saleData, saleId = null){
     populateProductDropdown();
 }
 
+function getSaleSyncKey(sale){
+    return sale.offline_sync_key
+        || [sale.business_id || getBusinessId() || "business", sale.customer_id || Date.now()].join(":");
+}
+
+async function submitSaleWithStock(sale){
+    const syncKey = getSaleSyncKey(sale);
+    const payload = {
+        ...sale,
+        offline_sync_key: syncKey
+    };
+
+    const { data, error } = await supabaseClient.rpc("submit_sale_with_stock", {
+        p_sale: payload,
+        p_sync_key: syncKey
+    });
+
+    if(error){
+        if(
+            error.code === "PGRST202"
+            || String(error.message || "").toLowerCase().includes("submit_sale_with_stock")
+        ){
+            throw new Error("Sales database upgrade is missing. Run launch-hardening.sql in Supabase.");
+        }
+
+        throw error;
+    }
+
+    await loadProducts();
+
+    return data;
+}
+
 async function addCustomer(){
 
     const btn =
@@ -1433,6 +1491,8 @@ if(!online){
                 new Date().toISOString()
             };
 
+            offlineSale.offline_sync_key = getSaleSyncKey(offlineSale);
+
             const savedOffline =
             JSON.parse(
                 localStorage.getItem("offlineSales")
@@ -1476,34 +1536,21 @@ if(!online){
         }
 
         saleData.user_id = user.id;
-
-        const { data: insertedSale, error } =
-        await supabaseClient
-        .from("customers")
-        .insert([saleData])
-        .select("id")
-        .single();
-
-        if(error){
-
+        try {
+            await submitSaleWithStock(saleData);
+        } catch(error) {
             console.log(error);
 
-            const stillOnline =
-            await isOnline();
+            const stillOnline = await isOnline();
 
             if(!stillOnline){
-
                 saveSaleOffline(saleData);
-
                 return;
             }
 
-            showToast(error.message);
-
+            showToast(error.message || "Sale could not be saved");
             return;
         }
-
-        await deductStockForSale(saleData, insertedSale?.id || null);
 
         cart = [];
 
@@ -1833,86 +1880,55 @@ function populateProductDropdown(){
 
 // AUTO SYNC
 async function syncOfflineSales(){
-
-    const online =
-    await isOnline();
-
+    const online = await isOnline();
     if(!online) return;
 
-    const offlineSales =
-    JSON.parse(
-        localStorage.getItem("offlineSales")
-    ) || [];
+    const queuedSales = JSON.parse(localStorage.getItem("offlineSales")) || [];
+    if(queuedSales.length === 0) return;
 
-    if(offlineSales.length === 0){
+    showToast("Syncing offline sales...");
 
-        return;
-    }
-
-    showToast("🔄 Syncing offline sales...");
-
-    const user =
-    await getUser();
+    const user = await getUser();
 
     if(!user){
-
         showToast("Login required to sync offline sales");
-
         return;
     }
 
-    for(const sale of offlineSales){
+    const remainingOfflineSales = [];
 
+    for(const sale of queuedSales){
         const cleanSale = {
-
             customer_id: sale.customer_id,
-
             cart: sale.cart,
-
             price: sale.price,
-
             discount: sale.discount,
-
             final_price: sale.final_price,
-
             status: sale.status,
-
             source: sale.source,
-
             payment_mode: sale.payment_mode,
-
             user_id: sale.user_id || user.id,
-
             business_id: sale.business_id || getBusinessId(),
-
             created_by: sale.created_by || currentProfile?.full_name || user.email || "Sales Rep",
-
-            created_at: sale.created_at
+            created_at: sale.created_at,
+            offline_sync_key: getSaleSyncKey(sale)
         };
 
-        const { error } =
-        await supabaseClient
-        .from("customers")
-        .insert([cleanSale]);
-
-        if(error){
-
-            console.log(
-                "SYNC ERROR:",
-                error
-            );
-
-            return;
+        try {
+            await submitSaleWithStock(cleanSale);
+        } catch(error) {
+            console.log("SYNC ERROR:", error);
+            remainingOfflineSales.push(sale);
         }
     }
 
-    localStorage.removeItem(
-        "offlineSales"
-    );
-
-    showToast(
-        "✅ Offline sales synced"
-    );
+    if(remainingOfflineSales.length){
+        localStorage.setItem("offlineSales", JSON.stringify(remainingOfflineSales));
+        showToast(`${remainingOfflineSales.length} offline sale(s) still need attention`);
+    } else {
+        localStorage.removeItem("offlineSales");
+        showToast("Offline sales synced", "success");
+    }
 
     await loadCustomers();
 }
