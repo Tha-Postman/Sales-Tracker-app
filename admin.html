@@ -1462,10 +1462,22 @@ function renderFilePreviewState(previewId, file){
 
     if(!preview || !file) return;
 
-    const objectUrl = URL.createObjectURL(file);
+    const allowedTypes = ["image/png", "image/jpeg", "image/webp", "image/gif"];
+
+    if(!allowedTypes.includes(file.type)){
+        showNotification("Choose a PNG, JPG, WEBP, or GIF image", "error");
+        return;
+    }
+
+    if(file.size > 10 * 1024 * 1024){
+        showNotification("Product image must be 10MB or less", "error");
+        return;
+    }
+
+    const previewToken = `${Date.now()}-${Math.random()}`;
 
     productImageCropState[previewId] = {
-        objectUrl,
+        previewToken,
         image: null,
         mode: "fit",
         zoom: 1,
@@ -1477,6 +1489,10 @@ function renderFilePreviewState(previewId, file){
         <div class="product-cropper fit-mode">
             <div class="product-crop-frame">
                 <canvas class="product-crop-canvas" aria-label="Product crop preview"></canvas>
+                <div class="product-preview-loading">
+                    <i class="fa-solid fa-spinner fa-spin"></i>
+                    <span>Preparing preview...</span>
+                </div>
             </div>
             <div class="product-crop-tools">
                 <div class="product-crop-head">
@@ -1507,23 +1523,41 @@ function renderFilePreviewState(previewId, file){
         </div>
     `;
 
-    const image = new Image();
+    bindCropControls(previewId);
 
-    image.onload = () => {
-        productImageCropState[previewId].image = image;
-        URL.revokeObjectURL(objectUrl);
-        updateCropPreview(previewId);
-    };
+    const showPreviewError = () => {
+        const currentState = productImageCropState[previewId];
+        if(!currentState || currentState.previewToken !== previewToken) return;
 
-    image.onerror = () => {
-        URL.revokeObjectURL(objectUrl);
+        preview.innerHTML = `
+            <div class="product-preview-error">
+                <i class="fa-solid fa-triangle-exclamation"></i>
+                <span>Unable to preview this image. Choose a PNG, JPG, WEBP, or GIF file.</span>
+            </div>
+        `;
         showNotification("Unable to preview product image", "error");
     };
 
-    image.src = objectUrl;
+    const reader = new FileReader();
 
-    bindCropControls(previewId);
-    updateCropPreview(previewId);
+    reader.onload = () => {
+        const image = new Image();
+
+        image.onload = () => {
+            const currentState = productImageCropState[previewId];
+            if(!currentState || currentState.previewToken !== previewToken) return;
+
+            currentState.image = image;
+            preview.querySelector(".product-preview-loading")?.remove();
+            updateCropPreview(previewId);
+        };
+
+        image.onerror = showPreviewError;
+        image.src = reader.result;
+    };
+
+    reader.onerror = showPreviewError;
+    reader.readAsDataURL(file);
 }
 
 function updateAddProductImagePreview(){
