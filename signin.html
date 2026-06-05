@@ -164,6 +164,20 @@
                 </button>
             </div>
 
+            <label class="terms-check" for="signup-terms">
+                <input
+                    type="checkbox"
+                    id="signup-terms"
+                    required
+                >
+                <span>
+                    I agree to the
+                    <a href="terms.html" target="_blank" rel="noopener">Terms and Conditions</a>
+                    and
+                    <a href="privacy.html" target="_blank" rel="noopener">Privacy Policy</a>.
+                </span>
+            </label>
+
             <button class="auth-btn" type="submit">
                 <span>Create Account</span>
                 <i class="fa-solid fa-user-plus"></i>
@@ -512,9 +526,16 @@
             const email = document.getElementById("signup-email").value.trim();
             const password = document.getElementById("signup-password").value;
             const name = document.getElementById("signup-name").value.trim();
+            const acceptedTerms = document.getElementById("signup-terms").checked;
 
             if(!name || !email || password.length < 6){
                 showToast("Enter valid details. Password needs 6+ characters.", "error");
+                setButtonLoading(submitBtn, false);
+                return;
+            }
+
+            if(!acceptedTerms){
+                showToast("Please accept the Terms and Privacy Policy to continue.", "error");
                 setButtonLoading(submitBtn, false);
                 return;
             }

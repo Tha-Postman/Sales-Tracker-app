@@ -289,6 +289,41 @@ body::before {
     background: rgba(255,255,255,0.08);
 }
 
+.terms-check {
+    display: grid;
+    grid-template-columns: 18px 1fr;
+    gap: 10px;
+    align-items: flex-start;
+    margin: 4px 0 14px;
+    padding: 12px;
+    border: 1px solid rgba(148,163,184,0.16);
+    border-radius: 14px;
+    background: rgba(2,6,23,0.34);
+    color: #cbd5e1;
+    font-size: 13px;
+    line-height: 1.55;
+    cursor: pointer;
+}
+
+.terms-check input {
+    width: 18px;
+    height: 18px;
+    margin-top: 2px;
+    accent-color: #14b8a6;
+    cursor: pointer;
+}
+
+.terms-check a {
+    color: #93c5fd;
+    font-weight: 900;
+    text-decoration: none;
+}
+
+.terms-check a:hover {
+    color: white;
+    text-decoration: underline;
+}
+
 .auth-btn {
     width: 100%;
     min-height: 50px;
