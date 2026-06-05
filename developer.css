@@ -436,8 +436,73 @@ h3 {
     cursor: pointer;
 }
 
+.pricing-equivalents {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 12px;
+    margin: 4px 0 14px;
+}
+
+.pricing-equivalents article {
+    padding: 14px;
+    border: 1px solid rgba(148, 163, 184, 0.14);
+    border-radius: 16px;
+    background:
+        linear-gradient(135deg, rgba(37, 99, 235, 0.12), rgba(20, 184, 166, 0.06)),
+        rgba(2, 6, 23, 0.42);
+}
+
+.pricing-equivalents article > div {
+    display: flex;
+    justify-content: space-between;
+    gap: 10px;
+    align-items: baseline;
+    margin-bottom: 10px;
+}
+
+.pricing-equivalents span {
+    color: #93c5fd;
+    font-size: 12px;
+    font-weight: 900;
+}
+
+.pricing-equivalents strong {
+    color: #fff;
+}
+
+.pricing-equivalents ul {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 8px;
+    padding: 0;
+    margin: 0;
+    list-style: none;
+}
+
+.pricing-equivalents li {
+    display: flex;
+    justify-content: space-between;
+    gap: 8px;
+    min-width: 0;
+    padding: 8px 10px;
+    border-radius: 12px;
+    background: rgba(15, 23, 42, 0.66);
+    border: 1px solid rgba(148, 163, 184, 0.1);
+}
+
+.pricing-equivalents li strong {
+    min-width: 0;
+    overflow-wrap: anywhere;
+    text-align: right;
+    font-size: 12px;
+}
+
 @media (max-width: 760px) {
     .pricing-editor {
+        grid-template-columns: 1fr;
+    }
+
+    .pricing-equivalents {
         grid-template-columns: 1fr;
     }
 }

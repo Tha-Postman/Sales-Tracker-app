@@ -95,16 +95,17 @@
                 </div>
                 <form id="pricingEditor" class="pricing-editor" onsubmit="savePlatformPricing(event)">
                     <label>Starter monthly
-                        <input id="priceStarter" type="number" min="1" step="1">
+                        <input id="priceStarter" type="number" min="1" step="1" oninput="renderPricingEquivalents()">
                     </label>
                     <label>Business monthly
-                        <input id="priceBusiness" type="number" min="1" step="1">
+                        <input id="priceBusiness" type="number" min="1" step="1" oninput="renderPricingEquivalents()">
                     </label>
                     <label>Pro monthly
-                        <input id="pricePro" type="number" min="1" step="1">
+                        <input id="pricePro" type="number" min="1" step="1" oninput="renderPricingEquivalents()">
                     </label>
                     <button type="submit"><i class="fa-solid fa-floppy-disk"></i> Save Pricing</button>
                 </form>
+                <div class="pricing-equivalents" id="pricingEquivalents"></div>
 
                 <div class="dev-tools-grid">
                     <button type="button" onclick="checkApiHealth()"><i class="fa-solid fa-heart-pulse"></i> Check API Health</button>
@@ -171,12 +172,28 @@ const supabaseClient = supabase.createClient(supabaseUrl, supabaseKey);
 
 let allBusinesses = [];
 let activity = [];
+const currencyRates = {
+    USD: { rate: 0.00067, label: "US Dollar" },
+    GBP: { rate: 0.00053, label: "British Pound" },
+    EUR: { rate: 0.00062, label: "Euro" },
+    GHS: { rate: 0.010, label: "Ghana Cedi" },
+    KES: { rate: 0.086, label: "Kenyan Shilling" },
+    ZAR: { rate: 0.012, label: "South African Rand" }
+};
 
 function formatMoney(amount){
     return new Intl.NumberFormat(undefined, {
         style: "currency",
         currency: "NGN",
         maximumFractionDigits: 0
+    }).format(Number(amount || 0));
+}
+
+function formatConvertedMoney(amount, currency){
+    return new Intl.NumberFormat(undefined, {
+        style: "currency",
+        currency,
+        maximumFractionDigits: currency === "USD" || currency === "GBP" || currency === "EUR" ? 2 : 0
     }).format(Number(amount || 0));
 }
 
@@ -356,24 +373,64 @@ async function loadPlatformPricingEditor(){
         document.getElementById("priceStarter").value = pricing.starter?.monthly_ngn || pricing.starter?.monthlyNgn || 10000;
         document.getElementById("priceBusiness").value = pricing.business?.monthly_ngn || pricing.business?.monthlyNgn || 25000;
         document.getElementById("pricePro").value = pricing.pro?.monthly_ngn || pricing.pro?.monthlyNgn || 50000;
+        renderPricingEquivalents();
     } catch(error) {
         showNotification(error.message, "error");
     }
 }
 
+function getPricingEditorValues(){
+    return {
+        starter: Number(document.getElementById("priceStarter")?.value || 0),
+        business: Number(document.getElementById("priceBusiness")?.value || 0),
+        pro: Number(document.getElementById("pricePro")?.value || 0)
+    };
+}
+
+function renderPricingEquivalents(){
+    const container = document.getElementById("pricingEquivalents");
+    if(!container) return;
+
+    const prices = getPricingEditorValues();
+    const labels = {
+        starter: "Starter",
+        business: "Business",
+        pro: "Pro"
+    };
+
+    container.innerHTML = Object.entries(prices).map(([plan, amount]) => `
+        <article>
+            <div>
+                <span>${labels[plan]}</span>
+                <strong>${formatMoney(amount)}</strong>
+            </div>
+            <ul>
+                ${Object.entries(currencyRates).map(([currency, config]) => `
+                    <li title="${config.label}">
+                        <span>${currency}</span>
+                        <strong>${formatConvertedMoney(amount * config.rate, currency)}</strong>
+                    </li>
+                `).join("")}
+            </ul>
+        </article>
+    `).join("");
+}
+
 async function savePlatformPricing(event){
     event.preventDefault();
     try {
+        const pricing = getPricingEditorValues();
         await devFetch("/api/developer/pricing", {
             method: "POST",
             body: JSON.stringify({
                 pricing: {
-                    starter: { monthly_ngn: Number(document.getElementById("priceStarter").value || 0) },
-                    business: { monthly_ngn: Number(document.getElementById("priceBusiness").value || 0) },
-                    pro: { monthly_ngn: Number(document.getElementById("pricePro").value || 0) }
+                    starter: { monthly_ngn: pricing.starter },
+                    business: { monthly_ngn: pricing.business },
+                    pro: { monthly_ngn: pricing.pro }
                 }
             })
         });
+        renderPricingEquivalents();
         showNotification("Pricing updated", "success");
     } catch(error) {
         showNotification(error.message, "error");
