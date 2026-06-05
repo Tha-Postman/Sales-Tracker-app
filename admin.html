@@ -221,7 +221,7 @@
             <div class="chart-box-head">
                 <h3>Revenue Overview</h3>
                 <div class="chart-period-tabs" aria-label="Revenue period">
-                    <button class="active" type="button" data-revenue-period="daily" onclick="setRevenuePeriod('daily')">Daily</button>
+                    <button class="active" type="button" data-revenue-period="weekly" onclick="setRevenuePeriod('weekly')">Weekly</button>
                     <button type="button" data-revenue-period="monthly" onclick="setRevenuePeriod('monthly')">Monthly</button>
                     <button type="button" data-revenue-period="annual" onclick="setRevenuePeriod('annual')">Annual</button>
                 </div>
@@ -732,7 +732,7 @@ const TEAM_API_URL = (
 
 let revenueChart;
 let paymentChart;
-let revenuePeriod = "daily";
+let revenuePeriod = "weekly";
 
 let currentRepSales = [];
 
@@ -1055,6 +1055,9 @@ function toggleSidebar() {
 function updateSidebarState() {
     const collapsed = document.body.classList.contains("sidebar-collapsed");
     const toggle = document.querySelector(".toggle-btn");
+    const lockScroll = !collapsed && window.matchMedia("(max-width: 980px)").matches;
+
+    document.body.classList.toggle("dashboard-scroll-locked", lockScroll);
 
     if (!toggle) return;
 
@@ -3742,7 +3745,11 @@ function getRevenueData(period = revenuePeriod) {
         } else if(period === "monthly"){
             key = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, "0")}`;
         } else {
-            key = date.toISOString().slice(0, 10);
+            const weekStart = new Date(date);
+            const day = weekStart.getDay();
+            weekStart.setHours(0, 0, 0, 0);
+            weekStart.setDate(weekStart.getDate() - day);
+            key = weekStart.toISOString().slice(0, 10);
         }
 
         revenue[key] = (revenue[key] || 0) + amount;
@@ -3766,9 +3773,16 @@ function formatRevenueLabel(label, period = revenuePeriod){
     }
 
     const date = new Date(`${label}T00:00:00`);
-    return Number.isNaN(date.getTime())
-        ? label
-        : date.toLocaleDateString(undefined, { month: "short", day: "numeric" });
+
+    if(Number.isNaN(date.getTime())) return label;
+
+    if(period === "weekly"){
+        const weekEnd = new Date(date);
+        weekEnd.setDate(weekEnd.getDate() + 6);
+        return `${date.toLocaleDateString(undefined, { month: "short", day: "numeric" })} - ${weekEnd.toLocaleDateString(undefined, { month: "short", day: "numeric" })}`;
+    }
+
+    return date.toLocaleDateString(undefined, { month: "short", day: "numeric" });
 }
 
 function setRevenuePeriod(period){
@@ -4862,12 +4876,12 @@ if(productSearchInput){
 
 init();
 updateSidebarState();
+window.addEventListener("resize", updateSidebarState);
 
 </script>
 
     <script src="support-widget.js"></script>
 </body>
 </html>
-
 
 
