@@ -404,6 +404,41 @@ app.post("/api/verify-payment", sensitiveLimiter, async (req, res) => {
     }
 });
 
+app.post("/api/payments/recover", sensitiveLimiter, async (req, res) => {
+    const reference = String(req.body?.reference || "").trim();
+
+    if (!reference) {
+        res.status(400).json({ error: "Payment reference is required" });
+        return;
+    }
+
+    try {
+        const response = await fetch(`https://api.paystack.co/transaction/verify/${encodeURIComponent(reference)}`, {
+            headers: {
+                Authorization: `Bearer ${paystackSecretKey}`
+            }
+        });
+
+        const result = await response.json();
+
+        if (!response.ok || result.data?.status !== "success") {
+            res.status(400).json({ error: "Payment has not been confirmed by Paystack yet" });
+            return;
+        }
+
+        const profile = await activateSubscriptionFromPaystack(result.data);
+
+        res.json({
+            ok: true,
+            message: "Payment confirmed and subscription activated",
+            profile
+        });
+    } catch (error) {
+        console.error("Payment recovery failed:", error);
+        res.status(error.status || 500).json({ error: error.message || "Could not recover payment" });
+    }
+});
+
 app.post("/api/sales/submit", sensitiveLimiter, async (req, res) => {
     try {
         const profile = await requireBusinessProfile(req);
@@ -719,6 +754,91 @@ app.get("/api/team/reports", async (req, res) => {
     } catch (error) {
         console.error("Load reports failed:", error);
         res.status(error.status || 500).json({ error: error.message || "Could not load reports" });
+    }
+});
+
+app.get("/api/team/expenses", async (req, res) => {
+    try {
+        const profile = await requireAdminProfile(req);
+
+        const { data, error } = await supabaseAdmin
+            .from("business_expenses")
+            .select("*")
+            .eq("business_id", profile.business_id)
+            .order("expense_date", { ascending: false })
+            .order("created_at", { ascending: false })
+            .limit(500);
+
+        if (error) {
+            if (isMissingTableError(error)) {
+                res.json({ ok: true, expenses: [], setup_required: true });
+                return;
+            }
+            throw error;
+        }
+
+        res.json({ ok: true, expenses: data || [] });
+    } catch (error) {
+        console.error("Load expenses failed:", error);
+        res.status(error.status || 500).json({ error: error.message || "Could not load expenses" });
+    }
+});
+
+app.post("/api/team/expenses", async (req, res) => {
+    try {
+        const profile = await requireAdminProfile(req);
+        const title = String(req.body?.title || "").trim();
+        const category = String(req.body?.category || "General").trim();
+        const amount = Number(req.body?.amount || 0);
+        const expenseDate = req.body?.expense_date || new Date().toISOString().slice(0, 10);
+        const note = String(req.body?.note || "").trim();
+
+        if (!title || !Number.isFinite(amount) || amount <= 0) {
+            res.status(400).json({ error: "Expense title and valid amount are required" });
+            return;
+        }
+
+        const { data, error } = await supabaseAdmin
+            .from("business_expenses")
+            .insert({
+                business_id: profile.business_id,
+                title,
+                category,
+                amount,
+                expense_date: expenseDate,
+                note,
+                created_by: profile.id
+            })
+            .select("*")
+            .single();
+
+        if (error) throw error;
+
+        await logAudit(profile, "expense_added", "expense", data.id, { title, amount, category });
+        res.json({ ok: true, expense: data });
+    } catch (error) {
+        console.error("Save expense failed:", error);
+        res.status(error.status || 500).json({ error: error.message || "Could not save expense" });
+    }
+});
+
+app.delete("/api/team/expenses/:id", async (req, res) => {
+    try {
+        const profile = await requireAdminProfile(req);
+
+        const { error } = await supabaseAdmin
+            .from("business_expenses")
+            .delete()
+            .eq("id", req.params.id)
+            .eq("business_id", profile.business_id);
+
+        if (error) throw error;
+
+        await logAudit(profile, "expense_deleted", "expense", req.params.id, {});
+        res.json({ ok: true });
+    } catch (error) {
+        console.error("Delete expense failed:", error);
+        res.status(error.status || 500).json({ error: error.message || "Could not delete expense" });
     }
 });
 
@@ -1983,5 +2103,3 @@ app.listen(port, () => {
     console.log(`Sales Tracker running on http://localhost:${port}`);
     console.log(`Payment backend ready at http://localhost:${port}/api/health`);
 });
-
-

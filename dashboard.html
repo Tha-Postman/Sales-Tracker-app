@@ -2391,6 +2391,10 @@ function renderSaleCard(sale, index){
 
             <button onclick="printReceipt(${sale.id})">Print Receipt</button>
 
+            <button type="button" onclick="shareReceiptWhatsApp(${sale.id})">
+                WhatsApp
+            </button>
+
             ${sale.status === "Cancelled"
             ? `<span class="cancelled-tag">Cancelled</span>`
             : `<button class="cancel" onclick="cancelSale(${sale.id})">Cancel Sale</button>`
@@ -2509,6 +2513,32 @@ function printReceipt(id) {
         created_by: c.created_by || currentProfile?.full_name || "Sales Rep"
     }));
     window.open("receipt.html", "_blank", "width=430,height=680");
+}
+
+function shareReceiptWhatsApp(id) {
+    const sale = allCustomers.find(x => x.id === id);
+    if (!sale) return;
+
+    const cartItems = getCartItems(sale.cart);
+    const businessName = currentBusinessSettings?.business_name || "Sales Tracker";
+    const currency = currentBusinessSettings?.currency || currentProfile?.subscription_currency || "NGN";
+    const lines = [
+        `${businessName} Receipt`,
+        `Customer: ${sale.customer_id || "-"}`,
+        "",
+        ...cartItems.map(item =>
+            `${item.product || "Product"} x${item.quantity || 1} - ${formatMoney(item.total || 0)}`
+        ),
+        "",
+        `Total: ${formatMoney(sale.final_price || sale.price || 0)}`,
+        `Payment: ${sale.payment_mode || "-"}`,
+        `Status: ${sale.status || "-"}`,
+        "",
+        currentBusinessSettings?.receipt_footer || "Thank you for your purchase."
+    ];
+
+    const url = `https://wa.me/?text=${encodeURIComponent(lines.join("\n"))}`;
+    window.open(url, "_blank");
 }
 
 

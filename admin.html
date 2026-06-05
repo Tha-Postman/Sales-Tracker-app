@@ -116,6 +116,14 @@
             <i class="fa-solid fa-wand-magic-sparkles"></i>
             Business Tools
         </button>
+        <button type="button" data-view="customers" onclick="showAdminView('customers')">
+            <i class="fa-solid fa-address-book"></i>
+            Customers
+        </button>
+        <button type="button" data-view="finance" onclick="showAdminView('finance')">
+            <i class="fa-solid fa-coins"></i>
+            Finance
+        </button>
         <button type="button" data-view="settings" onclick="showAdminView('settings')">
             <i class="fa-solid fa-sliders"></i>
             Settings
@@ -186,10 +194,10 @@
                 <strong>Bulk add products</strong>
                 <span>Upload CSV columns: name, price, stock, image_url</span>
             </div>
-            <input id="bulkProductFile" type="file" accept=".csv,text/csv">
+            <input id="bulkProductFile" type="file" accept=".csv,text/csv,.xlsx,.xls,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet,application/vnd.ms-excel">
             <button type="button" onclick="importProductsFromCSV()">
                 <i class="fa-solid fa-file-import"></i>
-                Import CSV
+                Import CSV/Excel
             </button>
         </div>
             
@@ -309,6 +317,66 @@
             </div>
 
             <div id="businessTools" class="business-tools-grid"></div>
+        </div>
+    </section>
+
+    <section class="admin-view" data-view-panel="customers">
+        <div class="section customer-database-section">
+            <div class="section-header">
+                <div>
+                    <p class="section-kicker">Customer Intelligence</p>
+                    <h2>Customer Database</h2>
+                </div>
+                <input id="customerDatabaseSearch" class="product-search" type="search" placeholder="Search customer, product, payment..." oninput="renderCustomerDatabase()">
+            </div>
+            <div id="customerDatabaseSummary" class="report-summary-grid"></div>
+            <div id="customerDatabaseList" class="customer-database-list"></div>
+        </div>
+    </section>
+
+    <section class="admin-view" data-view-panel="finance">
+        <div class="section finance-section">
+            <div class="section-header">
+                <div>
+                    <p class="section-kicker">Profit Control</p>
+                    <h2>Expenses + Profit</h2>
+                </div>
+                <button class="section-action" type="button" onclick="loadExpenses()">
+                    <i class="fa-solid fa-rotate"></i>
+                    Refresh
+                </button>
+            </div>
+
+            <div id="financeSummary" class="report-summary-grid"></div>
+
+            <form id="expenseForm" class="team-form expense-form">
+                <div>
+                    <label for="expenseTitle">Expense</label>
+                    <input id="expenseTitle" type="text" placeholder="Rent, delivery, packaging..." required>
+                </div>
+                <div>
+                    <label for="expenseCategory">Category</label>
+                    <input id="expenseCategory" type="text" placeholder="Operations" value="Operations">
+                </div>
+                <div>
+                    <label for="expenseAmount">Amount</label>
+                    <input id="expenseAmount" type="number" min="1" step="1" required>
+                </div>
+                <div>
+                    <label for="expenseDate">Date</label>
+                    <input id="expenseDate" type="date">
+                </div>
+                <div class="settings-wide">
+                    <label for="expenseNote">Note</label>
+                    <input id="expenseNote" type="text" placeholder="Optional note">
+                </div>
+                <button type="submit">
+                    <i class="fa-solid fa-plus"></i>
+                    Add Expense
+                </button>
+            </form>
+
+            <div id="expenseList" class="expense-list"></div>
         </div>
     </section>
 
@@ -749,6 +817,7 @@ let chatRefreshTimer = null;
 let businessSettings = null;
 let reportRows = [];
 let auditLogs = [];
+let expenses = [];
 let chatSettings = {
     admin_only: false,
     allow_attachments: true
@@ -895,6 +964,14 @@ function showAdminView(view){
 
     if(view === "settings"){
         loadBusinessSettings();
+    }
+
+    if(view === "customers"){
+        renderCustomerDatabase();
+    }
+
+    if(view === "finance"){
+        loadExpenses();
     }
 
     if(view === "reports"){
@@ -1055,7 +1132,7 @@ function toggleSidebar() {
 function updateSidebarState() {
     const collapsed = document.body.classList.contains("sidebar-collapsed");
     const toggle = document.querySelector(".toggle-btn");
-    const lockScroll = !collapsed && window.matchMedia("(max-width: 980px)").matches;
+    const lockScroll = !collapsed;
 
     document.body.classList.toggle("dashboard-scroll-locked", lockScroll);
 
@@ -1150,7 +1227,7 @@ async function getAuthToken(){
     return session?.access_token || null;
 }
 
-async function callTeamApi(path, payload){
+async function callTeamApi(path, payload, method = "POST"){
     const token = await getAuthToken();
 
     if(!token){
@@ -1161,12 +1238,12 @@ async function callTeamApi(path, payload){
 
     try {
         response = await fetch(`${TEAM_API_URL}${path}`, {
-            method: "POST",
+            method,
             headers: {
                 "Content-Type": "application/json",
                 Authorization: `Bearer ${token}`
             },
-            body: JSON.stringify(payload)
+            body: method === "GET" ? undefined : JSON.stringify(payload || {})
         });
     } catch(error) {
         throw new Error("Team service is temporarily unavailable. Please try again shortly.");
@@ -1773,20 +1850,33 @@ async function importProductsFromCSV(){
     }
 
     if(!file){
-        showNotification("Choose a CSV file first", "warning");
+        showNotification("Choose a CSV or Excel file first", "warning");
         return;
     }
 
-    const text = await file.text();
-    const rows = text
-        .split(/\r?\n/)
-        .map(row => row.trim())
-        .filter(Boolean);
+    let rows = [];
+    const lowerName = file.name.toLowerCase();
+
+    if(lowerName.endsWith(".xlsx") || lowerName.endsWith(".xls")){
+        const buffer = await file.arrayBuffer();
+        const workbook = XLSX.read(buffer, { type: "array" });
+        const sheet = workbook.Sheets[workbook.SheetNames[0]];
+        rows = XLSX.utils.sheet_to_json(sheet, { header: 1, defval: "" });
+    } else {
+        const text = await file.text();
+        rows = text
+            .split(/\r?\n/)
+            .map(row => row.split(",").map(cell => cell?.trim()))
+            .filter(row => row.some(Boolean));
+    }
+
+    const firstRow = rows[0] || [];
+    const hasHeader = firstRow.join(" ").toLowerCase().includes("name");
 
     const productsToInsert = rows
-        .slice(rows[0]?.toLowerCase().includes("name") ? 1 : 0)
+        .slice(hasHeader ? 1 : 0)
         .map(row => {
-            const [name, price, stock, imageUrl] = row.split(",").map(cell => cell?.trim());
+            const [name, price, stock, imageUrl] = row.map(cell => String(cell || "").trim());
             return {
                 name,
                 price: Number(price),
@@ -2565,6 +2655,7 @@ async function init(){
     bindProductUploadPreview();
     bindProductAvailabilityControls();
     bindPasswordForm();
+    bindExpenseForm();
 
     setProductsOpen(window.matchMedia("(max-width: 760px)").matches);
 
@@ -2588,6 +2679,8 @@ async function init(){
 
     renderRevenueChart();
     renderPaymentChart();
+    renderCustomerDatabase();
+    loadExpenses();
     lastDashboardSignature = getDashboardSignature();
     setupChatAvailability();
     updatePlanLockedFeatures();
@@ -3330,6 +3423,182 @@ function exportReportCSV(){
 
     const blob = new Blob([csv], { type: "text/csv;charset=utf-8" });
     saveAs(blob, "sales-report.csv");
+}
+
+function getCustomerRecords(){
+    const map = {};
+
+    allCustomers.forEach(sale => {
+        const key = sale.customer_id || "Unknown";
+        if(!map[key]){
+            map[key] = {
+                customer_id: key,
+                sales: 0,
+                paid_sales: 0,
+                total_spent: 0,
+                last_seen: sale.created_at || null,
+                products: new Set(),
+                payments: new Set()
+            };
+        }
+
+        const record = map[key];
+        record.sales += 1;
+        if((sale.status || "").toLowerCase() === "paid"){
+            record.paid_sales += 1;
+            record.total_spent += Number(sale.final_price || sale.price || 0);
+        }
+        if(sale.payment_mode) record.payments.add(sale.payment_mode);
+        getSaleCartItems(sale).forEach(item => record.products.add(item.product || "Product"));
+
+        const current = sale.created_at ? new Date(sale.created_at) : null;
+        const previous = record.last_seen ? new Date(record.last_seen) : null;
+        if(current && (!previous || current > previous)){
+            record.last_seen = sale.created_at;
+        }
+    });
+
+    return Object.values(map).map(record => ({
+        ...record,
+        products: [...record.products],
+        payments: [...record.payments]
+    }));
+}
+
+function renderCustomerDatabase(){
+    const summary = document.getElementById("customerDatabaseSummary");
+    const list = document.getElementById("customerDatabaseList");
+    if(!summary || !list) return;
+
+    const query = (document.getElementById("customerDatabaseSearch")?.value || "").toLowerCase().trim();
+    const records = getCustomerRecords();
+    const filtered = records.filter(record =>
+        record.customer_id.toLowerCase().includes(query)
+        || record.products.join(" ").toLowerCase().includes(query)
+        || record.payments.join(" ").toLowerCase().includes(query)
+    );
+    const totalSpent = records.reduce((sum, record) => sum + record.total_spent, 0);
+    const repeatCustomers = records.filter(record => record.sales > 1).length;
+
+    summary.innerHTML = [
+        ["Customers", records.length],
+        ["Repeat Customers", repeatCustomers],
+        ["Customer Revenue", formatCurrency(totalSpent)],
+        ["Average Value", formatCurrency(records.length ? totalSpent / records.length : 0)]
+    ].map(([label, value]) => `<div class="stat-card compact-stat"><p>${label}</p><h2>${value}</h2></div>`).join("");
+
+    list.innerHTML = filtered.length ? filtered.map(record => `
+        <article class="customer-record-card">
+            <div>
+                <strong>${escapeHtml(record.customer_id)}</strong>
+                <span>${record.sales} sale${record.sales === 1 ? "" : "s"} • ${record.paid_sales} paid</span>
+            </div>
+            <div>
+                <small>Total spent</small>
+                <strong>${formatCurrency(record.total_spent)}</strong>
+            </div>
+            <p>${escapeHtml(record.products.slice(0, 4).join(", ") || "No products")}</p>
+            <time>${record.last_seen ? formatDate(record.last_seen) : "-"}</time>
+        </article>
+    `).join("") : `<div class="empty-state">No customer records found.</div>`;
+}
+
+function getCurrentMonthKey(date = new Date()){
+    return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, "0")}`;
+}
+
+function renderFinanceSummary(){
+    const summary = document.getElementById("financeSummary");
+    const list = document.getElementById("expenseList");
+    if(!summary || !list) return;
+
+    const monthKey = getCurrentMonthKey();
+    const monthlyPaidSales = allCustomers.filter(sale =>
+        (sale.status || "").toLowerCase() === "paid"
+        && sale.created_at
+        && getCurrentMonthKey(new Date(sale.created_at)) === monthKey
+    );
+    const monthlyRevenue = monthlyPaidSales.reduce((sum, sale) => sum + Number(sale.final_price || sale.price || 0), 0);
+    const monthlyExpenses = expenses.filter(expense => String(expense.expense_date || "").startsWith(monthKey));
+    const expenseTotal = monthlyExpenses.reduce((sum, expense) => sum + Number(expense.amount || 0), 0);
+    const profit = monthlyRevenue - expenseTotal;
+
+    summary.innerHTML = [
+        ["Monthly Revenue", formatCurrency(monthlyRevenue)],
+        ["Monthly Expenses", formatCurrency(expenseTotal)],
+        ["Estimated Profit", formatCurrency(profit)],
+        ["Profit Margin", monthlyRevenue ? `${Math.round((profit / monthlyRevenue) * 100)}%` : "0%"]
+    ].map(([label, value]) => `<div class="stat-card compact-stat"><p>${label}</p><h2>${value}</h2></div>`).join("");
+
+    list.innerHTML = expenses.length ? expenses.map(expense => `
+        <article class="expense-item">
+            <div>
+                <strong>${escapeHtml(expense.title || "Expense")}</strong>
+                <span>${escapeHtml(expense.category || "General")} • ${formatDate(expense.expense_date || expense.created_at)}</span>
+                ${expense.note ? `<p>${escapeHtml(expense.note)}</p>` : ""}
+            </div>
+            <strong>${formatCurrency(expense.amount)}</strong>
+            <button type="button" onclick="deleteExpense('${expense.id}')">
+                <i class="fa-solid fa-trash"></i>
+            </button>
+        </article>
+    `).join("") : `<div class="empty-state">No expenses recorded yet.</div>`;
+}
+
+async function loadExpenses(){
+    try {
+        const result = await getTeamApi("/api/team/expenses");
+        expenses = result.expenses || [];
+        renderFinanceSummary();
+
+        if(result.setup_required){
+            showNotification("Run production-features.sql to enable expense tracking.", "warning");
+        }
+    } catch(error) {
+        showNotification(error.message, "error");
+    }
+}
+
+function bindExpenseForm(){
+    const form = document.getElementById("expenseForm");
+    if(!form || form.dataset.bound === "true") return;
+
+    form.dataset.bound = "true";
+    const dateInput = document.getElementById("expenseDate");
+    if(dateInput && !dateInput.value) dateInput.value = new Date().toISOString().slice(0, 10);
+
+    form.addEventListener("submit", async event => {
+        event.preventDefault();
+
+        try {
+            await callTeamApi("/api/team/expenses", {
+                title: document.getElementById("expenseTitle").value,
+                category: document.getElementById("expenseCategory").value,
+                amount: document.getElementById("expenseAmount").value,
+                expense_date: document.getElementById("expenseDate").value,
+                note: document.getElementById("expenseNote").value
+            });
+
+            form.reset();
+            if(dateInput) dateInput.value = new Date().toISOString().slice(0, 10);
+            showNotification("Expense added", "success");
+            await loadExpenses();
+        } catch(error) {
+            showNotification(error.message, "error");
+        }
+    });
+}
+
+async function deleteExpense(id){
+    if(!confirm("Delete this expense?")) return;
+
+    try {
+        await callTeamApi(`/api/team/expenses/${id}`, {}, "DELETE");
+        showNotification("Expense deleted", "success");
+        await loadExpenses();
+    } catch(error) {
+        showNotification(error.message, "error");
+    }
 }
 
 async function loadAuditLogs(){
@@ -4767,6 +5036,8 @@ function refreshDashboardSoon(message = "Dashboard updated live", options = {}) 
         renderPaymentChart();
         renderLiveFeed();
         renderBusinessTools();
+        renderCustomerDatabase();
+        renderFinanceSummary();
 
         if(options.notify !== false && changed){
             showNotification(message);
@@ -4883,5 +5154,3 @@ window.addEventListener("resize", updateSidebarState);
     <script src="support-widget.js"></script>
 </body>
 </html>
-
-

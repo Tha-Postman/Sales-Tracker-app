@@ -5397,8 +5397,21 @@ body.dashboard-scroll-locked {
     touch-action: none;
 }
 
+html:has(body.dashboard-scroll-locked) {
+    overflow: hidden;
+}
+
+body.dashboard-scroll-locked .main {
+    max-height: 100vh;
+    overflow: hidden;
+    pointer-events: none;
+}
+
 body.dashboard-scroll-locked .sidebar {
+    max-height: 100vh;
+    overflow-y: auto;
     overscroll-behavior: contain;
+    pointer-events: auto;
 }
 
 /* Professional scrollbar styling */
@@ -5446,4 +5459,66 @@ html {
 .panel-body,
 .business-tools-grid {
     overscroll-behavior: contain;
+}
+
+/* Production feature sections */
+.customer-database-list,
+.expense-list {
+    display: grid;
+    gap: 12px;
+    margin-top: 14px;
+}
+
+.customer-record-card,
+.expense-item {
+    display: grid;
+    grid-template-columns: minmax(0, 1.1fr) auto auto;
+    align-items: center;
+    gap: 14px;
+    padding: 14px;
+    border: 1px solid rgba(148, 163, 184, 0.14);
+    border-radius: 16px;
+    background: rgba(2, 6, 23, 0.48);
+}
+
+.customer-record-card strong,
+.expense-item strong {
+    color: #f8fafc;
+}
+
+.customer-record-card span,
+.customer-record-card small,
+.expense-item span,
+.expense-item p,
+.expense-item time {
+    color: #94a3b8;
+    font-size: 12px;
+    font-weight: 800;
+}
+
+.customer-record-card p,
+.expense-item p {
+    margin: 0;
+}
+
+.expense-item button {
+    width: 38px;
+    height: 38px;
+    border: 1px solid rgba(248, 113, 113, 0.25);
+    border-radius: 12px;
+    color: #fecaca;
+    background: rgba(127, 29, 29, 0.22);
+    cursor: pointer;
+}
+
+.expense-form {
+    margin-top: 12px;
+}
+
+@media (max-width: 720px) {
+    .customer-record-card,
+    .expense-item {
+        grid-template-columns: 1fr;
+        align-items: stretch;
+    }
 }

@@ -1,0 +1,61 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <link rel="icon" type="image/svg+xml" href="img/favicon.svg">
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Recover Payment - Sales Tracker</title>
+    <link rel="stylesheet" href="public.css">
+    <link rel="stylesheet" href="support-widget.css">
+</head>
+<body>
+    <main class="public-shell">
+        <section class="public-card">
+            <p class="eyebrow">Payment Recovery</p>
+            <h1>I paid but my account is not active</h1>
+            <p>Enter your Paystack payment reference. Sales Tracker will verify the transaction and activate the subscription if payment was successful.</p>
+
+            <form id="recoverForm" class="public-form">
+                <label>
+                    Payment reference
+                    <input id="paymentReference" type="text" placeholder="e.g. trx_xxxxx or reference from Paystack" required>
+                </label>
+                <button type="submit">Recover Subscription</button>
+            </form>
+
+            <div id="recoverResult" class="public-result"></div>
+            <a href="signin.html">Back to sign in</a>
+        </section>
+    </main>
+
+    <script>
+    const API_URL = ["localhost", "127.0.0.1"].includes(window.location.hostname)
+        ? "http://127.0.0.1:4242"
+        : "https://sales-tracker-app-cd7k.onrender.com";
+
+    document.getElementById("recoverForm").addEventListener("submit", async event => {
+        event.preventDefault();
+        const resultBox = document.getElementById("recoverResult");
+        const reference = document.getElementById("paymentReference").value.trim();
+        resultBox.textContent = "Checking payment...";
+
+        try {
+            const response = await fetch(`${API_URL}/api/payments/recover`, {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ reference })
+            });
+            const result = await response.json().catch(() => ({}));
+
+            if (!response.ok) throw new Error(result.error || "Payment recovery failed");
+
+            resultBox.textContent = "Payment confirmed. You can sign in now.";
+            setTimeout(() => window.location.href = "signin.html", 1400);
+        } catch(error) {
+            resultBox.textContent = error.message;
+        }
+    });
+    </script>
+    <script src="support-widget.js"></script>
+</body>
+</html>
