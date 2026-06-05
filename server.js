@@ -404,6 +404,43 @@ app.post("/api/verify-payment", sensitiveLimiter, async (req, res) => {
     }
 });
 
+app.post("/api/sales/submit", sensitiveLimiter, async (req, res) => {
+    try {
+        const profile = await requireBusinessProfile(req);
+        const { sale, sync_key } = req.body || {};
+
+        if (!sale || !Array.isArray(sale.cart) || sale.cart.length === 0) {
+            res.status(400).json({ error: "Sale cart is required" });
+            return;
+        }
+
+        const { data, error } = await supabaseAdmin.rpc("submit_sale_with_stock_for_user", {
+            p_user_id: profile.id,
+            p_sale: {
+                ...sale,
+                user_id: profile.id,
+                business_id: profile.business_id,
+                created_by: sale.created_by || profile.full_name || profile.email || "Sales Rep"
+            },
+            p_sync_key: sync_key || sale.offline_sync_key || null
+        });
+
+        if (error) {
+            if (isMissingTableError(error) || String(error.message || "").includes("submit_sale_with_stock_for_user")) {
+                res.status(500).json({ error: "Sales security migration is missing. Run security-advisor-fixes.sql in Supabase." });
+                return;
+            }
+
+            throw error;
+        }
+
+        res.json({ ok: true, sale_id: data });
+    } catch (error) {
+        console.error("Sale submit failed:", error);
+        res.status(error.status || 500).json({ error: error.message || "Sale could not be saved" });
+    }
+});
+
 app.post("/api/team/reps", sensitiveLimiter, async (req, res) => {
     try {
         const adminProfile = await requireAdminProfile(req);

@@ -1337,25 +1337,14 @@ async function submitSaleWithStock(sale){
         offline_sync_key: syncKey
     };
 
-    const { data, error } = await supabaseClient.rpc("submit_sale_with_stock", {
-        p_sale: payload,
-        p_sync_key: syncKey
+    const result = await teamApi("/api/sales/submit", {
+        sale: payload,
+        sync_key: syncKey
     });
-
-    if(error){
-        if(
-            error.code === "PGRST202"
-            || String(error.message || "").toLowerCase().includes("submit_sale_with_stock")
-        ){
-            throw new Error("Sales database upgrade is missing. Run launch-hardening.sql in Supabase.");
-        }
-
-        throw error;
-    }
 
     await loadProducts();
 
-    return data;
+    return result.sale_id;
 }
 
 async function addCustomer(){
