@@ -98,7 +98,7 @@
         <input id="search" placeholder="Search by Product name or Customer ID..." oninput="searchCustomer()">
 
 
-    <div class="sale-wrapper">    
+    <div class="sale-wrapper">
         <div class="sale-entry">
 
         <div class="sale-header">
@@ -121,7 +121,7 @@
             <div class="field">
                 <label>Product</label>
 
-                
+
 
                 <select title="Select product" id="product" onchange="setPrice()"></select>
                             <div id="selectedProductPreview" class="selected-product-preview"></div>
@@ -302,10 +302,10 @@
         <script src="https://cdn.jsdelivr.net/npm/choices.js/public/assets/scripts/choices.min.js"></script>
 
         <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
-        
-        
+
+
         <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-        
+
 <script>
 const supabaseUrl = "https://nihqmpimzvhjglwkmhfl.supabase.co";
 const supabaseKey = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im5paHFtcGltenZoamdsd2ttaGZsIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Nzc5MzM4MjgsImV4cCI6MjA5MzUwOTgyOH0.PU0egVoNGXsloErw5hGwb9JrLHnn02F1nh6jsudsJ8w";
@@ -1146,7 +1146,7 @@ function saveSaleOffline(saleData){
 
     renderCustomers(allCustomers);
 
-    updateStats(allCustomers);
+    updateStats(allCustomers);
     cart = [];
 
 
@@ -2887,7 +2887,7 @@ if(existingItem){
 
     existingItem.discount += discount;
 
-    
+
     existingItem.image_url = existingItem.image_url || imageUrl;
 
     existingItem.total =
@@ -2903,7 +2903,7 @@ if(existingItem){
 
         product,
 
-        
+
         image_url: imageUrl,
 
         quantity,
@@ -3114,14 +3114,14 @@ function updateStats(data = allCustomers) {
             <h2>${totalCustomers}</h2>
         </div>
 
-        <div class="stat-card paid-rev">
-            <div class="stat-icon green"><i class="fa-solid fa-wallet"></i></div>
+        <div class="stat-card paid-rev revenue-stat-card">
+<div class="stat-icon green"><i class="fa-solid fa-wallet"></i></div>
             <p>Paid Revenue</p>
             <h2>${formatMoney(paidRevenue)}</h2>
         </div>
 
-        <div class="stat-card pending-rev">
-            <div class="stat-icon amber"><i class="fa-solid fa-hourglass-half"></i></div>
+        <div class="stat-card pending-rev revenue-stat-card">
+<div class="stat-icon amber"><i class="fa-solid fa-hourglass-half"></i></div>
             <p>Pending Revenue</p>
             <h2>${formatMoney(pendingRevenue)}</h2>
         </div>
@@ -3155,7 +3155,7 @@ function updateStats(data = allCustomers) {
             <p>POS Received</p>
             <h2>${formatMoney(posTotal)}</h2>
         </div>
-        
+
     `;
 }
 
@@ -3327,7 +3327,7 @@ function clearForm() {
 
     // NEW CUSTOMER ID
     generateCustomerID();
-    
+
 }
 
 // LOGOUT FUNCTION
@@ -3661,4 +3661,3 @@ init();
     <script src="support-widget.js"></script>
 </body>
 </html>
-

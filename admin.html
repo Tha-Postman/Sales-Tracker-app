@@ -33,12 +33,12 @@
 <!-- SIDEBAR -->
 
 <div>
-    
+
     <div class="sidebar" id="sidebar">
-        
-        
+
+
         <div class="sidebar-brand">
-            <div class="sidebar-logo"><i class="fa-solid fa-chart-line"></i></div>
+            <div class="sidebar-logo"><i class="fa-solid fa-chart-simple"></i></div>
             <div>
                 <h2>Admin Panel</h2>
                 <span>Sales Tracker</span>
@@ -47,36 +47,36 @@
                 <i class="fa-solid fa-xmark"></i>
             </button>
         </div>
-        
+
         <button onclick="goTo('admin.html')">
             <i class="fa-solid fa-table-columns"></i>
             <span>Dashboard</span>
         </button>
-        
+
         <button onclick="goTo('dashboard.html')">
             <i class="fa-solid fa-cash-register"></i>
             <span>Sales Dashboard</span>
         </button>
-        
-        
+
+
         <div class="topbar-actions">
-            
+
             <button class="export-btn" onclick="exportExcel()">
                 <i class="fas fa-file-excel logo-btn"></i>
                <span>Export Excel</span>
             </button>
-            
+
             <button onclick="exportDOCX()" class="export-btn docx-btn"><i class="fa-solid fa-file-word logo-btn"></i> <span>Export DOCX</span></button>
-            
+
             <button onclick="logout()">
                 <i class="fa-solid fa-right-from-bracket"></i>
                 <span>Logout</span>
             </button>
 
 </div>
-        
+
     </div>
-    
+
 </div>
 
 <!-- MAIN -->
@@ -84,7 +84,7 @@
 
 <div class="main">
     <div class="topbar">
-        
+
      <button type="button" class="toggle-btn" onclick="toggleSidebar()" aria-label="Open sidebar" aria-expanded="false"><i class="fas fa-bars"></i></button>
      <h1 class="admin-d">Admin Dashboard</h1>
      <h3 id="welcomeName" class="welcome"></h3>
@@ -151,10 +151,10 @@
             Live Feed
         </button>
     </div>
-    
+
     <section class="admin-view" data-view-panel="products">
     <div class="product-form" >
-        
+
         <div>
             <h2>Add new product</h2>
 
@@ -168,13 +168,13 @@
             id="productName"
             placeholder="Product Name"
              required>
-            
+
             <input
             type="number"
             id="productPrice"
             placeholder="Product Price"
             required>
-            
+
             <input type="number" id="productStock" placeholder="Stock Quantity" required>
 
             <div class="product-image-input-row">
@@ -191,7 +191,7 @@
             </div>
 
             <div id="productImagePreview" class="product-image-preview add-product-image-preview"></div>
-                
+
             <button type="button" onclick="addProduct()">Add Product</button>
         </form>
 
@@ -206,31 +206,31 @@
                 Import CSV/Excel
             </button>
         </div>
-            
+
     </div>
 
     <div class="product-panel">
-           
+
         <div class="panel-header"           id="productPanelHeader">
-                
+
             <h3>Products <span id="productCountBadge" class="product-count-badge">0</span></h3>
             <input type="text" id="productSearch" placeholder="Search products..." oninput="filterProducts()" class="product-search">
-                
+
             <button id="toggleBtn" type="button" aria-expanded="false" aria-label="Expand products">
                 <i class="fa-solid fa-chevron-down"></i>
             </button>
-                
+
         </div>
-    
+
             <!-- <div id="productList"></div> -->
             <div id="productList" class="panel-body"></div>
-            
+
     </div>
     </section>
 
     <section class="admin-view active" data-view-panel="overview">
     <div class="charts-container">
-        
+
         <div class="chart-box">
             <div class="chart-box-head">
                 <h3>Revenue Overview</h3>
@@ -242,7 +242,7 @@
             </div>
             <canvas id="revenueChart"></canvas>
         </div>
-        
+
         <div class="chart-box payment-method-chart-box">
             <div class="chart-box-head payment-chart-head">
                 <div>
@@ -256,32 +256,32 @@
             </div>
             <div id="paymentChartDetails" class="payment-chart-details"></div>
         </div>
-        
+
     </div>
-    
+
     <!-- STATS -->
-    
+
     <div id="topStaffTicker" class="top-staff-news"></div>
 
     <div id="stats" class="stats-grid"></div>
 
     <div id="onboardingChecklist" class="onboarding-checklist"></div>
     </section>
-    
+
     <!-- REP SECTION -->
-    
+
     <section class="admin-view overview-followup active" data-view-panel="team">
     <div class="section">
-        
+
         <div class="section-header">
-            
+
             <div>
                 <p class="section-kicker">Team Performance</p>
                 <h2>Sales Reps</h2>
             </div>
 
             <span id="repCountBadge" class="section-badge">0 reps</span>
-            
+
         </div>
 
         <form id="repInviteForm" class="team-form">
@@ -305,9 +305,9 @@
                 Add Rep
             </button>
         </form>
-        
+
         <div id="repStats" class="rep-grid"></div>
-        
+
     </div>
     </section>
 
@@ -386,7 +386,7 @@
         </div>
     </section>
 
-    
+
 
     <section class="admin-view" data-view-panel="settings">
         <div class="section settings-section">
@@ -527,14 +527,14 @@
             </div>
         </div>
     </section>
-    
+
     <section class="admin-view overview-followup active" data-view-panel="feed">
     <div class="live-feed">
-    
+
         <h2>Live Sales Feed</h2>
-    
+
         <div id="liveSalesFeed"></div>
-    
+
     </div>
     </section>
 </div>
@@ -542,12 +542,12 @@
 <!-- MODAL -->
 
 <div id="repModal" class="modal">
-    
+
     <div class="modal-content">
         <div class="close-rep-div">
-            
-            <button onclick="closeRepModal()" class="close-rep" type="button">×</button>
-            
+
+            <button onclick="closeRepModal()" class="close-rep" type="button">Ã—</button>
+
         </div>
         <div class="modal-top">
 
@@ -557,21 +557,21 @@
                 <div id="repModalSummary" class="rep-modal-summary"></div>
             </div>
 
-            <input 
-            type="text" 
+            <input
+            type="text"
             id="repSearchInput"
             placeholder="Search customer or status..."
             oninput="filterRepSales()"
             class="rep-search"
             />
-            
-            
+
+
         </div>
-        
+
         <div id="repSalesList"></div>
-        
+
     </div>
-    
+
 
 </div>
 
@@ -588,7 +588,7 @@
                     <span id="productEditHint">Update product details</span>
                 </div>
             </div>
-            <button onclick="closeProductEditModal()" class="close-rep" type="button" aria-label="Close edit product">×</button>
+            <button onclick="closeProductEditModal()" class="close-rep" type="button" aria-label="Close edit product">Ã—</button>
         </div>
 
         <form id="productEditForm" class="product-edit-form">
@@ -653,7 +653,7 @@
                 <h3 id="repActionTitle">Manage Rep</h3>
                 <p id="repActionText" class="confirm-modal-copy"></p>
             </div>
-            <button type="button" onclick="closeRepActionModal()" class="close-rep">×</button>
+            <button type="button" onclick="closeRepActionModal()" class="close-rep">Ã—</button>
         </div>
 
         <label class="confirm-field">
@@ -710,7 +710,7 @@
                     <span id="productDeleteHint">This product will be removed from your inventory.</span>
                 </div>
             </div>
-            <button onclick="closeProductDeleteModal()" class="close-rep" type="button" aria-label="Close delete product">×</button>
+            <button onclick="closeProductDeleteModal()" class="close-rep" type="button" aria-label="Close delete product">Ã—</button>
         </div>
 
         <div class="delete-warning-box">
@@ -851,6 +851,15 @@ function formatCurrency(value) {
     } catch(error) {
         return `${businessCurrency} ${amount.toLocaleString()}`;
     }
+}
+
+function formatStatCurrency(value) {
+    const amount = Number(value || 0);
+    const amountText = new Intl.NumberFormat(undefined, {
+        maximumFractionDigits: 0
+    }).format(amount);
+
+    return `<span class="stat-money"><span class="stat-money-code">${escapeHtml(businessCurrency)}</span><span class="stat-money-amount">${escapeHtml(amountText)}</span></span>`;
 }
 
 function escapeHtml(value = "") {
@@ -1162,7 +1171,7 @@ function setProductsOpen(open) {
 
     productOpen = open;
     body.classList.toggle("hidden", !productOpen);
-    btn.innerText = productOpen ? "▲" : "▼";
+    btn.innerText = productOpen ? "â–²" : "â–¼";
     btn.setAttribute("aria-expanded", String(productOpen));
 }
 
@@ -1367,7 +1376,7 @@ function populateProductDropdown() {
 
     select.innerHTML = "";
 
-    // ✅ DEFAULT OPTION (prevents auto-select bug)
+    // âœ… DEFAULT OPTION (prevents auto-select bug)
     // const placeholder = document.createElement("option");
     // placeholder.textContent = "Select Product";
     // placeholder.value = "";
@@ -2103,7 +2112,7 @@ async function addProduct(){
     if(addHadImageFile && !imageUrl){
         return;
     }
-    
+
 
     const { error } =
     await supabaseClient
@@ -2140,7 +2149,7 @@ async function addProduct(){
 
     return;
 }
-    
+
 
     showNotification("Product added");
     await logAdminAudit("product_added", "product", name, { name, price, stock, image_url: imageUrl || null });
@@ -2418,7 +2427,7 @@ function exportExcel(){
                 : "-"
         };
 
-        // IF CART EXISTS → EXPAND ITEMS
+        // IF CART EXISTS â†’ EXPAND ITEMS
         if(Array.isArray(customer.cart) && customer.cart.length > 0){
 
             customer.cart.forEach(item => {
@@ -2935,24 +2944,24 @@ function findTopStaff(map){
         "stats"
     ).innerHTML = `
 
-    <div class="stat-card">
+    <div class="stat-card revenue-stat-card">
         <p>Total Revenue</p>
-        <h2>${formatCurrency(totalRevenue)}</h2>
+        <h2>${formatStatCurrency(totalRevenue)}</h2>
     </div>
 
-    <div class="stat-card">
+    <div class="stat-card revenue-stat-card">
         <p>Paid Revenue</p>
-        <h2 class="s-paid" >${formatCurrency(paidRevenue)}</h2>
+        <h2 class="s-paid">${formatStatCurrency(paidRevenue)}</h2>
     </div>
 
-    <div class="stat-card">
+    <div class="stat-card revenue-stat-card">
         <p>Pending Revenue</p>
-        <h2 class="s-pending" >${formatCurrency(pendingRevenue)}</h2>
+        <h2 class="s-pending">${formatStatCurrency(pendingRevenue)}</h2>
     </div>
 
-    <div class="stat-card">
+    <div class="stat-card revenue-stat-card">
         <p>Cancelled Revenue</p>
-        <h2 class="s-cancelled">${formatCurrency(cancelledRevenue)}</h2>
+        <h2 class="s-cancelled">${formatStatCurrency(cancelledRevenue)}</h2>
     </div>
 
     <div class="stat-card">
@@ -2973,36 +2982,6 @@ function findTopStaff(map){
     <div class="stat-card">
         <p>Cancelled Sales</p>
         <h2>${cancelled}</h2>
-    </div>
-
-    <div class="stat-card top-staff-card">
-
-        <div class="top-staff-slider">
-
-            <div class="top-staff-track">
-
-                <div class="top-item">
-                    🏆 Weekly Top Staff:
-                    <strong>${weeklyTop.name}</strong>
-                    - ${formatCurrency(weeklyTop.revenue)}
-                </div>
-
-                <div class="top-item">
-                    📅 Monthly Top Staff:
-                    <strong>${monthlyTop.name}</strong>
-                    - ${formatCurrency(monthlyTop.revenue)}
-                </div>
-
-                <div class="top-item">
-                    👑 Yearly Top Staff:
-                    <strong>${yearlyTop.name}</strong>
-                    - ${formatCurrency(yearlyTop.revenue)}
-                </div>
-
-            </div>
-
-        </div>
-
     </div>
     `;
 
@@ -3345,7 +3324,7 @@ async function loadReports(){
                     <span><i class="fa-solid fa-calendar-days"></i> Date filters</span>
                     <span><i class="fa-solid fa-user-tie"></i> Rep reports</span>
                     <span><i class="fa-solid fa-file-arrow-down"></i> CSV export</span>
-                    <span><i class="fa-solid fa-chart-line"></i> Revenue summaries</span>
+                    <span><i class="fa-solid fa-chart-simple"></i> Revenue summaries</span>
                 </div>
                 <button type="button" onclick="goTo('pricing.html')">
                     <i class="fa-solid fa-arrow-up-right-dots"></i>
@@ -4885,11 +4864,11 @@ function checkStockAlert(products) {
     products.forEach(p => {
 
         if (p.stock_quantity <= 0) {
-            showNotification(`⚠️ ${p.name} is OUT OF STOCK`);
+            showNotification(`âš ï¸ ${p.name} is OUT OF STOCK`);
         }
 
         else if (p.stock_quantity <= 5) {
-            showNotification(`⚠️ ${p.name} is LOW STOCK`);
+            showNotification(`âš ï¸ ${p.name} is LOW STOCK`);
         }
     });
 }

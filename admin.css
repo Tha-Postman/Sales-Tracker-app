@@ -5526,3 +5526,321 @@ html {
         align-items: stretch;
     }
 }
+
+/* Revenue/stat value hardening: keep large currency values readable inside cards. */
+.stats-grid {
+    grid-template-columns: repeat(auto-fit, minmax(min(100%, 210px), 1fr));
+}
+
+.stat-card {
+    min-width: 0;
+    isolation: isolate;
+}
+
+.stat-card > * {
+    position: relative;
+    z-index: 1;
+    min-width: 0;
+}
+
+.stat-card h2,
+.stat-card strong {
+    display: block;
+    max-width: 100%;
+    color: inherit;
+    line-height: 1.14;
+    white-space: normal;
+    overflow-wrap: anywhere;
+    word-break: normal;
+    font-size: 1.65rem;
+    font-variant-numeric: tabular-nums;
+}
+
+.stat-card h2[class^="s-"],
+.stat-card h2.s-paid,
+.stat-card h2.s-pending,
+.stat-card h2.s-cancelled {
+    overflow-wrap: anywhere;
+}
+
+.compact-stat h2 {
+    font-size: 1.45rem;
+}
+
+@media (max-width: 760px) {
+    .stats-grid {
+        grid-template-columns: repeat(auto-fit, minmax(min(100%, 170px), 1fr));
+    }
+
+    .stat-card {
+        padding: 16px;
+    }
+
+    .stat-card h2,
+    .stat-card strong {
+        font-size: 1.35rem;
+    }
+}
+
+@media (max-width: 420px) {
+    .stats-grid {
+        grid-template-columns: 1fr;
+    }
+
+    .stat-card h2,
+    .stat-card strong {
+        font-size: 1.28rem;
+    }
+}
+
+/* Final stat-grid fit override: prevents clipped cards on tablet/mobile widths. */
+#stats.stats-grid {
+    width: 100%;
+    max-width: 100%;
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(min(100%, 165px), 1fr));
+    gap: 14px;
+    overflow: visible;
+}
+
+#stats .stat-card {
+    min-width: 0;
+    max-width: 100%;
+    padding: clamp(14px, 2vw, 18px);
+}
+
+#stats .stat-card h2 {
+    max-width: 100%;
+    margin: 0;
+    line-height: 1.1;
+    white-space: normal;
+    overflow-wrap: anywhere;
+    word-break: normal;
+    font-size: clamp(1.22rem, 2.7vw, 1.9rem);
+}
+
+#stats .revenue-stat-card h2 {
+    font-size: clamp(1.08rem, 2.25vw, 1.65rem);
+}
+
+@media (min-width: 980px) {
+    #stats.stats-grid {
+        grid-template-columns: repeat(auto-fit, minmax(185px, 1fr));
+    }
+}
+
+@media (max-width: 520px) {
+    #stats.stats-grid {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+        gap: 10px;
+    }
+
+    #stats .stat-card {
+        padding: 12px;
+        border-radius: 12px;
+    }
+
+    #stats .stat-card p {
+        font-size: 11px;
+    }
+
+    #stats .stat-card h2,
+    #stats .revenue-stat-card h2 {
+        font-size: clamp(1rem, 5vw, 1.22rem);
+    }
+}
+
+/* Emergency stat grid viewport clamp: fixes clipped right-side stat cards. */
+body .main,
+body.sidebar-collapsed .main {
+    width: auto !important;
+    max-width: 100vw !important;
+    overflow-x: clip;
+}
+
+body:not(.sidebar-collapsed) .main {
+    width: calc(100vw - 260px) !important;
+}
+
+#stats.stats-grid {
+    box-sizing: border-box;
+    width: 100% !important;
+    max-width: 100% !important;
+    min-width: 0 !important;
+    grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)) !important;
+    align-items: stretch;
+}
+
+#stats .stat-card {
+    box-sizing: border-box;
+    width: 100% !important;
+    min-width: 0 !important;
+    max-width: 100% !important;
+    overflow: hidden;
+}
+
+#stats .stat-card p,
+#stats .stat-card h2,
+#stats .stat-card strong {
+    min-width: 0 !important;
+    max-width: 100% !important;
+}
+
+#stats .stat-card h2,
+#stats .stat-card strong {
+    display: block;
+    white-space: normal !important;
+    overflow-wrap: anywhere !important;
+    word-break: break-word;
+    text-wrap: balance;
+}
+
+#stats .revenue-stat-card h2 {
+    font-size: clamp(0.98rem, 2vw, 1.45rem) !important;
+}
+
+@media (max-width: 900px) {
+    body .main,
+    body:not(.sidebar-collapsed) .main,
+    body.sidebar-collapsed .main {
+        width: 100% !important;
+        max-width: 100vw !important;
+        margin-left: 0 !important;
+        padding-inline: 12px !important;
+    }
+
+    #stats.stats-grid {
+        grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+        gap: 12px !important;
+    }
+}
+
+@media (max-width: 390px) {
+    #stats.stats-grid {
+        grid-template-columns: 1fr !important;
+    }
+}
+
+/* Balanced stat board: 8 cards render as 4 columns x 2 rows on wide screens. */
+#stats.stats-grid {
+    grid-template-columns: repeat(4, minmax(0, 1fr)) !important;
+    gap: 16px !important;
+}
+
+#stats .stat-card {
+    min-height: 104px;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+}
+
+#stats .stat-card h2,
+#stats .stat-card strong {
+    font-size: clamp(1.25rem, 2vw, 1.85rem) !important;
+}
+
+#stats .revenue-stat-card h2 {
+    font-size: clamp(1.08rem, 1.65vw, 1.55rem) !important;
+}
+
+@media (max-width: 1100px) {
+    #stats.stats-grid {
+        grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+    }
+}
+
+@media (max-width: 420px) {
+    #stats.stats-grid {
+        grid-template-columns: 1fr !important;
+    }
+}
+
+/* Admin revenue cards get wider desktop space: 2 cards per row, 2 rows. */
+@media (min-width: 1101px) {
+    #stats.stats-grid {
+        grid-template-columns: repeat(4, minmax(0, 1fr)) !important;
+    }
+
+    #stats .revenue-stat-card {
+        grid-column: span 2;
+        min-height: 118px;
+    }
+
+    #stats .revenue-stat-card h2 {
+        font-size: clamp(1.5rem, 2.35vw, 2.35rem) !important;
+        overflow-wrap: anywhere !important;
+    }
+}
+
+/* Final admin revenue layout: revenue cards stay 2 per row on desktop/tablet content widths. */
+@media (min-width: 760px) {
+    #stats.stats-grid {
+        grid-template-columns: repeat(4, minmax(0, 1fr)) !important;
+    }
+
+    #stats .revenue-stat-card {
+        grid-column: span 2 !important;
+    }
+}
+
+@media (max-width: 759px) {
+    #stats.stats-grid {
+        grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+    }
+
+    #stats .revenue-stat-card {
+        grid-column: span 2 !important;
+    }
+}
+
+@media (max-width: 390px) {
+    #stats.stats-grid {
+        grid-template-columns: 1fr !important;
+    }
+
+    #stats .revenue-stat-card {
+        grid-column: auto !important;
+    }
+}
+
+/* Revenue amount is split into currency + amount so it cannot escape the card. */
+#stats .stat-money {
+    display: grid;
+    grid-template-columns: auto minmax(0, 1fr);
+    align-items: baseline;
+    gap: 0.35em;
+    max-width: 100%;
+    min-width: 0;
+}
+
+#stats .stat-money-code {
+    min-width: 0;
+    font-size: 0.58em;
+    line-height: 1;
+    white-space: nowrap;
+}
+
+#stats .stat-money-amount {
+    min-width: 0;
+    max-width: 100%;
+    line-height: 1;
+    overflow-wrap: anywhere;
+    word-break: break-word;
+}
+
+@media (max-width: 980px) {
+    #stats .stat-money {
+        grid-template-columns: 1fr;
+        gap: 0.12em;
+    }
+
+    #stats .stat-money-code {
+        font-size: 0.52em;
+    }
+}
+
+@media (min-width: 760px) {
+    #stats .revenue-stat-card h2 {
+        font-size: clamp(1.6rem, 2.2vw, 2.45rem) !important;
+    }
+}

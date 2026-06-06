@@ -18,7 +18,7 @@
 <body>
     <nav class="site-nav">
         <a class="brand" href="index.html">
-            <span><i class="fa-solid fa-chart-line"></i></span>
+            <span><i class="fa-solid fa-chart-simple"></i></span>
             Sales Tracker
         </a>
 
@@ -192,7 +192,7 @@
                         <p>Pro businesses can upload their own logo so every receipt looks like it came from the business, not a generic template.</p>
                     </article>
                     <article class="demo-panel">
-                        <i class="fa-solid fa-chart-line"></i>
+                        <i class="fa-solid fa-chart-simple"></i>
                         <h3>Advanced business tools</h3>
                         <p>Business owners get stock watch, customer intelligence, reports, and team visibility without manually joining spreadsheets.</p>
                     </article>
@@ -215,10 +215,10 @@
 
     <script>
         const demoProducts = [
-            { name: "Backwood Hoodie", price: 18000, stock: 46, sold: 17, image: "fa-shirt" },
-            { name: "Bamboo Bag", price: 12500, stock: 29, sold: 11, image: "fa-bag-shopping" },
-            { name: "Classic Cap", price: 4500, stock: 78, sold: 38, image: "fa-hat-cowboy" },
-            { name: "Cargo Pants", price: 22000, stock: 19, sold: 8, image: "fa-person" }
+            { name: "Backwood Hoodie", price: 18000, stock: 46, sold: 17, image: "fa-shirt", imageUrl: "img/demo-products/demo-hoodie.png" },
+            { name: "Bamboo Bag", price: 12500, stock: 29, sold: 11, image: "fa-bag-shopping", imageUrl: "img/demo-products/demo-bamboo-bag.png" },
+            { name: "Classic Cap", price: 4500, stock: 78, sold: 38, image: "fa-hat-cowboy", imageUrl: "img/demo-products/demo-cap.png" },
+            { name: "Cargo Pants", price: 22000, stock: 19, sold: 8, image: "fa-person", imageUrl: "img/demo-products/demo-cargo-pants.png" }
         ];
 
         const demoReps = [
@@ -295,7 +295,12 @@
         function renderInventory() {
             document.getElementById("demoInventory").innerHTML = demoProducts.map((product, index) => `
                 <article class="demo-inventory-card">
-                    <div class="demo-product-image"><i class="fa-solid ${product.image}"></i></div>
+                    <div class="demo-product-image">
+                        ${product.imageUrl
+                            ? `<img src="${product.imageUrl}" alt="${product.name}">`
+                            : `<i class="fa-solid ${product.image}"></i>`
+                        }
+                    </div>
                     <div>
                         <small>#${index + 1} In stock</small>
                         <h3>${product.name}</h3>

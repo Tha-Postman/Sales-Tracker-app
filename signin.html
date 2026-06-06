@@ -29,7 +29,7 @@
 
     <section class="brand-panel">
         <div class="brand-badge">
-            <i class="fa-solid fa-chart-line"></i>
+            <i class="fa-solid fa-chart-simple"></i>
             Sales Tracker
         </div>
 
@@ -87,7 +87,7 @@
 
         <!-- SIGN IN -->
 
-        <form class="form active" id="signin-form">
+        <form class="form active" id="signin-form" action="javascript:void(0)">
 
             <div class="input-box">
                 <i class="fa-regular fa-envelope"></i>
@@ -134,7 +134,7 @@
 
         <!-- SIGN UP -->
 
-        <form class="form" id="signup-form">
+        <form class="form" id="signup-form" action="javascript:void(0)">
 
             <div class="input-box">
                 <i class="fa-regular fa-user"></i>
@@ -200,7 +200,7 @@
 
         <!-- PASSWORD RESET -->
 
-        <form class="form" id="reset-password-form">
+        <form class="form" id="reset-password-form" action="javascript:void(0)">
             <div class="reset-copy">
                 <h3>Create a new password</h3>
                 <p>Use a strong password that you do not use on other websites.</p>
@@ -408,6 +408,47 @@
             return new Date(profile.subscription_expires_at) > new Date();
         }
 
+        async function getBusinessForProfile(profile){
+            if(!profile) return null;
+
+            let query = null;
+
+            if(profile.business_id){
+                query = supabaseClient
+                    .from("businesses")
+                    .select("*")
+                    .eq("id", profile.business_id)
+                    .maybeSingle();
+            } else if(profile.role === "admin"){
+                query = supabaseClient
+                    .from("businesses")
+                    .select("*")
+                    .eq("owner_id", profile.id)
+                    .maybeSingle();
+            }
+
+            if(!query) return null;
+
+            const { data, error } = await query;
+
+            if(error){
+                console.log("Business access fallback failed:", error);
+                return null;
+            }
+
+            return data || null;
+        }
+
+        function hasActiveBusiness(business){
+            if(!business) return false;
+
+            const status = String(business.subscription_status || business.status || "").toLowerCase();
+            if(status !== "active") return false;
+            if(!business.subscription_expires_at) return true;
+
+            return new Date(business.subscription_expires_at) > new Date();
+        }
+
         function getAuthIntent(){
             const params = new URLSearchParams(window.location.search);
             const plan = params.get("plan");
@@ -471,23 +512,17 @@
                 return;
             }
 
-            const isActiveOwner = hasActiveSubscription(profile);
-            const repWithBusiness = profile.role !== "admin" && profile.business_id;
-
-            if(isActiveOwner || repWithBusiness){
-                localStorage.removeItem("pendingPlan");
-                window.location.href = profile.role === "admin" ? "admin.html" : "dashboard.html";
-                return;
-            }
-
             if(await redirectAfterBackendAccess()){
                 return;
             }
 
-            const pendingPlan = localStorage.getItem("pendingPlan");
+            const business = await getBusinessForProfile(profile);
+            const isActiveOwner = hasActiveSubscription(profile) || hasActiveBusiness(business);
+            const repWithBusiness = profile.role !== "admin" && profile.business_id && profile.is_active !== false && String(profile.status || "active").toLowerCase() !== "inactive";
 
-            if(pendingPlan){
-                window.location.href = "pricing.html?resumeCheckout=1";
+            if(isActiveOwner || repWithBusiness){
+                localStorage.removeItem("pendingPlan");
+                window.location.href = profile.role === "admin" ? "admin.html" : "dashboard.html";
                 return;
             }
 
@@ -635,37 +670,39 @@
 
         document.getElementById("signin-form").addEventListener("submit", async (e) => {
             e.preventDefault();
+            e.stopPropagation();
 
             const submitBtn = e.currentTarget.querySelector(".auth-btn");
             setButtonLoading(submitBtn, true, "Signing in...");
 
-            const email = document.getElementById("signin-email").value.trim();
-            const password = document.getElementById("signin-password").value;
+            try {
+                const email = document.getElementById("signin-email").value.trim();
+                const password = document.getElementById("signin-password").value;
 
-            const { data, error } = await supabaseClient.auth.signInWithPassword({ email, password });
+                const { data, error } = await supabaseClient.auth.signInWithPassword({ email, password });
 
-            if(error){
-                showToast(error.message, "error");
+                if(error){
+                    showToast(error.message, "error");
+                    setButtonLoading(submitBtn, false);
+                    return;
+                }
+
+                const user = data.user;
+                const profile = await getProfileForUser(user);
+
+                if(!profile){
+                    showToast("Profile setup failed. Please contact support.", "error");
+                    setButtonLoading(submitBtn, false);
+                    return;
+                }
+
+                showToast("Login successful!", "success");
+                setTimeout(() => redirectAfterAuth(profile), 500);
+            } catch(error) {
+                console.log("Signin submit failed:", error);
+                showToast(error.message || "Signin failed. Please try again.", "error");
                 setButtonLoading(submitBtn, false);
-                return;
             }
-
-            const user = data.user;
-
-            if(await redirectAfterBackendAccess()){
-                return;
-            }
-
-            const profile = await getProfileForUser(user);
-
-            if(!profile){
-                showToast("Profile setup failed. Please contact support.", "error");
-                setButtonLoading(submitBtn, false);
-                return;
-            }
-
-            showToast("Login successful!", "success");
-            setTimeout(() => redirectAfterAuth(profile), 1200);
         });
 
         async function resumeExistingSession(){

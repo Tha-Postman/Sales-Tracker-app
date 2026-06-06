@@ -51,33 +51,6 @@ body {
     color: white;
     font-size: 20px;
     box-shadow: 0 14px 30px rgba(37,99,235,0.28);
-    position: relative;
-    overflow: hidden;
-}
-
-.sales-brand .logo-mark i {
-    display: none;
-}
-
-.sales-brand .logo-mark::before {
-    content: "";
-    width: 24px;
-    height: 17px;
-    border-left: 3px solid #fff;
-    border-bottom: 3px solid #fff;
-    transform: translateY(1px);
-    opacity: 0.92;
-}
-
-.sales-brand .logo-mark::after {
-    content: "";
-    position: absolute;
-    width: 24px;
-    height: 13px;
-    border-top: 3px solid #fff;
-    border-right: 3px solid #fff;
-    transform: rotate(-8deg) translate(1px, -1px);
-    opacity: 0.82;
 }
 .sales-brand {
     flex: 1 1 260px;
@@ -3482,4 +3455,190 @@ html {
 .choices__list--dropdown,
 .choices__list[aria-expanded] {
     overscroll-behavior: contain;
+}
+
+/* Revenue/stat value hardening: keep large currency values readable inside cards. */
+.stats-grid {
+    grid-template-columns: repeat(auto-fit, minmax(min(100%, 210px), 1fr));
+}
+
+.stat-card {
+    min-width: 0;
+    isolation: isolate;
+}
+
+.stat-card > * {
+    position: relative;
+    z-index: 1;
+    min-width: 0;
+}
+
+.stat-card h2,
+.stat-card strong {
+    display: block;
+    max-width: 100%;
+    color: inherit;
+    line-height: 1.14;
+    white-space: normal;
+    overflow-wrap: anywhere;
+    word-break: normal;
+    font-size: 1.65rem;
+    font-variant-numeric: tabular-nums;
+}
+
+@media (max-width: 760px) {
+    .stats-grid {
+        grid-template-columns: repeat(auto-fit, minmax(min(100%, 170px), 1fr));
+    }
+
+    .stat-card {
+        padding: 16px;
+    }
+
+    .stat-card h2,
+    .stat-card strong {
+        font-size: 1.35rem;
+    }
+}
+
+@media (max-width: 420px) {
+    .stats-grid {
+        grid-template-columns: 1fr;
+    }
+
+    .stat-card h2,
+    .stat-card strong {
+        font-size: 1.28rem;
+    }
+}
+
+/* Final stat-grid fit override: prevents clipped cards on tablet/mobile widths. */
+#stats.stats-grid {
+    width: 100%;
+    max-width: 100%;
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(min(100%, 165px), 1fr));
+    gap: 14px;
+    overflow: visible;
+}
+
+#stats .stat-card {
+    min-width: 0;
+    max-width: 100%;
+    padding: clamp(14px, 2vw, 18px);
+}
+
+#stats .stat-card h2 {
+    max-width: 100%;
+    margin: 0;
+    line-height: 1.1;
+    white-space: normal;
+    overflow-wrap: anywhere;
+    word-break: normal;
+    font-size: clamp(1.22rem, 2.7vw, 1.9rem);
+}
+
+#stats .revenue-stat-card h2 {
+    font-size: clamp(1.08rem, 2.25vw, 1.65rem);
+}
+
+@media (min-width: 980px) {
+    #stats.stats-grid {
+        grid-template-columns: repeat(auto-fit, minmax(185px, 1fr));
+    }
+}
+
+@media (max-width: 520px) {
+    #stats.stats-grid {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+        gap: 10px;
+    }
+
+    #stats .stat-card {
+        padding: 12px;
+        border-radius: 12px;
+    }
+
+    #stats .stat-card p {
+        font-size: 11px;
+    }
+
+    #stats .stat-card h2,
+    #stats .revenue-stat-card h2 {
+        font-size: clamp(1rem, 5vw, 1.22rem);
+    }
+}
+
+/* Balanced stat board: keep sales dashboard stat values from clipping. */
+#stats.stats-grid {
+    grid-template-columns: repeat(4, minmax(0, 1fr)) !important;
+    gap: 16px !important;
+}
+
+#stats .stat-card {
+    min-height: 104px;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+}
+
+#stats .stat-card h2,
+#stats .stat-card strong {
+    font-size: clamp(1.25rem, 2vw, 1.85rem) !important;
+}
+
+#stats .revenue-stat-card h2 {
+    font-size: clamp(1.08rem, 1.65vw, 1.55rem) !important;
+}
+
+@media (max-width: 1100px) {
+    #stats.stats-grid {
+        grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+    }
+}
+
+@media (max-width: 420px) {
+    #stats.stats-grid {
+        grid-template-columns: 1fr !important;
+    }
+}
+
+/* Sales history scroll fix: allow two-finger/touchpad scroll while pointer is over Recent Sales. */
+html,
+body {
+    overflow-y: auto;
+    overscroll-behavior-y: auto;
+}
+
+#list,
+.history-group,
+.history-list,
+.compact-card,
+.sale-card-top,
+.sale-card-meta,
+.sale-card-actions {
+    touch-action: pan-y;
+    overscroll-behavior-y: auto !important;
+}
+
+#list,
+.history-list {
+    overflow: visible !important;
+    -webkit-overflow-scrolling: touch;
+}
+
+.history-group {
+    overflow: visible !important;
+    overscroll-behavior: auto !important;
+}
+
+.history-group summary,
+.compact-card {
+    user-select: text;
+}
+
+.sale-card-actions,
+.sale-card-actions button,
+.history-group summary {
+    touch-action: manipulation;
 }
