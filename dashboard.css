@@ -1,6 +1,11 @@
 * {
     box-sizing: border-box;
 }
+
+html {
+    background: #07111f;
+}
+
 body { 
     font-family: Arial; padding: 20px; 
     background:#000000e8;

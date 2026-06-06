@@ -1,6 +1,8 @@
 const { app, BrowserWindow, shell } = require("electron");
 const path = require("path");
 
+const liveAppUrl = process.env.SALES_TRACKER_DESKTOP_URL || "https://use-sales-tracker.vercel.app/signin.html";
+
 function createWindow() {
   const win = new BrowserWindow({
     width: 1280,
@@ -9,6 +11,7 @@ function createWindow() {
     minHeight: 680,
     title: "Sales Tracker",
     backgroundColor: "#07111f",
+    icon: path.join(__dirname, "img", "sales-tracker.ico"),
     autoHideMenuBar: true,
     webPreferences: {
       contextIsolation: true,
@@ -17,9 +20,13 @@ function createWindow() {
     }
   });
 
-  win.loadFile(path.join(__dirname, "signin.html"));
+  win.loadURL(liveAppUrl);
 
   win.webContents.setWindowOpenHandler(({ url }) => {
+    if (url.startsWith("https://use-sales-tracker.vercel.app") || url.startsWith("https://sales-tracker-app-cd7k.onrender.com")) {
+      return { action: "allow" };
+    }
+
     shell.openExternal(url);
     return { action: "deny" };
   });

@@ -1,6 +1,10 @@
 
 
 /* RESPONSIVE HARDENING - PRICING */
+html {
+    background: #07111f;
+}
+
 html,
 body {
     max-width: 100%;

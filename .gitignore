@@ -3,6 +3,7 @@ node_modules/
 www/
 dist/
 release/
+downloads/*.zip
 
 # Local notes, guides, and setup documents
 *.pdf

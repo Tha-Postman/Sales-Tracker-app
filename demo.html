@@ -6,8 +6,9 @@
     <meta name="theme-color" content="#07111f">
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-title" content="Sales Tracker">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
     <title>Sales Tracker Demo</title>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
     <link rel="stylesheet" href="public.css">
@@ -24,69 +25,306 @@
         <div class="nav-links">
             <a href="index.html">Home</a>
             <a href="pricing.html">Pricing</a>
+            <a href="install.html">Install App</a>
             <a href="signin.html">Sign In</a>
         </div>
     </nav>
 
-    <main class="demo-section">
-        <div class="section-title">
-            <span>Interactive Preview</span>
-            <h2>Try the sales workflow with sample data.</h2>
-            <p>This demo does not save anything to your real database. It is just here to show the experience.</p>
-        </div>
+    <main class="demo-section pro-demo-section">
+        <section class="demo-hero">
+            <div>
+                <span class="eyebrow">Product walkthrough</span>
+                <h1>See how Sales Tracker runs a business from sale entry to owner-level reporting.</h1>
+                <p>This guided demo uses sample data to show the daily workflow for reps, admins, inventory, receipts, reports, and Pro collaboration tools.</p>
+                <div class="hero-actions">
+                    <a class="primary-btn" href="pricing.html">View Plans</a>
+                    <a class="secondary-btn" href="signin.html">Create Account</a>
+                </div>
+            </div>
 
-        <div class="demo-grid">
-            <section class="demo-panel">
-                <h3>New Sale</h3>
-                <input id="demoCustomer" readonly value="DEMO-1001">
-                <select id="demoProduct">
-                    <option value="Adire Hoodie" data-price="12000">Adire Hoodie - ₦12,000</option>
-                    <option value="Cargo Pants" data-price="20000">Cargo Pants - ₦20,000</option>
-                    <option value="Cap" data-price="3000">Cap - ₦3,000</option>
-                </select>
-                <input id="demoQty" type="number" min="1" value="1">
-                <select id="demoStatus">
-                    <option>Paid</option>
-                    <option>Pending</option>
-                    <option>Cancelled</option>
-                </select>
-                <button class="primary-btn" type="button" onclick="addDemoSale()">Add Demo Sale</button>
+            <div class="demo-live-card">
+                <div class="panel-top">
+                    <span class="live-dot"></span>
+                    Live business pulse
+                </div>
+                <div class="demo-pulse-grid" id="demoPulse"></div>
+            </div>
+        </section>
+
+        <section class="demo-workflow">
+            <div class="demo-tabs" aria-label="Demo sections">
+                <button class="active" type="button" data-demo-view="sales" onclick="setDemoView('sales')">
+                    <i class="fa-solid fa-cash-register"></i>
+                    Sales Flow
+                </button>
+                <button type="button" data-demo-view="admin" onclick="setDemoView('admin')">
+                    <i class="fa-solid fa-chart-pie"></i>
+                    Admin Overview
+                </button>
+                <button type="button" data-demo-view="inventory" onclick="setDemoView('inventory')">
+                    <i class="fa-solid fa-boxes-stacked"></i>
+                    Inventory
+                </button>
+                <button type="button" data-demo-view="team" onclick="setDemoView('team')">
+                    <i class="fa-solid fa-users"></i>
+                    Team
+                </button>
+                <button type="button" data-demo-view="pro" onclick="setDemoView('pro')">
+                    <i class="fa-solid fa-wand-magic-sparkles"></i>
+                    Pro Tools
+                </button>
+            </div>
+
+            <section class="demo-view active" data-demo-panel="sales">
+                <div class="demo-grid wide-demo-grid">
+                    <article class="demo-panel sale-simulator">
+                        <div class="demo-panel-head">
+                            <div>
+                                <span>Rep dashboard</span>
+                                <h3>Record a sale</h3>
+                            </div>
+                            <strong id="demoCustomerId">OVY-2048</strong>
+                        </div>
+
+                        <label>
+                            Product
+                            <select id="demoProduct" onchange="updateDemoEstimate()"></select>
+                        </label>
+
+                        <label>
+                            Quantity
+                            <input id="demoQty" type="number" min="1" value="1" oninput="updateDemoEstimate()">
+                        </label>
+
+                        <label>
+                            Status
+                            <select id="demoStatus">
+                                <option>Paid</option>
+                                <option>Pending</option>
+                                <option>Cancelled</option>
+                            </select>
+                        </label>
+
+                        <div class="demo-total">
+                            <span>Estimated total</span>
+                            <strong id="demoEstimate">NGN 0</strong>
+                        </div>
+
+                        <button class="primary-btn" type="button" onclick="addDemoSale()">
+                            <i class="fa-solid fa-plus"></i>
+                            Add sample sale
+                        </button>
+                    </article>
+
+                    <article class="demo-panel">
+                        <div class="demo-panel-head">
+                            <div>
+                                <span>Live feed</span>
+                                <h3>Every sale updates the business</h3>
+                            </div>
+                        </div>
+                        <div class="demo-list live-demo-list" id="demoLiveFeed"></div>
+                    </article>
+                </div>
             </section>
 
-            <section class="demo-panel">
-                <h3>Demo Dashboard</h3>
-                <div class="mini-stats-preview" id="demoStats"></div>
-                <div class="demo-list" id="demoList"></div>
+            <section class="demo-view" data-demo-panel="admin">
+                <div class="demo-dashboard-grid">
+                    <article class="demo-panel">
+                        <span>Owner dashboard</span>
+                        <h3>Revenue and payment view</h3>
+                        <div class="demo-chart-card">
+                            <div class="demo-line-chart">
+                                <span style="height: 34%"></span>
+                                <span style="height: 58%"></span>
+                                <span style="height: 44%"></span>
+                                <span style="height: 78%"></span>
+                                <span style="height: 62%"></span>
+                                <span style="height: 86%"></span>
+                            </div>
+                        </div>
+                    </article>
+
+                    <article class="demo-panel">
+                        <span>Payment mix</span>
+                        <h3>Know how customers pay</h3>
+                        <div class="demo-donut">
+                            <div></div>
+                        </div>
+                        <div class="demo-breakdown">
+                            <span>Cash 48%</span>
+                            <span>Transfer 39%</span>
+                            <span>POS 13%</span>
+                        </div>
+                    </article>
+
+                    <article class="demo-panel demo-summary-card">
+                        <span>Admin decisions</span>
+                        <h3>What the owner sees</h3>
+                        <ul>
+                            <li>Top sales rep for the week</li>
+                            <li>Pending payments that need attention</li>
+                            <li>Products selling fastest</li>
+                            <li>Revenue, expenses, and profit context</li>
+                        </ul>
+                    </article>
+                </div>
             </section>
-        </div>
+
+            <section class="demo-view" data-demo-panel="inventory">
+                <div class="demo-inventory-grid" id="demoInventory"></div>
+            </section>
+
+            <section class="demo-view" data-demo-panel="team">
+                <div class="demo-team-grid" id="demoTeam"></div>
+            </section>
+
+            <section class="demo-view" data-demo-panel="pro">
+                <div class="demo-pro-grid">
+                    <article class="demo-panel">
+                        <i class="fa-solid fa-comments"></i>
+                        <h3>Team chat</h3>
+                        <p>Admins can send announcements, reps can acknowledge updates, and the team can coordinate sales activity in one place.</p>
+                    </article>
+                    <article class="demo-panel">
+                        <i class="fa-solid fa-receipt"></i>
+                        <h3>Custom receipt branding</h3>
+                        <p>Pro businesses can upload their own logo so every receipt looks like it came from the business, not a generic template.</p>
+                    </article>
+                    <article class="demo-panel">
+                        <i class="fa-solid fa-chart-line"></i>
+                        <h3>Advanced business tools</h3>
+                        <p>Business owners get stock watch, customer intelligence, reports, and team visibility without manually joining spreadsheets.</p>
+                    </article>
+                </div>
+            </section>
+        </section>
+
+        <section class="demo-conversion-card">
+            <div>
+                <span class="eyebrow">Ready for real data</span>
+                <h2>Start with sales tracking. Upgrade when your team needs stronger control.</h2>
+                <p>Starter gets the business recording sales. Business adds serious reporting and customer tools. Pro unlocks team collaboration and premium control.</p>
+            </div>
+            <div class="hero-actions">
+                <a class="primary-btn" href="pricing.html">Compare Plans</a>
+                <a class="secondary-btn" href="install.html">Install App</a>
+            </div>
+        </section>
     </main>
 
     <script>
+        const demoProducts = [
+            { name: "Backwood Hoodie", price: 18000, stock: 46, sold: 17, image: "fa-shirt" },
+            { name: "Bamboo Bag", price: 12500, stock: 29, sold: 11, image: "fa-bag-shopping" },
+            { name: "Classic Cap", price: 4500, stock: 78, sold: 38, image: "fa-hat-cowboy" },
+            { name: "Cargo Pants", price: 22000, stock: 19, sold: 8, image: "fa-person" }
+        ];
+
+        const demoReps = [
+            { name: "James Woodzz", role: "Sales Rep", sales: 46, revenue: 284000, paid: 39, pending: 7 },
+            { name: "Mira Cole", role: "Sales Rep", sales: 38, revenue: 232500, paid: 31, pending: 6 },
+            { name: "Admin Owner", role: "Admin", sales: 17, revenue: 148000, paid: 15, pending: 2 }
+        ];
+
         let demoSales = [
-            { id: "DEMO-0999", product: "Adire Hoodie", qty: 2, status: "Paid", total: 24000 },
-            { id: "DEMO-1000", product: "Cap", qty: 4, status: "Pending", total: 12000 }
+            { id: "OVY-2044", product: "Backwood Hoodie", qty: 2, status: "Paid", total: 36000, rep: "James Woodzz" },
+            { id: "OVY-2045", product: "Classic Cap", qty: 4, status: "Pending", total: 18000, rep: "Mira Cole" },
+            { id: "OVY-2046", product: "Bamboo Bag", qty: 1, status: "Paid", total: 12500, rep: "James Woodzz" }
         ];
 
         function money(value) {
-            return `₦${Number(value || 0).toLocaleString()}`;
+            return `NGN ${Number(value || 0).toLocaleString()}`;
         }
 
-        function renderDemo() {
-            const total = demoSales.reduce((sum, sale) => sum + sale.total, 0);
-            const paid = demoSales.filter(sale => sale.status === "Paid").length;
+        function setDemoView(view) {
+            document.querySelectorAll("[data-demo-view]").forEach(button => {
+                button.classList.toggle("active", button.dataset.demoView === view);
+            });
 
-            document.getElementById("demoStats").innerHTML = `
+            document.querySelectorAll("[data-demo-panel]").forEach(panel => {
+                panel.classList.toggle("active", panel.dataset.demoPanel === view);
+            });
+        }
+
+        function populateProducts() {
+            const select = document.getElementById("demoProduct");
+            select.innerHTML = demoProducts.map(product => `
+                <option value="${product.name}" data-price="${product.price}">
+                    ${product.name} - ${money(product.price)} - ${product.stock} in stock
+                </option>
+            `).join("");
+            updateDemoEstimate();
+        }
+
+        function updateDemoEstimate() {
+            const product = document.getElementById("demoProduct");
+            const selected = product.options[product.selectedIndex];
+            const qty = Number(document.getElementById("demoQty").value || 1);
+            document.getElementById("demoEstimate").textContent = money(Number(selected?.dataset.price || 0) * qty);
+        }
+
+        function renderPulse() {
+            const paidSales = demoSales.filter(sale => sale.status === "Paid");
+            const revenue = paidSales.reduce((sum, sale) => sum + sale.total, 0);
+            const pending = demoSales.filter(sale => sale.status === "Pending").length;
+            const bestRep = demoReps.slice().sort((a, b) => b.revenue - a.revenue)[0];
+
+            document.getElementById("demoPulse").innerHTML = `
+                <div><span>Paid Revenue</span><strong>${money(revenue)}</strong></div>
                 <div><span>Total Sales</span><strong>${demoSales.length}</strong></div>
-                <div><span>Revenue</span><strong>${money(total)}</strong></div>
-                <div><span>Paid</span><strong>${paid}</strong></div>
+                <div><span>Pending</span><strong>${pending}</strong></div>
+                <div><span>Top Rep</span><strong>${bestRep.name}</strong></div>
             `;
+        }
 
-            document.getElementById("demoList").innerHTML = demoSales.map(sale => `
+        function renderLiveFeed() {
+            document.getElementById("demoLiveFeed").innerHTML = demoSales.slice(0, 6).map(sale => `
                 <div class="demo-sale">
-                    <strong>${sale.id}</strong>
-                    <p>${sale.product} x${sale.qty}</p>
-                    <small>${sale.status} - ${money(sale.total)}</small>
+                    <div>
+                        <strong>${sale.id}</strong>
+                        <p>${sale.product} x${sale.qty}</p>
+                        <small>${sale.rep}</small>
+                    </div>
+                    <span class="${sale.status.toLowerCase()}">${sale.status}</span>
+                    <b>${money(sale.total)}</b>
                 </div>
+            `).join("");
+        }
+
+        function renderInventory() {
+            document.getElementById("demoInventory").innerHTML = demoProducts.map((product, index) => `
+                <article class="demo-inventory-card">
+                    <div class="demo-product-image"><i class="fa-solid ${product.image}"></i></div>
+                    <div>
+                        <small>#${index + 1} In stock</small>
+                        <h3>${product.name}</h3>
+                        <strong>${money(product.price)}</strong>
+                    </div>
+                    <div class="demo-stock-row">
+                        <span>Initial <b>${product.stock + product.sold}</b></span>
+                        <span>Sold <b>${product.sold}</b></span>
+                        <span>Left <b>${product.stock}</b></span>
+                    </div>
+                </article>
+            `).join("");
+        }
+
+        function renderTeam() {
+            document.getElementById("demoTeam").innerHTML = demoReps.map(rep => `
+                <article class="demo-team-card">
+                    <div class="demo-avatar">${rep.name.split(" ").map(part => part[0]).slice(0, 2).join("")}</div>
+                    <div>
+                        <span>${rep.role}</span>
+                        <h3>${rep.name}</h3>
+                    </div>
+                    <div class="demo-stock-row">
+                        <span>Sales <b>${rep.sales}</b></span>
+                        <span>Revenue <b>${money(rep.revenue)}</b></span>
+                        <span>Pending <b>${rep.pending}</b></span>
+                    </div>
+                    <button class="secondary-btn" type="button">View sales</button>
+                </article>
             `).join("");
         }
 
@@ -96,19 +334,37 @@
             const qty = Number(document.getElementById("demoQty").value || 1);
             const status = document.getElementById("demoStatus").value;
             const total = Number(selected.dataset.price || 0) * qty;
+            const rep = demoReps[Math.floor(Math.random() * 2)].name;
 
             demoSales.unshift({
-                id: `DEMO-${Math.floor(1000 + Math.random() * 9000)}`,
+                id: `OVY-${Math.floor(2000 + Math.random() * 8000)}`,
                 product: selected.value,
                 qty,
                 status,
-                total
+                total,
+                rep
             });
 
-            renderDemo();
+            const productRecord = demoProducts.find(item => item.name === selected.value);
+            if(productRecord && status !== "Cancelled") {
+                productRecord.stock = Math.max(0, productRecord.stock - qty);
+                productRecord.sold += qty;
+            }
+
+            document.getElementById("demoCustomerId").textContent = `OVY-${Math.floor(2000 + Math.random() * 8000)}`;
+            renderAll();
         }
 
-        renderDemo();
+        function renderAll() {
+            renderPulse();
+            renderLiveFeed();
+            renderInventory();
+            renderTeam();
+            updateDemoEstimate();
+        }
+
+        populateProducts();
+        renderAll();
     </script>
     <script src="support-widget.js"></script>
 </body>

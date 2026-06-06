@@ -20,14 +20,16 @@
   "build": {
     "appId": "com.usesalestracker.desktop",
     "productName": "Sales Tracker",
+    "extraMetadata": {
+      "dependencies": {}
+    },
     "directories": {
       "output": "release"
     },
     "files": [
-      "**/*",
-      "!node_modules/.cache/**",
-      "!*.sql",
-      "!*.pdf"
+      "electron-main.cjs",
+      "package.json",
+      "img/sales-tracker.ico"
     ],
     "win": {
       "icon": "img/sales-tracker.ico",
