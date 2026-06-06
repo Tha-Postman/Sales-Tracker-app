@@ -51,6 +51,33 @@ body {
     color: white;
     font-size: 20px;
     box-shadow: 0 14px 30px rgba(37,99,235,0.28);
+    position: relative;
+    overflow: hidden;
+}
+
+.sales-brand .logo-mark i {
+    display: none;
+}
+
+.sales-brand .logo-mark::before {
+    content: "";
+    width: 24px;
+    height: 17px;
+    border-left: 3px solid #fff;
+    border-bottom: 3px solid #fff;
+    transform: translateY(1px);
+    opacity: 0.92;
+}
+
+.sales-brand .logo-mark::after {
+    content: "";
+    position: absolute;
+    width: 24px;
+    height: 13px;
+    border-top: 3px solid #fff;
+    border-right: 3px solid #fff;
+    transform: rotate(-8deg) translate(1px, -1px);
+    opacity: 0.82;
 }
 .sales-brand {
     flex: 1 1 260px;

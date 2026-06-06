@@ -57,6 +57,33 @@ a {
     place-items: center;
     border-radius: 12px;
     background: linear-gradient(135deg, #2563eb, #14b8a6);
+    position: relative;
+    overflow: hidden;
+}
+
+.brand span i {
+    display: none;
+}
+
+.brand span::before {
+    content: "";
+    width: 21px;
+    height: 15px;
+    border-left: 3px solid #fff;
+    border-bottom: 3px solid #fff;
+    transform: translateY(1px);
+    opacity: 0.92;
+}
+
+.brand span::after {
+    content: "";
+    position: absolute;
+    width: 21px;
+    height: 12px;
+    border-top: 3px solid #fff;
+    border-right: 3px solid #fff;
+    transform: rotate(-8deg) translate(1px, -1px);
+    opacity: 0.82;
 }
 
 .nav-links a {
@@ -972,6 +999,7 @@ button {
 .pro-demo-section {
     width: min(1180px, calc(100% - 32px));
     margin: 0 auto;
+    padding-top: clamp(30px, 5vw, 58px);
 }
 
 .demo-hero,
@@ -980,7 +1008,7 @@ button {
     grid-template-columns: minmax(0, 1.15fr) minmax(320px, 0.85fr);
     gap: 20px;
     align-items: stretch;
-    margin-bottom: 24px;
+    margin-bottom: 30px;
 }
 
 .demo-hero h1 {
@@ -1000,11 +1028,15 @@ button {
 .demo-live-card,
 .demo-conversion-card,
 .demo-workflow {
-    padding: clamp(18px, 3vw, 26px);
+    padding: clamp(22px, 3vw, 34px);
     border: 1px solid rgba(148,163,184,0.14);
     border-radius: 26px;
     background: radial-gradient(circle at top right, rgba(20,184,166,0.14), transparent 34%), rgba(15,23,42,0.72);
     box-shadow: 0 28px 70px rgba(0,0,0,0.24);
+}
+
+.demo-live-card {
+    align-self: center;
 }
 
 .demo-pulse-grid,
@@ -1014,7 +1046,7 @@ button {
 .demo-team-grid,
 .demo-pro-grid {
     display: grid;
-    gap: 16px;
+    gap: 18px;
 }
 
 .demo-pulse-grid {
@@ -1053,7 +1085,7 @@ button {
 .demo-tabs {
     display: flex;
     gap: 10px;
-    margin-bottom: 18px;
+    margin-bottom: 24px;
     overflow-x: auto;
     padding-bottom: 4px;
 }
@@ -1099,7 +1131,7 @@ button {
 
 .demo-inventory-grid,
 .demo-team-grid {
-    grid-template-columns: repeat(4, minmax(0, 1fr));
+    grid-template-columns: repeat(2, minmax(0, 1fr));
 }
 
 .demo-panel-head {
@@ -1108,6 +1140,13 @@ button {
     gap: 14px;
     align-items: flex-start;
     margin-bottom: 14px;
+}
+
+.demo-panel h3,
+.demo-inventory-card h3,
+.demo-team-card h3 {
+    line-height: 1.2;
+    margin: 6px 0 8px;
 }
 
 .demo-panel-head strong {
@@ -1241,22 +1280,29 @@ button {
 .demo-inventory-card,
 .demo-team-card {
     display: grid;
-    gap: 12px;
+    grid-template-columns: 150px minmax(0, 1fr);
+    gap: 14px;
     min-width: 0;
-    padding: 16px;
+    padding: 14px;
     border: 1px solid rgba(148,163,184,0.14);
     border-radius: 20px;
     background: rgba(2,6,23,0.42);
 }
 
 .demo-product-image {
-    min-height: 150px;
+    min-height: 132px;
+    height: 100%;
     display: grid;
     place-items: center;
     border-radius: 18px;
     color: #0f172a;
     background: #f8fafc;
     font-size: 54px;
+}
+
+.demo-inventory-card .demo-stock-row,
+.demo-team-card .demo-stock-row {
+    grid-column: 1 / -1;
 }
 
 .demo-avatar {
@@ -1268,6 +1314,17 @@ button {
     color: white;
     background: linear-gradient(135deg, #2563eb, #14b8a6);
     font-weight: 900;
+}
+
+.demo-team-card {
+    grid-template-columns: 62px minmax(0, 1fr);
+    align-items: start;
+}
+
+.demo-team-card .secondary-btn {
+    grid-column: 1 / -1;
+    width: 100%;
+    justify-content: center;
 }
 
 .demo-pro-grid .demo-panel i {
@@ -1296,5 +1353,38 @@ button {
     .demo-team-grid,
     .demo-pro-grid {
         grid-template-columns: 1fr;
+    }
+}
+
+@media (max-width: 720px) {
+    .pro-demo-section {
+        width: min(100% - 20px, 1180px);
+    }
+
+    .demo-hero h1 {
+        font-size: clamp(30px, 10vw, 46px);
+    }
+
+    .demo-pulse-grid,
+    .live-demo-list .demo-sale,
+    .demo-inventory-card,
+    .demo-team-card {
+        grid-template-columns: 1fr;
+    }
+
+    .demo-product-image {
+        min-height: 160px;
+    }
+
+    .demo-conversion-card .hero-actions,
+    .demo-hero .hero-actions {
+        align-items: stretch;
+        flex-direction: column;
+    }
+
+    .demo-conversion-card .hero-actions a,
+    .demo-hero .hero-actions a {
+        justify-content: center;
+        width: 100%;
     }
 }

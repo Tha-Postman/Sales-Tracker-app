@@ -651,6 +651,11 @@
             }
 
             const user = data.user;
+
+            if(await redirectAfterBackendAccess()){
+                return;
+            }
+
             const profile = await getProfileForUser(user);
 
             if(!profile){
