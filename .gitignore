@@ -1,5 +1,8 @@
 .env
 node_modules/
+www/
+dist/
+release/
 
 # Local notes, guides, and setup documents
 *.pdf

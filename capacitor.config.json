@@ -1,0 +1,15 @@
+{
+  "appId": "com.usesalestracker.app",
+  "appName": "Sales Tracker",
+  "webDir": "www",
+  "server": {
+    "androidScheme": "https"
+  },
+  "plugins": {
+    "SplashScreen": {
+      "launchShowDuration": 1200,
+      "backgroundColor": "#07111f",
+      "showSpinner": false
+    }
+  }
+}

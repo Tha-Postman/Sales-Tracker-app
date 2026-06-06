@@ -1,11 +1,38 @@
 {
   "name": "sales-tracker",
   "version": "1.0.0",
+  "description": "Sales, inventory, team, receipt, and business management software.",
+  "author": "Sales Tracker",
   "private": true,
   "type": "module",
+  "main": "electron-main.cjs",
   "scripts": {
     "start": "node server.js",
-    "dev": "node server.js"
+    "dev": "node server.js",
+    "desktop": "electron .",
+    "desktop:icon": "node scripts/make-desktop-icon.cjs",
+    "desktop:package": "npm run desktop:icon && electron-builder --dir --config.directories.output=C:\\Users\\HP\\SalesTrackerRelease",
+    "desktop:build": "npm run desktop:icon && electron-builder",
+    "mobile:prepare": "node scripts/prepare-app-shell.cjs",
+    "mobile:sync": "npm run mobile:prepare && cap sync",
+    "ios": "node scripts/open-ios.cjs"
+  },
+  "build": {
+    "appId": "com.usesalestracker.desktop",
+    "productName": "Sales Tracker",
+    "directories": {
+      "output": "release"
+    },
+    "files": [
+      "**/*",
+      "!node_modules/.cache/**",
+      "!*.sql",
+      "!*.pdf"
+    ],
+    "win": {
+      "icon": "img/sales-tracker.ico",
+      "target": "nsis"
+    }
   },
   "dependencies": {
     "@supabase/supabase-js": "^2.45.4",
@@ -14,5 +41,13 @@
     "express": "^4.19.2",
     "express-rate-limit": "^8.5.2",
     "helmet": "^8.2.0"
+  },
+  "devDependencies": {
+    "@capacitor/cli": "^8.4.0",
+    "@capacitor/core": "^8.4.0",
+    "@capacitor/ios": "^8.4.0",
+    "electron": "^42.3.3",
+    "electron-builder": "^26.15.0",
+    "png-to-ico": "^3.0.1"
   }
 }

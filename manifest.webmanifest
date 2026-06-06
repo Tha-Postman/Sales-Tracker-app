@@ -1,0 +1,32 @@
+{
+  "name": "Sales Tracker",
+  "short_name": "Sales Tracker",
+  "description": "Sales, inventory, teams, receipts, and business reporting for growing businesses.",
+  "start_url": "/signin.html",
+  "scope": "/",
+  "display": "standalone",
+  "orientation": "portrait-primary",
+  "background_color": "#07111f",
+  "theme_color": "#0f172a",
+  "categories": ["business", "productivity", "finance"],
+  "icons": [
+    {
+      "src": "/img/favicon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any maskable"
+    }
+  ],
+  "shortcuts": [
+    {
+      "name": "Sign In",
+      "short_name": "Sign In",
+      "url": "/signin.html"
+    },
+    {
+      "name": "Pricing",
+      "short_name": "Pricing",
+      "url": "/pricing.html"
+    }
+  ]
+}

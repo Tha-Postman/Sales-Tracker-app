@@ -2,10 +2,15 @@
 <html lang="en">
     <head>
     <link rel="icon" type="image/svg+xml" href="img/favicon.svg">
+        <link rel="manifest" href="manifest.webmanifest">
+        <meta name="theme-color" content="#07111f">
+        <meta name="apple-mobile-web-app-capable" content="yes">
+        <meta name="apple-mobile-web-app-title" content="Sales Tracker">
         <meta charset="UTF-8">
         <meta name="viewport" content="width=device-width, initial-scale=1.0">
         <!-- <meta http-equiv="refresh" content="2"> -->
         <link rel="stylesheet" href="dashboard.css">
+        <script src="pwa.js" defer></script>
 
         <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/choices.js/public/assets/styles/choices.min.css">
 
@@ -347,11 +352,14 @@ let currentUserRole = "rep";
 let currentProfile = null;
 let currentBusinessId = null;
 let currentBusinessSettings = null;
-const TEAM_API_URL = (
-    ["localhost", "127.0.0.1"].includes(window.location.hostname)
+function getBackendUrl(){
+    const isDevHost = ["localhost", "127.0.0.1"].includes(window.location.hostname);
+    const isBrowserDevServer = isDevHost && Boolean(window.location.port);
+    return isBrowserDevServer
         ? "http://127.0.0.1:4242"
-        : "https://sales-tracker-app-cd7k.onrender.com"
-);
+        : "https://sales-tracker-app-cd7k.onrender.com";
+}
+const TEAM_API_URL = getBackendUrl();
 let repChatSettings = {
     admin_only: false,
     allow_attachments: true

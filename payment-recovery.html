@@ -2,10 +2,15 @@
 <html lang="en">
 <head>
     <link rel="icon" type="image/svg+xml" href="img/favicon.svg">
+    <link rel="manifest" href="manifest.webmanifest">
+    <meta name="theme-color" content="#07111f">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-title" content="Sales Tracker">
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Recover Payment - Sales Tracker</title>
     <link rel="stylesheet" href="public.css">
+    <script src="pwa.js" defer></script>
     <link rel="stylesheet" href="support-widget.css">
 </head>
 <body>
@@ -29,9 +34,15 @@
     </main>
 
     <script>
-    const API_URL = ["localhost", "127.0.0.1"].includes(window.location.hostname)
-        ? "http://127.0.0.1:4242"
-        : "https://sales-tracker-app-cd7k.onrender.com";
+    function getBackendUrl(){
+        const isDevHost = ["localhost", "127.0.0.1"].includes(window.location.hostname);
+        const isBrowserDevServer = isDevHost && Boolean(window.location.port);
+        return isBrowserDevServer
+            ? "http://127.0.0.1:4242"
+            : "https://sales-tracker-app-cd7k.onrender.com";
+    }
+
+    const API_URL = getBackendUrl();
 
     document.getElementById("recoverForm").addEventListener("submit", async event => {
         event.preventDefault();

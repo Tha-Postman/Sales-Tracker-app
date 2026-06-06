@@ -2,9 +2,14 @@
 <html lang="en">
 <head>
     <link rel="icon" type="image/svg+xml" href="img/favicon.svg">
+    <link rel="manifest" href="manifest.webmanifest">
+    <meta name="theme-color" content="#07111f">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-title" content="Sales Tracker">
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
     <link rel="stylesheet" href="signin.css">
+    <script src="pwa.js" defer></script>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
 
     <title>Sign In</title>
@@ -266,11 +271,15 @@
             }
         });
         const PUBLIC_APP_URL = "https://use-sales-tracker.vercel.app";
-        const AUTH_API_URL = (
-    ["localhost", "127.0.0.1"].includes(window.location.hostname)
-        ? "http://127.0.0.1:4242"
-        : "https://sales-tracker-app-cd7k.onrender.com"
-);
+        function getBackendUrl(){
+            const isDevHost = ["localhost", "127.0.0.1"].includes(window.location.hostname);
+            const isBrowserDevServer = isDevHost && Boolean(window.location.port);
+            return isBrowserDevServer
+                ? "http://127.0.0.1:4242"
+                : "https://sales-tracker-app-cd7k.onrender.com";
+        }
+
+        const AUTH_API_URL = getBackendUrl();
 
         function getPublicAppUrl(){
             const host = window.location.hostname;

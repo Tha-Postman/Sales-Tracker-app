@@ -2,10 +2,15 @@
 <html lang="en">
 <head>
     <link rel="icon" type="image/svg+xml" href="img/favicon.svg">
+    <link rel="manifest" href="manifest.webmanifest">
+    <meta name="theme-color" content="#07111f">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-title" content="Sales Tracker">
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Sales Tracker Developer</title>
     <link rel="stylesheet" href="developer.css">
+    <script src="pwa.js" defer></script>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 </head>
@@ -163,11 +168,14 @@
 <script>
 const supabaseUrl = "https://nihqmpimzvhjglwkmhfl.supabase.co";
 const supabaseKey = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im5paHFtcGltenZoamdsd2ttaGZsIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Nzc5MzM4MjgsImV4cCI6MjA5MzUwOTgyOH0.PU0egVoNGXsloErw5hGwb9JrLHnn02F1nh6jsudsJ8w";
-const API_URL = (
-    ["localhost", "127.0.0.1"].includes(window.location.hostname)
+function getBackendUrl(){
+    const isDevHost = ["localhost", "127.0.0.1"].includes(window.location.hostname);
+    const isBrowserDevServer = isDevHost && Boolean(window.location.port);
+    return isBrowserDevServer
         ? "http://127.0.0.1:4242"
-        : "https://sales-tracker-app-cd7k.onrender.com"
-);
+        : "https://sales-tracker-app-cd7k.onrender.com";
+}
+const API_URL = getBackendUrl();
 const supabaseClient = supabase.createClient(supabaseUrl, supabaseKey);
 
 let allBusinesses = [];
