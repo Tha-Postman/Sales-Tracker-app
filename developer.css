@@ -949,114 +949,84 @@ html {
     overscroll-behavior: contain;
 }
 
-/* Platform metric value hardening: keep revenue values inside overview cards. */
-.metrics-grid,
-.dev-metrics,
-.overview-grid {
-    grid-template-columns: repeat(auto-fit, minmax(min(100%, 210px), 1fr));
-}
-
-.metric-card {
-    min-width: 0;
-    isolation: isolate;
-    overflow: hidden;
-}
-
-.metric-card > * {
-    min-width: 0;
-}
-
-.metric-card strong,
-.metric-card span {
+/* STABLE FINAL DEVELOPER DASHBOARD LAYOUT */
+html,
+body {
     max-width: 100%;
-    overflow-wrap: anywhere;
-    word-break: normal;
+    overflow-x: hidden;
 }
 
-.metric-card strong {
-    display: block;
-    color: #f8fafc;
-    line-height: 1.14;
-    white-space: normal;
-    font-size: 1.65rem;
-    font-variant-numeric: tabular-nums;
+.dev-shell,
+.dev-main,
+.dev-section,
+.business-card {
+    min-width: 0;
+    max-width: 100%;
 }
 
-.metric-card-revenue {
-    grid-column: auto;
+.dev-sidebar,
+.business-list,
+.activity-list,
+.dev-main {
+    overscroll-behavior: contain;
 }
 
-@media (min-width: 980px) {
-    .metric-card-revenue {
-        grid-column: span 2;
-    }
-}
-
-@media (max-width: 760px) {
-    .metrics-grid,
-    .dev-metrics,
-    .overview-grid {
-        grid-template-columns: repeat(auto-fit, minmax(min(100%, 170px), 1fr));
-    }
-
-    .metric-card strong {
-        font-size: 1.35rem;
-    }
-}
-
-@media (max-width: 420px) {
-    .metrics-grid,
-    .dev-metrics,
-    .overview-grid {
-        grid-template-columns: 1fr;
-    }
-
-    .metric-card strong {
-        font-size: 1.28rem;
-    }
-}
-
-/* Final metric fit override: prevents long platform totals from clipping. */
 #metricsGrid.metrics-grid {
     width: 100%;
     max-width: 100%;
-    grid-template-columns: repeat(auto-fit, minmax(min(100%, 165px), 1fr));
+    grid-template-columns: repeat(auto-fit, minmax(min(100%, 185px), 1fr));
     gap: 14px;
 }
 
 #metricsGrid .metric-card {
     min-width: 0;
     max-width: 100%;
+    overflow: hidden;
+    isolation: isolate;
     padding: clamp(14px, 2vw, 18px);
 }
 
-#metricsGrid .metric-card strong {
+#metricsGrid .metric-card strong,
+#metricsGrid .metric-card span {
     max-width: 100%;
-    line-height: 1.1;
-    white-space: normal;
     overflow-wrap: anywhere;
     word-break: normal;
-    font-size: clamp(1.15rem, 2.5vw, 1.8rem);
 }
 
-#metricsGrid .metric-card-revenue strong {
-    font-size: clamp(1.03rem, 2.1vw, 1.55rem);
+#metricsGrid .metric-card strong {
+    display: block;
+    color: #f8fafc;
+    line-height: 1.1;
+    white-space: normal;
+    font-size: clamp(1.15rem, 2.5vw, 1.8rem);
+    font-variant-numeric: tabular-nums;
+}
+
+#metricsGrid .metric-card-revenue {
+    grid-column: auto;
 }
 
 @media (min-width: 980px) {
-    #metricsGrid.metrics-grid {
-        grid-template-columns: repeat(auto-fit, minmax(185px, 1fr));
+    #metricsGrid .metric-card-revenue {
+        grid-column: span 2;
     }
 }
 
-@media (max-width: 520px) {
-    #metricsGrid.metrics-grid {
-        grid-template-columns: repeat(2, minmax(0, 1fr));
-        gap: 10px;
+@media (max-width: 640px) {
+    .dev-main {
+        padding-inline: 12px;
     }
 
-    #metricsGrid .metric-card strong,
-    #metricsGrid .metric-card-revenue strong {
-        font-size: clamp(1rem, 5vw, 1.2rem);
+    .dev-sidebar {
+        overflow-x: auto;
+        flex-wrap: nowrap;
+    }
+
+    .dev-sidebar button {
+        flex: 0 0 auto;
+    }
+
+    #metricsGrid.metrics-grid {
+        grid-template-columns: 1fr;
     }
 }

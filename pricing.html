@@ -14,6 +14,20 @@
     <link rel="stylesheet" href="public.css">
     <script src="pwa.js" defer></script>
     <link rel="stylesheet" href="support-widget.css">
+    <script>
+        function safeOpenSupportChat(){
+            if(typeof window.openSupportChat === "function"){
+                window.openSupportChat();
+                return;
+            }
+
+            window.addEventListener("load", () => {
+                if(typeof window.openSupportChat === "function"){
+                    window.openSupportChat();
+                }
+            }, { once: true });
+        }
+    </script>
 </head>
 <body>
     <nav class="site-nav">
@@ -138,7 +152,7 @@
                 <h3>Need help choosing?</h3>
                 <p>Contact support for plan guidance, onboarding help, or custom setup questions.</p>
             </div>
-            <button class="secondary-btn support-chat-btn" type="button" onclick="openSupportChat()"><i class="fa-solid fa-headset"></i> Open Support Chat</button>
+            <button class="secondary-btn support-chat-btn" type="button" onclick="safeOpenSupportChat()"><i class="fa-solid fa-headset"></i> Open Support Chat</button>
         </div>
 
         <div class="pricing-support reveal-up legal-links">

@@ -14,6 +14,20 @@
     <link rel="stylesheet" href="public.css">
     <script src="pwa.js" defer></script>
     <link rel="stylesheet" href="support-widget.css">
+    <script>
+        function safeOpenSupportChat(){
+            if(typeof window.openSupportChat === "function"){
+                window.openSupportChat();
+                return;
+            }
+
+            window.addEventListener("load", () => {
+                if(typeof window.openSupportChat === "function"){
+                    window.openSupportChat();
+                }
+            }, { once: true });
+        }
+    </script>
 </head>
 <body>
     <nav class="site-nav">
@@ -48,7 +62,7 @@
 
                 <div class="support-card">
                     <span><i class="fa-regular fa-circle-question"></i> Need help choosing a plan?</span>
-                    <button type="button" class="support-inline-link" onclick="openSupportChat()">Open support chat</button>
+                    <button type="button" class="support-inline-link" onclick="safeOpenSupportChat()">Open support chat</button>
                 </div>
             </div>
 
@@ -133,7 +147,7 @@
                 <p>Email support and get direct help with onboarding, billing, dashboard setup, or team access.</p>
             </div>
 
-            <button class="primary-btn support-chat-btn" type="button" onclick="openSupportChat()"><i class="fa-solid fa-headset"></i> Contact Support</button>
+            <button class="primary-btn support-chat-btn" type="button" onclick="safeOpenSupportChat()"><i class="fa-solid fa-headset"></i> Contact Support</button>
         </section>
     </main>
     <script src="support-widget.js"></script>

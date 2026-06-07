@@ -1,4 +1,4 @@
-const CACHE_VERSION = "sales-tracker-v1";
+const CACHE_VERSION = "sales-tracker-v2-20260607";
 const APP_SHELL = [
   "/",
   "/index.html",
@@ -60,15 +60,13 @@ self.addEventListener("fetch", event => {
   }
 
   event.respondWith(
-    caches.match(request).then(cached => {
-      if (cached) return cached;
-
-      return fetch(request).then(response => {
+    fetch(request)
+      .then(response => {
         if (!response || response.status !== 200 || response.type === "opaque") return response;
         const copy = response.clone();
         caches.open(CACHE_VERSION).then(cache => cache.put(request, copy));
         return response;
-      });
-    })
+      })
+      .catch(() => caches.match(request))
   );
 });
