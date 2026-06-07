@@ -2186,6 +2186,36 @@ function getBusinessCurrency(){
     ).trim().toUpperCase();
 }
 
+function getCurrencySymbol(currency){
+    const normalized = String(currency || "NGN").toUpperCase();
+    const fallbackSymbols = {
+        NGN: "₦",
+        USD: "$",
+        GBP: "£",
+        EUR: "€",
+        CAD: "$",
+        AUD: "$",
+        GHS: "₵",
+        KES: "KSh",
+        ZAR: "R"
+    };
+
+    if(fallbackSymbols[normalized]) return fallbackSymbols[normalized];
+
+    try {
+        const parts = new Intl.NumberFormat(undefined, {
+            style: "currency",
+            currency: normalized,
+            currencyDisplay: "narrowSymbol",
+            maximumFractionDigits: 0
+        }).formatToParts(0);
+
+        return parts.find(part => part.type === "currency")?.value || normalized;
+    } catch(error) {
+        return normalized;
+    }
+}
+
 function formatMoney(amount){
 
     const currency = getBusinessCurrency();
@@ -2195,10 +2225,11 @@ function formatMoney(amount){
         return new Intl.NumberFormat(undefined, {
             style: "currency",
             currency,
+            currencyDisplay: "narrowSymbol",
             maximumFractionDigits: 0
         }).format(value);
     } catch(error) {
-        return `${currency} ${value.toLocaleString()}`;
+        return `${getCurrencySymbol(currency)}${value.toLocaleString()}`;
     }
 }
 
@@ -3138,19 +3169,19 @@ function updateStats(data = allCustomers) {
             <h2>${pendingCount}</h2>
         </div>
 
-        <div class="stat-card">
+        <div class="stat-card revenue-stat-card">
             <div class="stat-icon green"><i class="fa-solid fa-money-bill-wave"></i></div>
             <p>Cash Received</p>
             <h2>${formatMoney(cashTotal)}</h2>
         </div>
 
-        <div class="stat-card">
+        <div class="stat-card revenue-stat-card">
             <div class="stat-icon blue"><i class="fa-solid fa-building-columns"></i></div>
             <p>Transfer Received</p>
             <h2>${formatMoney(transferTotal)}</h2>
         </div>
 
-        <div class="stat-card">
+        <div class="stat-card revenue-stat-card">
             <div class="stat-icon purple"><i class="fa-solid fa-credit-card"></i></div>
             <p>POS Received</p>
             <h2>${formatMoney(posTotal)}</h2>

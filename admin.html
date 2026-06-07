@@ -221,8 +221,6 @@
             </button>
 
         </div>
-
-            <!-- <div id="productList"></div> -->
             <div id="productList" class="panel-body"></div>
 
     </div>
@@ -546,7 +544,7 @@
     <div class="modal-content">
         <div class="close-rep-div">
 
-            <button onclick="closeRepModal()" class="close-rep" type="button">Ã—</button>
+            <button onclick="closeRepModal()" class="close-rep" type="button">&times;</button>
 
         </div>
         <div class="modal-top">
@@ -588,7 +586,7 @@
                     <span id="productEditHint">Update product details</span>
                 </div>
             </div>
-            <button onclick="closeProductEditModal()" class="close-rep" type="button" aria-label="Close edit product">Ã—</button>
+            <button onclick="closeProductEditModal()" class="close-rep" type="button" aria-label="Close edit product">&times;</button>
         </div>
 
         <form id="productEditForm" class="product-edit-form">
@@ -653,7 +651,7 @@
                 <h3 id="repActionTitle">Manage Rep</h3>
                 <p id="repActionText" class="confirm-modal-copy"></p>
             </div>
-            <button type="button" onclick="closeRepActionModal()" class="close-rep">Ã—</button>
+            <button type="button" onclick="closeRepActionModal()" class="close-rep">&times;</button>
         </div>
 
         <label class="confirm-field">
@@ -710,7 +708,7 @@
                     <span id="productDeleteHint">This product will be removed from your inventory.</span>
                 </div>
             </div>
-            <button onclick="closeProductDeleteModal()" class="close-rep" type="button" aria-label="Close delete product">Ã—</button>
+            <button onclick="closeProductDeleteModal()" class="close-rep" type="button" aria-label="Close delete product">&times;</button>
         </div>
 
         <div class="delete-warning-box">
@@ -839,6 +837,36 @@ function setBusinessCurrency(currency) {
     businessCurrency = /^[A-Z]{3}$/.test(normalized) ? normalized : "NGN";
 }
 
+function getCurrencySymbol(currency){
+    const normalized = String(currency || "NGN").toUpperCase();
+    const fallbackSymbols = {
+        NGN: "₦",
+        USD: "$",
+        GBP: "£",
+        EUR: "€",
+        CAD: "$",
+        AUD: "$",
+        GHS: "₵",
+        KES: "KSh",
+        ZAR: "R"
+    };
+
+    if(fallbackSymbols[normalized]) return fallbackSymbols[normalized];
+
+    try {
+        const parts = new Intl.NumberFormat(undefined, {
+            style: "currency",
+            currency: normalized,
+            currencyDisplay: "narrowSymbol",
+            maximumFractionDigits: 0
+        }).formatToParts(0);
+
+        return parts.find(part => part.type === "currency")?.value || normalized;
+    } catch(error) {
+        return normalized;
+    }
+}
+
 function formatCurrency(value) {
     const amount = Number(value || 0);
 
@@ -846,10 +874,11 @@ function formatCurrency(value) {
         return new Intl.NumberFormat(undefined, {
             style: "currency",
             currency: businessCurrency,
+            currencyDisplay: "narrowSymbol",
             maximumFractionDigits: 0
         }).format(amount);
     } catch(error) {
-        return `${businessCurrency} ${amount.toLocaleString()}`;
+        return `${getCurrencySymbol(businessCurrency)}${amount.toLocaleString()}`;
     }
 }
 
@@ -859,7 +888,7 @@ function formatStatCurrency(value) {
         maximumFractionDigits: 0
     }).format(amount);
 
-    return `<span class="stat-money"><span class="stat-money-code">${escapeHtml(businessCurrency)}</span><span class="stat-money-amount">${escapeHtml(amountText)}</span></span>`;
+    return `<span class="stat-money"><span class="stat-money-code">${escapeHtml(getCurrencySymbol(businessCurrency))}</span><span class="stat-money-amount">${escapeHtml(amountText)}</span></span>`;
 }
 
 function escapeHtml(value = "") {
@@ -1171,7 +1200,7 @@ function setProductsOpen(open) {
 
     productOpen = open;
     body.classList.toggle("hidden", !productOpen);
-    btn.innerText = productOpen ? "â–²" : "â–¼";
+    btn.innerText = productOpen ? "?" : "?";
     btn.setAttribute("aria-expanded", String(productOpen));
 }
 
@@ -2945,41 +2974,49 @@ function findTopStaff(map){
     ).innerHTML = `
 
     <div class="stat-card revenue-stat-card">
+        <div class="stat-icon blue"><i class="fa-solid fa-chart-line"></i></div>
         <p>Total Revenue</p>
         <h2>${formatStatCurrency(totalRevenue)}</h2>
     </div>
 
-    <div class="stat-card revenue-stat-card">
+    <div class="stat-card revenue-stat-card paid-rev">
+        <div class="stat-icon green"><i class="fa-solid fa-wallet"></i></div>
         <p>Paid Revenue</p>
         <h2 class="s-paid">${formatStatCurrency(paidRevenue)}</h2>
     </div>
 
-    <div class="stat-card revenue-stat-card">
+    <div class="stat-card revenue-stat-card pending-rev">
+        <div class="stat-icon amber"><i class="fa-solid fa-hourglass-half"></i></div>
         <p>Pending Revenue</p>
         <h2 class="s-pending">${formatStatCurrency(pendingRevenue)}</h2>
     </div>
 
-    <div class="stat-card revenue-stat-card">
+    <div class="stat-card revenue-stat-card cancelled-rev">
+        <div class="stat-icon purple"><i class="fa-solid fa-ban"></i></div>
         <p>Cancelled Revenue</p>
         <h2 class="s-cancelled">${formatStatCurrency(cancelledRevenue)}</h2>
     </div>
 
     <div class="stat-card">
+        <div class="stat-icon blue"><i class="fa-solid fa-receipt"></i></div>
         <p>Total Sales</p>
         <h2>${allCustomers.length}</h2>
     </div>
 
     <div class="stat-card">
+        <div class="stat-icon green"><i class="fa-solid fa-circle-check"></i></div>
         <p>Paid Sales</p>
         <h2>${paid}</h2>
     </div>
 
     <div class="stat-card">
+        <div class="stat-icon amber"><i class="fa-solid fa-clock"></i></div>
         <p>Pending Sales</p>
         <h2>${pending}</h2>
     </div>
 
     <div class="stat-card">
+        <div class="stat-icon purple"><i class="fa-solid fa-circle-xmark"></i></div>
         <p>Cancelled Sales</p>
         <h2>${cancelled}</h2>
     </div>
@@ -4863,16 +4900,18 @@ function checkStockAlert(products) {
 
     products.forEach(p => {
 
-        if (p.stock_quantity <= 0) {
-            showNotification(`âš ï¸ ${p.name} is OUT OF STOCK`);
+        const stock = Number(p.stock_quantity || 0);
+        const productName = p.name || "Product";
+
+        if (stock <= 0) {
+            showNotification(productName + " is out of stock and needs to be restocked", "warning");
         }
 
-        else if (p.stock_quantity <= 5) {
-            showNotification(`âš ï¸ ${p.name} is LOW STOCK`);
+        else if (stock <= 5) {
+            showNotification(productName + " is low stock and needs to be restocked", "warning");
         }
     });
 }
-
 
 // ========================
 // LOGOUT

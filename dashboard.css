@@ -3457,168 +3457,71 @@ html {
     overscroll-behavior: contain;
 }
 
-/* Revenue/stat value hardening: keep large currency values readable inside cards. */
-.stats-grid {
-    grid-template-columns: repeat(auto-fit, minmax(min(100%, 210px), 1fr));
-}
-
-.stat-card {
-    min-width: 0;
-    isolation: isolate;
-}
-
-.stat-card > * {
-    position: relative;
-    z-index: 1;
-    min-width: 0;
-}
-
-.stat-card h2,
-.stat-card strong {
-    display: block;
+/* STABLE FINAL SALES DASHBOARD LAYOUT */
+html,
+body {
     max-width: 100%;
-    color: inherit;
-    line-height: 1.14;
-    white-space: normal;
-    overflow-wrap: anywhere;
-    word-break: normal;
-    font-size: 1.65rem;
-    font-variant-numeric: tabular-nums;
+    overflow-x: hidden;
+    overflow-y: auto;
+    overscroll-behavior-y: auto;
 }
 
-@media (max-width: 760px) {
-    .stats-grid {
-        grid-template-columns: repeat(auto-fit, minmax(min(100%, 170px), 1fr));
-    }
-
-    .stat-card {
-        padding: 16px;
-    }
-
-    .stat-card h2,
-    .stat-card strong {
-        font-size: 1.35rem;
-    }
+.sale-wrapper,
+.sale-entry,
+.sale-grid,
+.field,
+.cart-div,
+#list,
+.history-group,
+.history-list,
+.compact-card,
+.team-chat-card {
+    min-width: 0;
+    max-width: 100%;
 }
 
-@media (max-width: 420px) {
-    .stats-grid {
-        grid-template-columns: 1fr;
-    }
-
-    .stat-card h2,
-    .stat-card strong {
-        font-size: 1.28rem;
-    }
-}
-
-/* Final stat-grid fit override: prevents clipped cards on tablet/mobile widths. */
 #stats.stats-grid {
     width: 100%;
     max-width: 100%;
     display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(min(100%, 165px), 1fr));
-    gap: 14px;
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+    gap: 16px;
     overflow: visible;
 }
 
 #stats .stat-card {
     min-width: 0;
     max-width: 100%;
-    padding: clamp(14px, 2vw, 18px);
-}
-
-#stats .stat-card h2 {
-    max-width: 100%;
-    margin: 0;
-    line-height: 1.1;
-    white-space: normal;
-    overflow-wrap: anywhere;
-    word-break: normal;
-    font-size: clamp(1.22rem, 2.7vw, 1.9rem);
-}
-
-#stats .revenue-stat-card h2 {
-    font-size: clamp(1.08rem, 2.25vw, 1.65rem);
-}
-
-@media (min-width: 980px) {
-    #stats.stats-grid {
-        grid-template-columns: repeat(auto-fit, minmax(185px, 1fr));
-    }
-}
-
-@media (max-width: 520px) {
-    #stats.stats-grid {
-        grid-template-columns: repeat(2, minmax(0, 1fr));
-        gap: 10px;
-    }
-
-    #stats .stat-card {
-        padding: 12px;
-        border-radius: 12px;
-    }
-
-    #stats .stat-card p {
-        font-size: 11px;
-    }
-
-    #stats .stat-card h2,
-    #stats .revenue-stat-card h2 {
-        font-size: clamp(1rem, 5vw, 1.22rem);
-    }
-}
-
-/* Balanced stat board: keep sales dashboard stat values from clipping. */
-#stats.stats-grid {
-    grid-template-columns: repeat(4, minmax(0, 1fr)) !important;
-    gap: 16px !important;
-}
-
-#stats .stat-card {
     min-height: 104px;
     display: flex;
     flex-direction: column;
     justify-content: center;
+    isolation: isolate;
+    overflow: hidden;
+    padding: clamp(14px, 1.8vw, 20px);
+}
+
+#stats .stat-card > * {
+    position: relative;
+    z-index: 1;
+    min-width: 0;
+    max-width: 100%;
 }
 
 #stats .stat-card h2,
 #stats .stat-card strong {
-    font-size: clamp(1.25rem, 2vw, 1.85rem) !important;
+    display: block;
+    max-width: 100%;
+    line-height: 1.1;
+    white-space: normal;
+    overflow-wrap: anywhere;
+    word-break: normal;
+    font-size: clamp(1.25rem, 2vw, 1.85rem);
+    font-variant-numeric: tabular-nums;
 }
 
 #stats .revenue-stat-card h2 {
-    font-size: clamp(1.08rem, 1.65vw, 1.55rem) !important;
-}
-
-@media (max-width: 1100px) {
-    #stats.stats-grid {
-        grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
-    }
-}
-
-@media (max-width: 420px) {
-    #stats.stats-grid {
-        grid-template-columns: 1fr !important;
-    }
-}
-
-/* Sales history scroll fix: allow two-finger/touchpad scroll while pointer is over Recent Sales. */
-html,
-body {
-    overflow-y: auto;
-    overscroll-behavior-y: auto;
-}
-
-#list,
-.history-group,
-.history-list,
-.compact-card,
-.sale-card-top,
-.sale-card-meta,
-.sale-card-actions {
-    touch-action: pan-y;
-    overscroll-behavior-y: auto !important;
+    font-size: clamp(1.08rem, 1.7vw, 1.55rem);
 }
 
 #list,
@@ -3632,13 +3535,134 @@ body {
     overscroll-behavior: auto !important;
 }
 
-.history-group summary,
-.compact-card {
-    user-select: text;
+#list,
+.history-group,
+.history-list,
+.compact-card,
+.sale-card-top,
+.sale-card-meta {
+    touch-action: auto !important;
+    overscroll-behavior: auto !important;
 }
 
 .sale-card-actions,
-.sale-card-actions button,
-.history-group summary {
+.sale-card-actions button {
     touch-action: manipulation;
+}
+
+.team-chat-card,
+.chat-messages,
+.cart-div,
+.choices__list--dropdown,
+.choices__list[aria-expanded] {
+    overscroll-behavior: contain;
+}
+
+@media (max-width: 1100px) {
+    #stats.stats-grid {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+}
+
+@media (max-width: 768px) {
+    .sale-card-meta {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+
+    .history-group summary {
+        align-items: flex-start;
+        flex-direction: column;
+    }
+
+    .history-group summary small {
+        margin-left: 0;
+    }
+}
+
+@media (max-width: 520px) {
+    #stats.stats-grid {
+        grid-template-columns: 1fr;
+    }
+
+    #stats .stat-card h2,
+    #stats .stat-card strong,
+    #stats .revenue-stat-card h2 {
+        font-size: clamp(1.12rem, 7vw, 1.45rem);
+    }
+}
+
+/* Sales stats visual parity with admin dashboard. */
+#stats.stats-grid {
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+    gap: 16px;
+}
+
+#stats .stat-card {
+    background: linear-gradient(145deg, rgba(15,23,42,0.92), rgba(2,6,23,0.72));
+    border: 1px solid rgba(148,163,184,0.16);
+    border-radius: 14px;
+    box-shadow: 0 18px 40px rgba(0,0,0,0.18);
+    min-height: 112px;
+    align-items: flex-start;
+}
+
+#stats .stat-card::before {
+    z-index: 0;
+}
+
+#stats .stat-icon {
+    width: 34px;
+    height: 34px;
+    margin-bottom: 8px;
+    border-radius: 12px;
+}
+
+#stats .stat-card p {
+    margin: 0 0 8px;
+    color: #94a3b8;
+    font-size: 13px;
+    line-height: 1.25;
+}
+
+#stats .stat-card h2 {
+    color: #f8fafc;
+    letter-spacing: 0;
+    line-height: 1.08;
+    max-width: 100%;
+    overflow-wrap: anywhere;
+    word-break: normal;
+}
+
+#stats .revenue-stat-card h2 {
+    font-size: clamp(1.18rem, 1.65vw, 1.7rem);
+}
+
+#stats .paid-rev h2 {
+    color: #22c55e;
+}
+
+#stats .pending-rev h2 {
+    color: #f59e0b;
+}
+
+@media (max-width: 1100px) {
+    #stats.stats-grid {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+}
+
+@media (max-width: 560px) {
+    #stats.stats-grid {
+        grid-template-columns: 1fr;
+    }
+
+    #stats .stat-card {
+        min-height: 100px;
+        padding: 16px;
+    }
+
+    #stats .stat-card h2,
+    #stats .revenue-stat-card h2 {
+        font-size: clamp(1.2rem, 7vw, 1.6rem);
+    }
 }
