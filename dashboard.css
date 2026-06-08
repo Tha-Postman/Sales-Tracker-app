@@ -3526,6 +3526,33 @@ body {
 
 #list,
 .history-list {
+    -webkit-overflow-scrolling: touch;
+}
+
+#list {
+    max-height: clamp(360px, 62vh, 720px);
+    overflow-y: auto !important;
+    overscroll-behavior: contain !important;
+    padding-right: 4px;
+    scrollbar-width: thin;
+    scrollbar-color: rgba(56, 189, 248, 0.55) rgba(15, 23, 42, 0.48);
+}
+
+#list::-webkit-scrollbar {
+    width: 8px;
+}
+
+#list::-webkit-scrollbar-track {
+    background: rgba(15, 23, 42, 0.48);
+    border-radius: 999px;
+}
+
+#list::-webkit-scrollbar-thumb {
+    background: linear-gradient(180deg, rgba(59,130,246,0.8), rgba(20,184,166,0.72));
+    border-radius: 999px;
+}
+
+.history-list {
     overflow: visible !important;
     -webkit-overflow-scrolling: touch;
 }
@@ -3542,6 +3569,13 @@ body {
 .sale-card-top,
 .sale-card-meta {
     touch-action: auto !important;
+}
+
+.history-group,
+.history-list,
+.compact-card,
+.sale-card-top,
+.sale-card-meta {
     overscroll-behavior: auto !important;
 }
 
