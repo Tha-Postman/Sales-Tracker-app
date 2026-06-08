@@ -5867,6 +5867,9 @@ body:not(.sidebar-collapsed) .main {
 
 .ops-card {
     min-width: 0;
+    min-height: 0;
+    display: flex;
+    flex-direction: column;
     padding: clamp(16px, 2vw, 22px);
     border: 1px solid rgba(148, 163, 184, 0.16);
     border-radius: 18px;
@@ -5881,7 +5884,9 @@ body:not(.sidebar-collapsed) .main {
 }
 
 .notification-history {
-    max-height: clamp(220px, 34vh, 340px);
+    flex: 1 1 auto;
+    min-height: min(220px, 34vh);
+    max-height: min(420px, 44vh);
     overflow-y: auto;
     overscroll-behavior: contain;
     padding-right: 4px;
@@ -5982,6 +5987,11 @@ body:not(.sidebar-collapsed) .main {
     .ops-grid {
         grid-template-columns: 1fr;
     }
+
+    .notification-history {
+        min-height: 0;
+        max-height: min(360px, 44vh);
+    }
 }
 
 @media (max-width: 640px) {
@@ -5994,6 +6004,10 @@ body:not(.sidebar-collapsed) .main {
     .notification-history-item {
         padding: 10px;
         gap: 10px;
+    }
+
+    .notification-history {
+        max-height: min(300px, 42vh);
     }
 
     .bulk-product-import {
