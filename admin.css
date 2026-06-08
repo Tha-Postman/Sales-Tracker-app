@@ -331,6 +331,31 @@ body{
     overflow: hidden;
 }
 
+#liveSalesFeed {
+    display: grid;
+    gap: 10px;
+    max-height: clamp(260px, 42vh, 420px);
+    overflow-y: auto;
+    overscroll-behavior: contain;
+    padding-right: 4px;
+    scrollbar-width: thin;
+    scrollbar-color: rgba(56, 189, 248, 0.55) rgba(15, 23, 42, 0.48);
+}
+
+#liveSalesFeed::-webkit-scrollbar {
+    width: 8px;
+}
+
+#liveSalesFeed::-webkit-scrollbar-track {
+    background: rgba(15, 23, 42, 0.48);
+    border-radius: 999px;
+}
+
+#liveSalesFeed::-webkit-scrollbar-thumb {
+    background: linear-gradient(180deg, rgba(59,130,246,0.8), rgba(20,184,166,0.72));
+    border-radius: 999px;
+}
+
 .live-feed h2 {
     display: flex;
     align-items: center;
@@ -5829,7 +5854,15 @@ body:not(.sidebar-collapsed) .main {
     display: grid;
     grid-template-columns: repeat(2, minmax(0, 1fr));
     gap: 16px;
-    margin: 18px 0 0;
+    margin: clamp(18px, 2.2vw, 26px) 0 18px;
+}
+
+.admin-view[data-view-panel="overview"] {
+    padding-bottom: 0;
+}
+
+.admin-view.overview-followup[data-view-panel="team"] {
+    margin-top: 0;
 }
 
 .ops-card {
@@ -5845,6 +5878,29 @@ body:not(.sidebar-collapsed) .main {
 .notification-history {
     display: grid;
     gap: 10px;
+}
+
+.notification-history {
+    max-height: clamp(220px, 34vh, 340px);
+    overflow-y: auto;
+    overscroll-behavior: contain;
+    padding-right: 4px;
+    scrollbar-width: thin;
+    scrollbar-color: rgba(56, 189, 248, 0.55) rgba(15, 23, 42, 0.48);
+}
+
+.notification-history::-webkit-scrollbar {
+    width: 8px;
+}
+
+.notification-history::-webkit-scrollbar-track {
+    background: rgba(15, 23, 42, 0.48);
+    border-radius: 999px;
+}
+
+.notification-history::-webkit-scrollbar-thumb {
+    background: linear-gradient(180deg, rgba(59,130,246,0.8), rgba(20,184,166,0.72));
+    border-radius: 999px;
 }
 
 .ops-health-item,

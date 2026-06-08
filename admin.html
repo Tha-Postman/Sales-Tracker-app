@@ -273,8 +273,8 @@
         <section class="ops-card">
             <div class="section-header">
                 <div>
-                    <p class="section-kicker">Operations</p>
-                    <h2>System Health</h2>
+                    <p class="section-kicker">Workspace Status</p>
+                    <h2>Business Health</h2>
                 </div>
                 <button type="button" class="section-action subtle" onclick="loadOperationsHealth()">
                     <i class="fa-solid fa-rotate"></i>
@@ -287,8 +287,8 @@
         <section class="ops-card">
             <div class="section-header">
                 <div>
-                    <p class="section-kicker">History</p>
-                    <h2>Notifications</h2>
+                    <p class="section-kicker">Recent Updates</p>
+                    <h2>Notification Center</h2>
                 </div>
                 <button type="button" class="section-action subtle" onclick="clearNotificationCenter()">
                     <i class="fa-solid fa-broom"></i>
@@ -1272,31 +1272,31 @@ function renderOperationsHealth(apiHealth = null) {
     const checks = [
         {
             state: apiHealth ? (apiHealth.ok ? "good" : "bad") : "warn",
-            icon: "fa-server",
-            label: "Backend API",
+            icon: "fa-cloud",
+            label: "Online service",
             detail: apiHealth
-                ? (apiHealth.ok ? `Online - ${formatDateTime(apiHealth.checked_at || new Date())}` : "Health check failed")
-                : "Not checked yet"
+                ? (apiHealth.ok ? `Running well - checked ${formatDateTime(apiHealth.checked_at || new Date())}` : "Service needs attention")
+                : "Waiting for a fresh check"
         },
         {
             state: currentBusinessId ? "good" : "bad",
             icon: "fa-building",
-            label: "Business link",
-            detail: currentBusinessId ? "Business account is connected." : "Business account is not ready."
+            label: "Business account",
+            detail: currentBusinessId ? "Your business workspace is connected." : "Your business workspace is not ready."
         },
         {
             state: products.length || allCustomers.length || profiles.length ? "good" : "warn",
-            icon: "fa-database",
-            label: "Supabase data",
-            detail: `${products.length} products, ${allCustomers.length} sales, ${profiles.length} team profiles loaded.`
+            icon: "fa-folder-open",
+            label: "Business records",
+            detail: `${products.length} products, ${allCustomers.length} sales, ${profiles.length} team members loaded.`
         },
         {
             state: frontendErrorLog.length ? "warn" : "good",
-            icon: "fa-bug",
-            label: "Frontend errors",
+            icon: "fa-triangle-exclamation",
+            label: "Page issues",
             detail: frontendErrorLog.length
-                ? `${frontendErrorLog.length} recent issue${frontendErrorLog.length === 1 ? "" : "s"} captured.`
-                : "No frontend errors captured."
+                ? `${frontendErrorLog.length} recent page issue${frontendErrorLog.length === 1 ? "" : "s"} noticed.`
+                : "No page issues noticed."
         },
         {
             state: subscriptionHealth.state,
@@ -1334,7 +1334,7 @@ async function loadOperationsHealth(){
             details: result
         });
     } catch(error) {
-        recordFrontendError(error.message || "Backend health check failed", "operations-health");
+        recordFrontendError(error.message || "Service health check failed", "operations-health");
         renderOperationsHealth({ ok: false, checked_at: new Date().toISOString() });
     }
 }
