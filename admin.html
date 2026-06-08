@@ -201,6 +201,10 @@
                 <span>Upload CSV columns: name, price, stock, image_url</span>
             </div>
             <input id="bulkProductFile" type="file" accept=".csv,text/csv,.xlsx,.xls,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet,application/vnd.ms-excel">
+            <button type="button" class="secondary" onclick="downloadProductImportTemplate()">
+                <i class="fa-solid fa-table"></i>
+                Template
+            </button>
             <button type="button" onclick="importProductsFromCSV()">
                 <i class="fa-solid fa-file-import"></i>
                 Import CSV/Excel
@@ -264,6 +268,36 @@
     <div id="stats" class="stats-grid"></div>
 
     <div id="onboardingChecklist" class="onboarding-checklist"></div>
+
+    <div class="ops-grid">
+        <section class="ops-card">
+            <div class="section-header">
+                <div>
+                    <p class="section-kicker">Operations</p>
+                    <h2>System Health</h2>
+                </div>
+                <button type="button" class="section-action subtle" onclick="loadOperationsHealth()">
+                    <i class="fa-solid fa-rotate"></i>
+                    Check
+                </button>
+            </div>
+            <div id="operationsHealth" class="ops-health-list"></div>
+        </section>
+
+        <section class="ops-card">
+            <div class="section-header">
+                <div>
+                    <p class="section-kicker">History</p>
+                    <h2>Notifications</h2>
+                </div>
+                <button type="button" class="section-action subtle" onclick="clearNotificationCenter()">
+                    <i class="fa-solid fa-broom"></i>
+                    Clear
+                </button>
+            </div>
+            <div id="notificationHistory" class="notification-history"></div>
+        </section>
+    </div>
     </section>
 
     <!-- REP SECTION -->
@@ -825,6 +859,8 @@ let businessSettings = null;
 let reportRows = [];
 let auditLogs = [];
 let expenses = [];
+let notificationHistory = [];
+let frontendErrorLog = [];
 let chatSettings = {
     admin_only: false,
     allow_attachments: true
@@ -840,13 +876,13 @@ function setBusinessCurrency(currency) {
 function getCurrencySymbol(currency){
     const normalized = String(currency || "NGN").toUpperCase();
     const fallbackSymbols = {
-        NGN: "₦",
+        NGN: "\u20a6",
         USD: "$",
-        GBP: "£",
-        EUR: "€",
+        GBP: "\u00a3",
+        EUR: "\u20ac",
         CAD: "$",
         AUD: "$",
-        GHS: "₵",
+        GHS: "\u20b5",
         KES: "KSh",
         ZAR: "R"
     };
@@ -912,6 +948,86 @@ function formatDate(value) {
         year: "numeric"
     });
 }
+
+function formatDateTime(value) {
+    if (!value) return "-";
+
+    const date = new Date(value);
+    if (Number.isNaN(date.getTime())) return "-";
+
+    return date.toLocaleString(undefined, {
+        month: "short",
+        day: "numeric",
+        hour: "2-digit",
+        minute: "2-digit"
+    });
+}
+
+function getLocalStore(key, fallback = []) {
+    try {
+        const parsed = JSON.parse(localStorage.getItem(key) || "null");
+        return Array.isArray(parsed) ? parsed : fallback;
+    } catch(error) {
+        return fallback;
+    }
+}
+
+function setLocalStore(key, value) {
+    try {
+        localStorage.setItem(key, JSON.stringify(value));
+    } catch(error) {
+        console.log("Local store failed:", error);
+    }
+}
+
+function getNotificationStoreKey() {
+    return `salesTrackerNotifications:${getBusinessId() || "default"}`;
+}
+
+function getFrontendErrorStoreKey() {
+    return `salesTrackerFrontendErrors:${getBusinessId() || "default"}`;
+}
+
+function loadStoredOperationsState() {
+    notificationHistory = getLocalStore(getNotificationStoreKey(), []).slice(0, 30);
+    frontendErrorLog = getLocalStore(getFrontendErrorStoreKey(), []).slice(0, 20);
+}
+
+function saveNotificationHistory() {
+    setLocalStore(getNotificationStoreKey(), notificationHistory.slice(0, 30));
+}
+
+function saveFrontendErrorLog() {
+    setLocalStore(getFrontendErrorStoreKey(), frontendErrorLog.slice(0, 20));
+}
+
+function recordFrontendError(message, source = "frontend") {
+    const text = String(message || "Unknown frontend error").slice(0, 220);
+    frontendErrorLog.unshift({
+        message: text,
+        source,
+        created_at: new Date().toISOString()
+    });
+
+    frontendErrorLog = frontendErrorLog.slice(0, 20);
+    saveFrontendErrorLog();
+    renderOperationsHealth();
+}
+
+window.addEventListener("error", event => {
+    recordFrontendError(
+        `${event.message || "Script error"}${event.filename ? " in " + event.filename.split("/").pop() : ""}`,
+        "window-error"
+    );
+});
+
+window.addEventListener("unhandledrejection", event => {
+    const reason = event.reason;
+    recordFrontendError(
+        reason?.message || String(reason || "Unhandled promise rejection"),
+        "promise-rejection"
+    );
+});
 
 function getInitials(name = "") {
     return String(name)
@@ -1131,6 +1247,127 @@ function renderSubscriptionPanel(){
             </div>
         </div>
     `;
+}
+
+function getSubscriptionHealthLabel() {
+    const status = currentProfile?.subscription_status || businessSettings?.subscription_status || "inactive";
+    const endsAt = getSubscriptionEndDate();
+    const active = String(status).toLowerCase() === "active";
+
+    if(!active) return { state: "bad", label: "Subscription inactive", detail: "Payment access needs attention." };
+    if(!endsAt) return { state: "good", label: "Subscription active", detail: "No end date is currently set." };
+
+    const daysLeft = Math.ceil((new Date(endsAt) - new Date()) / (1000 * 60 * 60 * 24));
+    if(daysLeft <= 0) return { state: "bad", label: "Subscription expired", detail: "Renew access to avoid interruption." };
+    if(daysLeft <= 7) return { state: "warn", label: "Billing due soon", detail: `${daysLeft} day${daysLeft === 1 ? "" : "s"} remaining.` };
+
+    return { state: "good", label: "Subscription active", detail: `Renews/ends ${formatDate(endsAt)}.` };
+}
+
+function renderOperationsHealth(apiHealth = null) {
+    const container = document.getElementById("operationsHealth");
+    if(!container) return;
+
+    const subscriptionHealth = getSubscriptionHealthLabel();
+    const checks = [
+        {
+            state: apiHealth ? (apiHealth.ok ? "good" : "bad") : "warn",
+            icon: "fa-server",
+            label: "Backend API",
+            detail: apiHealth
+                ? (apiHealth.ok ? `Online - ${formatDateTime(apiHealth.checked_at || new Date())}` : "Health check failed")
+                : "Not checked yet"
+        },
+        {
+            state: currentBusinessId ? "good" : "bad",
+            icon: "fa-building",
+            label: "Business link",
+            detail: currentBusinessId ? "Business account is connected." : "Business account is not ready."
+        },
+        {
+            state: products.length || allCustomers.length || profiles.length ? "good" : "warn",
+            icon: "fa-database",
+            label: "Supabase data",
+            detail: `${products.length} products, ${allCustomers.length} sales, ${profiles.length} team profiles loaded.`
+        },
+        {
+            state: frontendErrorLog.length ? "warn" : "good",
+            icon: "fa-bug",
+            label: "Frontend errors",
+            detail: frontendErrorLog.length
+                ? `${frontendErrorLog.length} recent issue${frontendErrorLog.length === 1 ? "" : "s"} captured.`
+                : "No frontend errors captured."
+        },
+        {
+            state: subscriptionHealth.state,
+            icon: "fa-credit-card",
+            label: subscriptionHealth.label,
+            detail: subscriptionHealth.detail
+        }
+    ];
+
+    container.innerHTML = checks.map(check => `
+        <article class="ops-health-item ${check.state}">
+            <span><i class="fa-solid ${check.icon}"></i></span>
+            <div>
+                <strong>${escapeHtml(check.label)}</strong>
+                <p>${escapeHtml(check.detail)}</p>
+            </div>
+        </article>
+    `).join("");
+}
+
+async function loadOperationsHealth(){
+    const container = document.getElementById("operationsHealth");
+    if(container){
+        container.innerHTML = `<div class="empty-state">Checking system health...</div>`;
+    }
+
+    try {
+        const response = await fetch(`${TEAM_API_URL}/api/health`, {
+            cache: "no-store"
+        });
+        const result = await response.json().catch(() => ({}));
+        renderOperationsHealth({
+            ok: response.ok && result.ok !== false,
+            checked_at: result.checked_at || new Date().toISOString(),
+            details: result
+        });
+    } catch(error) {
+        recordFrontendError(error.message || "Backend health check failed", "operations-health");
+        renderOperationsHealth({ ok: false, checked_at: new Date().toISOString() });
+    }
+}
+
+function renderNotificationCenter() {
+    const container = document.getElementById("notificationHistory");
+    if(!container) return;
+
+    if(!notificationHistory.length){
+        container.innerHTML = `
+            <div class="empty-state">
+                No notifications yet. Important sales, stock, sync, and setup updates will appear here.
+            </div>
+        `;
+        return;
+    }
+
+    container.innerHTML = notificationHistory.slice(0, 8).map(item => `
+        <article class="notification-history-item ${escapeHtml(item.type || "info")}">
+            <span><i class="fa-solid ${item.type === "success" ? "fa-circle-check" : item.type === "error" ? "fa-circle-xmark" : item.type === "warning" ? "fa-triangle-exclamation" : "fa-circle-info"}"></i></span>
+            <div>
+                <strong>${escapeHtml(item.message)}</strong>
+                <small>${formatDateTime(item.created_at)}</small>
+            </div>
+        </article>
+    `).join("");
+}
+
+function clearNotificationCenter() {
+    notificationHistory = [];
+    saveNotificationHistory();
+    renderNotificationCenter();
+    showNotification("Notification history cleared", "success");
 }
 
 function getCartItems(cartData) {
@@ -1885,6 +2122,29 @@ function updateProductCount(showing, total){
 }
 
 // ADD PRODUCT
+
+function downloadProductImportTemplate(){
+    const rows = [
+        ["name", "price", "stock", "image_url"],
+        ["Sample Product", "5000", "20", "https://example.com/product.jpg"]
+    ];
+
+    const csv = rows
+        .map(row => row.map(cell => `"${String(cell).replaceAll('"', '""')}"`).join(","))
+        .join("\n");
+
+    const blob = new Blob([csv], { type: "text/csv;charset=utf-8" });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement("a");
+    link.href = url;
+    link.download = "sales-tracker-product-import-template.csv";
+    document.body.appendChild(link);
+    link.click();
+    link.remove();
+    URL.revokeObjectURL(url);
+
+    showNotification("Product import template downloaded", "success");
+}
 
 async function importProductsFromCSV(){
     const input = document.getElementById("bulkProductFile");
@@ -2644,6 +2904,9 @@ async function init(){
 
     currentProfile = profile;
     currentBusinessId = profile.business_id;
+    loadStoredOperationsState();
+    renderNotificationCenter();
+    renderOperationsHealth();
 
     if(!currentBusinessId || !hasActiveSubscription(currentProfile)){
         const refreshedProfile = await refreshProfileAccess();
@@ -2733,6 +2996,9 @@ async function init(){
     updatePlanLockedFeatures();
     renderSubscriptionPanel();
     renderBusinessTools();
+    renderNotificationCenter();
+    renderOperationsHealth();
+    loadOperationsHealth();
 
     startAdminRealtime();
 }
@@ -3671,6 +3937,15 @@ function showNotification(message, type = "info"){
             type = "success";
         }
     }
+
+    notificationHistory.unshift({
+        message: String(message || ""),
+        type,
+        created_at: new Date().toISOString()
+    });
+    notificationHistory = notificationHistory.slice(0, 30);
+    saveNotificationHistory();
+    renderNotificationCenter();
 
     const icons = {
         success: "fa-circle-check",

@@ -99,8 +99,35 @@ app.use(cors({
     }
 }));
 
-app.get("/api/health", (req, res) => {
-    res.json({ ok: true });
+app.get("/api/health", async (req, res) => {
+    const checkedAt = new Date().toISOString();
+    const services = {
+        backend: true,
+        supabase: false,
+        paystack: Boolean(paystackSecretKey),
+        app_url: Boolean(appUrl)
+    };
+
+    try {
+        const timeout = new Promise((_, reject) => {
+            setTimeout(() => reject(new Error("Supabase health check timed out")), 3500);
+        });
+
+        await Promise.race([
+            supabaseAdmin.from("businesses").select("*", { count: "exact", head: true }),
+            timeout
+        ]);
+
+        services.supabase = true;
+    } catch(error) {
+        console.warn("Health check Supabase warning:", error.message);
+    }
+
+    res.status(services.supabase ? 200 : 503).json({
+        ok: services.backend && services.supabase,
+        checked_at: checkedAt,
+        services
+    });
 });
 
 app.use("/api", apiLimiter);

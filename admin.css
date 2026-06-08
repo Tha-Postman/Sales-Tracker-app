@@ -5823,3 +5823,124 @@ body:not(.sidebar-collapsed) .main {
 #stats .s-cancelled {
     color: #94a3b8;
 }
+
+/* Operations center */
+.ops-grid {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 16px;
+    margin: 18px 0 0;
+}
+
+.ops-card {
+    min-width: 0;
+    padding: clamp(16px, 2vw, 22px);
+    border: 1px solid rgba(148, 163, 184, 0.16);
+    border-radius: 18px;
+    background: linear-gradient(145deg, rgba(15,23,42,0.9), rgba(2,6,23,0.74));
+    box-shadow: 0 18px 42px rgba(0,0,0,0.2);
+}
+
+.ops-health-list,
+.notification-history {
+    display: grid;
+    gap: 10px;
+}
+
+.ops-health-item,
+.notification-history-item {
+    min-width: 0;
+    display: grid;
+    grid-template-columns: auto minmax(0, 1fr);
+    gap: 12px;
+    align-items: center;
+    padding: 12px;
+    border: 1px solid rgba(148, 163, 184, 0.12);
+    border-radius: 14px;
+    background: rgba(15, 23, 42, 0.56);
+}
+
+.ops-health-item > span,
+.notification-history-item > span {
+    width: 34px;
+    height: 34px;
+    display: grid;
+    place-items: center;
+    border-radius: 12px;
+    background: rgba(59, 130, 246, 0.14);
+    color: #93c5fd;
+}
+
+.ops-health-item.good > span,
+.notification-history-item.success > span {
+    background: rgba(34, 197, 94, 0.14);
+    color: #86efac;
+}
+
+.ops-health-item.warn > span,
+.notification-history-item.warning > span {
+    background: rgba(245, 158, 11, 0.14);
+    color: #fde68a;
+}
+
+.ops-health-item.bad > span,
+.notification-history-item.error > span {
+    background: rgba(239, 68, 68, 0.14);
+    color: #fca5a5;
+}
+
+.ops-health-item strong,
+.notification-history-item strong {
+    display: block;
+    max-width: 100%;
+    color: #f8fafc;
+    font-size: 14px;
+    line-height: 1.25;
+    overflow-wrap: anywhere;
+}
+
+.ops-health-item p,
+.notification-history-item small {
+    display: block;
+    margin: 3px 0 0;
+    color: #94a3b8;
+    font-size: 12px;
+    line-height: 1.35;
+}
+
+.section-action.subtle,
+.bulk-product-import .secondary {
+    background: rgba(15, 23, 42, 0.75);
+    color: #cbd5e1;
+    border: 1px solid rgba(148, 163, 184, 0.18);
+}
+
+.section-action.subtle:hover,
+.bulk-product-import .secondary:hover {
+    color: #fff;
+    border-color: rgba(56, 189, 248, 0.42);
+    background: rgba(30, 41, 59, 0.9);
+}
+
+@media (max-width: 900px) {
+    .ops-grid {
+        grid-template-columns: 1fr;
+    }
+}
+
+@media (max-width: 640px) {
+    .ops-card {
+        padding: 14px;
+        border-radius: 15px;
+    }
+
+    .ops-health-item,
+    .notification-history-item {
+        padding: 10px;
+        gap: 10px;
+    }
+
+    .bulk-product-import {
+        grid-template-columns: 1fr;
+    }
+}

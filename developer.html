@@ -120,6 +120,7 @@
                     <button type="button" onclick="openPricingPage()"><i class="fa-solid fa-tags"></i> Open Pricing</button>
                 </div>
                 <div id="developerInsight" class="developer-insight"></div>
+                <div id="apiHealthPanel" class="api-health-panel"></div>
             </section>
 
 
@@ -263,6 +264,7 @@ async function loadDeveloperDashboard(){
         renderActivity();
         renderDeveloperInsight(overview.metrics || {});
         await loadPlatformPricingEditor();
+        checkApiHealth();
     } catch(error) {
         showNotification(error.message, "error");
         if(error.message.toLowerCase().includes("access")){
@@ -447,13 +449,51 @@ async function savePlatformPricing(event){
 }
 
 async function checkApiHealth(){
+    const panel = document.getElementById("apiHealthPanel");
+    if(panel){
+        panel.innerHTML = `<div class="empty-state">Checking API health...</div>`;
+    }
+
     try {
-        const response = await fetch(`${API_URL}/api/health`);
+        const response = await fetch(`${API_URL}/api/health`, { cache: "no-store" });
         const result = await response.json();
+        renderApiHealthPanel(result, response.ok);
         showNotification(result.ok ? "API health is OK" : "API health check returned an issue", result.ok ? "success" : "error");
     } catch(error) {
+        renderApiHealthPanel({ ok: false, services: {}, checked_at: new Date().toISOString(), error: error.message }, false);
         showNotification("API health check failed", "error");
     }
+}
+
+function renderApiHealthPanel(result = {}, responseOk = false){
+    const panel = document.getElementById("apiHealthPanel");
+    if(!panel) return;
+
+    const services = result.services || {};
+    const checks = [
+        ["Backend", responseOk && result.ok !== false && services.backend !== false],
+        ["Supabase", Boolean(services.supabase)],
+        ["Paystack", Boolean(services.paystack)],
+        ["App URL", Boolean(services.app_url)]
+    ];
+
+    panel.innerHTML = `
+        <div class="api-health-head">
+            <div>
+                <span>Backend Health</span>
+                <strong>${result.ok ? "Operational" : "Needs attention"}</strong>
+            </div>
+            <small>${result.checked_at ? new Date(result.checked_at).toLocaleString() : "Not checked"}</small>
+        </div>
+        <div class="api-health-grid">
+            ${checks.map(([label, ok]) => `
+                <article class="${ok ? "ok" : "bad"}">
+                    <i class="fa-solid ${ok ? "fa-circle-check" : "fa-circle-xmark"}"></i>
+                    <span>${label}</span>
+                </article>
+            `).join("")}
+        </div>
+    `;
 }
 
 function exportBusinessesCSV(){
