@@ -88,6 +88,19 @@ body::before {
     border: 1px solid rgba(96,165,250,0.26);
     font-weight: 800;
     margin-bottom: 28px;
+    text-decoration: none;
+}
+
+.brand-badge,
+.brand-badge:visited,
+.brand-badge:hover,
+.brand-badge:focus,
+.logo,
+.logo:visited,
+.logo:hover,
+.logo:focus {
+    color: inherit;
+    text-decoration: none;
 }
 
 .brand-panel h1 {
@@ -157,6 +170,12 @@ body::before {
     font-size: 28px;
     font-weight: 900;
     margin-bottom: 10px;
+    text-decoration: none;
+}
+
+.logo *,
+.brand-badge * {
+    text-decoration: none;
 }
 
 .logo-mark {

@@ -81,23 +81,23 @@
 }
 
 .support-avatar {
-    width: 46px;
-    height: 46px;
+    width: 58px;
+    height: 58px;
     display: grid;
     place-items: center;
     flex: 0 0 auto;
-    border-radius: 16px;
+    overflow: hidden;
+    border: 1px solid rgba(255,255,255,0.16);
+    border-radius: 18px;
     background: linear-gradient(135deg, var(--support-blue), var(--support-teal));
     box-shadow: 0 14px 34px rgba(37, 99, 235, 0.28);
-    color: white;
-    font-size: 22px;
-    line-height: 1;
 }
 
-.support-avatar i {
+.support-avatar img {
+    width: 100%;
+    height: 100%;
     display: block;
-    line-height: 1;
-    transform: translateY(0);
+    object-fit: cover;
 }
 
 .support-agent strong,
@@ -106,13 +106,14 @@
 }
 
 .support-agent strong {
-    font-size: 15px;
+    font-size: 16px;
+    line-height: 1.15;
 }
 
 .support-agent span {
     margin-top: 2px;
     color: #bfdbfe;
-    font-size: 12px;
+    font-size: 13px;
     font-weight: 800;
 }
 
@@ -174,6 +175,13 @@
     font-size: 12px;
     font-weight: 900;
     cursor: pointer;
+}
+
+.support-enquiry button {
+    width: 100%;
+    border-radius: 14px;
+    padding: 11px 12px;
+    background: linear-gradient(135deg, rgba(37,99,235,0.7), rgba(20,184,166,0.56));
 }
 
 .support-enquiry {
@@ -257,6 +265,12 @@
         width: auto;
         max-height: calc(100vh - 96px);
         border-radius: 18px;
+    }
+
+    .support-avatar {
+        width: 52px;
+        height: 52px;
+        border-radius: 17px;
     }
 }
 

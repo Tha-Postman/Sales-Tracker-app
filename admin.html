@@ -9,11 +9,12 @@
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
 
 <title>Admin Dashboard</title>
 
 <link rel="stylesheet" href="admin.css">
+    <link rel="stylesheet" href="app-loader.css">
 <script src="pwa.js" defer></script>
 
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
@@ -23,9 +24,20 @@
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
 
     <link rel="stylesheet" href="support-widget.css">
+    <script src="app-loader.js" defer></script>
 </head>
 
 <body class="sidebar-collapsed">
+    <div id="appLoadingScreen" aria-live="polite" aria-label="Loading Sales Tracker">
+        <div class="app-loader-card">
+            <a class="app-loader-logo" href="index.html" aria-label="Go to Sales Tracker homepage"><img src="img/sales-tracker-icon.png" alt="Sales Tracker logo"></a>
+            <div>
+                <strong>Sales Tracker</strong>
+                <span>Preparing your workspace...</span>
+            </div>
+            <div class="app-loader-bar" aria-hidden="true"></div>
+        </div>
+    </div>
 
 <!-- NOTIFICATION -->
     <div id="notificationContainer"></div>
@@ -38,11 +50,13 @@
 
 
         <div class="sidebar-brand">
-            <div class="sidebar-logo"><i class="fa-solid fa-chart-simple"></i></div>
-            <div>
-                <h2>Admin Panel</h2>
-                <span>Sales Tracker</span>
-            </div>
+            <a class="sidebar-brand-link" href="index.html" aria-label="Go to Sales Tracker homepage">
+                <div class="sidebar-logo"><i class="fa-solid fa-chart-simple"></i></div>
+                <div>
+                    <h2>Admin Panel</h2>
+                    <span>Sales Tracker</span>
+                </div>
+            </a>
             <button class="sidebar-close" type="button" onclick="toggleSidebar()" aria-label="Close sidebar">
                 <i class="fa-solid fa-xmark"></i>
             </button>

@@ -28,6 +28,8 @@
     },
     "files": [
       "electron-main.cjs",
+      "loading.html",
+      "app-loader.css",
       "package.json",
       "img/sales-tracker.ico"
     ],

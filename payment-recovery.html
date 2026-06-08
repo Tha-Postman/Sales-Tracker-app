@@ -8,13 +8,25 @@
     <meta name="apple-mobile-web-app-title" content="Sales Tracker">
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
     <title>Recover Payment - Sales Tracker</title>
     <link rel="stylesheet" href="public.css">
+    <link rel="stylesheet" href="app-loader.css">
     <script src="pwa.js" defer></script>
     <link rel="stylesheet" href="support-widget.css">
+    <script src="app-loader.js" defer></script>
 </head>
 <body>
+    <div id="appLoadingScreen" aria-live="polite" aria-label="Loading Sales Tracker">
+        <div class="app-loader-card">
+            <a class="app-loader-logo" href="index.html" aria-label="Go to Sales Tracker homepage"><img src="img/sales-tracker-icon.png" alt="Sales Tracker logo"></a>
+            <div>
+                <strong>Sales Tracker</strong>
+                <span>Preparing your workspace...</span>
+            </div>
+            <div class="app-loader-bar" aria-hidden="true"></div>
+        </div>
+    </div>
     <main class="public-shell">
         <section class="public-card">
             <p class="eyebrow">Payment Recovery</p>
@@ -68,6 +80,43 @@
         }
     });
     </script>
-    <script src="support-widget.js"></script>
+<script src="support-widget.js"></script>
+    <footer class="site-footer">
+        <div class="site-footer-main">
+            <div class="footer-brand">
+                <a class="footer-brand-head" href="index.html" aria-label="Go to Sales Tracker homepage">
+                    <img src="img/sales-tracker-icon.png" alt="Sales Tracker logo">
+                    <span>Sales Tracker</span>
+                </a>
+                <p>Sales, inventory, teams, receipts, and business insight in one workspace for growing businesses.</p>
+            </div>
+
+            <div class="footer-column">
+                <strong>Product</strong>
+                <a href="demo.html">Demo</a>
+                <a href="pricing.html">Pricing</a>
+                <a href="install.html">Install App</a>
+            </div>
+
+            <div class="footer-column">
+                <strong>Account</strong>
+                <a href="signin.html">Sign In</a>
+                <button type="button" onclick="typeof safeOpenSupportChat === 'function' ? safeOpenSupportChat() : window.location.href='index.html'">Support</button>
+            <a href="mailto:thapostmancde@outlook.com">Contact Us</a>
+            </div>
+
+            <div class="footer-column">
+                <strong>Legal</strong>
+                <a href="privacy.html">Privacy</a>
+                <a href="terms.html">Terms</a>
+                <a href="refund.html">Refund Policy</a>
+            </div>
+        </div>
+
+        <div class="site-footer-bottom">
+            <span>&copy; 2026 Sales Tracker.</span>
+            <span>Built for business owners, admins, and sales teams.</span>
+        </div>
+    </footer>
 </body>
 </html>

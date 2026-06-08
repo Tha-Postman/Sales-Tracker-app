@@ -1,5 +1,5 @@
 (function(){
-    const supportEmail = "olaniyanoluwatobi01@gmail.com";
+    const supportEmail = "thapostmancde@outlook.com";
     const answers = [
         {
             keys: ["plan", "pricing", "price", "subscription", "starter", "business", "pro", "enterprise"],
@@ -32,6 +32,38 @@
         {
             keys: ["login", "signin", "password", "account"],
             answer: "If login fails, confirm the email and password. Admin accounts need an active subscription and reps must be added by their business admin. Use the password option inside the dashboard to change your password."
+        },
+        {
+            keys: ["dashboard", "admin dashboard", "sales dashboard", "not loading", "blank", "stuck", "refresh"],
+            answer: "If a dashboard does not load, first refresh the page once. Admins should confirm the business subscription is active, backend service is online, and the account role is admin. Reps should confirm their admin has not deactivated or suspended their account."
+        },
+        {
+            keys: ["currency", "naira", "dollar", "usd", "ngn", "receipt currency"],
+            answer: "Admins can set the business currency from Admin Dashboard > Settings. That currency is used for product prices, sales totals, dashboard stats, and receipts."
+        },
+        {
+            keys: ["import", "csv", "excel", "bulk", "many products", "upload products"],
+            answer: "Admins can bulk add products from Admin Dashboard > Products. Download the template, fill product name, price, stock, and optional image URL, then upload the CSV or Excel file."
+        },
+        {
+            keys: ["image", "product image", "upload image", "crop", "photo", "picture"],
+            answer: "Admins can upload product images while adding or editing products. Use Auto fit when you want the full product visible, or Crop section when you want a close-up."
+        },
+        {
+            keys: ["report", "reports", "export", "excel", "docx", "backup"],
+            answer: "Admins can export sales reports and business backups from the Admin Dashboard. Some reporting features are available on Business plan and above, while deeper workflow tools are available on Pro."
+        },
+        {
+            keys: ["stock reduce", "stock reducing", "inventory tracking", "sold", "left"],
+            answer: "When a sale is saved, Sales Tracker reduces product stock automatically. Admin inventory cards show initial stock, sold quantity, stock left, and latest stock movement where available."
+        },
+        {
+            keys: ["ios", "iphone", "bookmark", "home screen", "desktop app", "exe", "install"],
+            answer: "You can use Sales Tracker from the browser, install it to an iPhone home screen, or use the Windows desktop app. Open the Install App page for the latest setup steps."
+        },
+        {
+            keys: ["security", "safe", "data", "privacy", "card", "payment details"],
+            answer: "Sales Tracker separates each business workspace and uses role-based access. Payments are processed by Paystack, so Sales Tracker does not store card numbers."
         }
     ];
 
@@ -60,7 +92,7 @@
         widget.innerHTML = [
             '<div class="support-head">',
                 '<div class="support-agent">',
-                    '<span class="support-avatar"><i class="fa-solid fa-headset"></i></span>',
+                    '<span class="support-avatar"><img src="img/sales-tracker-icon.png" alt="Sales Tracker Care"></span>',
                     '<div><strong>Sales Tracker Care</strong><span>Online help desk</span></div>',
                 '</div>',
                 '<button class="support-close" type="button" aria-label="Close support"><i class="fa-solid fa-xmark"></i></button>',
@@ -157,7 +189,7 @@
             '<input name="name" placeholder="Your name" required>',
             '<input name="email" type="email" placeholder="Your email" required>',
             '<textarea name="message" placeholder="What do you need help with?" required></textarea>',
-            '<button type="submit">Open email to support</button>'
+            '<button type="submit">Send email to support</button>'
         ].join("");
 
         card.addEventListener("submit", event => {
@@ -170,6 +202,7 @@
                 data.get("message")
             );
             window.location.href = "mailto:" + supportEmail + "?subject=" + subject + "&body=" + message;
+            addBot("Your email app should open with the enquiry ready to send to Sales Tracker support. If it does not open, send your message directly to " + supportEmail + ".");
         });
 
         body.appendChild(card);

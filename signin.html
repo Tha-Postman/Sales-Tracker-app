@@ -8,15 +8,27 @@
     <meta name="apple-mobile-web-app-title" content="Sales Tracker">
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
     <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover"/>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
     <link rel="stylesheet" href="signin.css">
+    <link rel="stylesheet" href="app-loader.css">
     <script src="pwa.js" defer></script>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
 
     <title>Sign In</title>
     <link rel="stylesheet" href="support-widget.css">
+    <script src="app-loader.js" defer></script>
 </head>
 <body>
+    <div id="appLoadingScreen" aria-live="polite" aria-label="Loading Sales Tracker">
+        <div class="app-loader-card">
+            <a class="app-loader-logo" href="index.html" aria-label="Go to Sales Tracker homepage"><img src="img/sales-tracker-icon.png" alt="Sales Tracker logo"></a>
+            <div>
+                <strong>Sales Tracker</strong>
+                <span>Preparing your workspace...</span>
+            </div>
+            <div class="app-loader-bar" aria-hidden="true"></div>
+        </div>
+    </div>
 
     <!-- BACKGROUND GLOWS -->
 
@@ -28,10 +40,10 @@
     <main class="auth-shell">
 
     <section class="brand-panel">
-        <div class="brand-badge">
+        <a class="brand-badge" href="index.html" aria-label="Go to Sales Tracker homepage">
             <i class="fa-solid fa-chart-simple"></i>
             Sales Tracker
-        </div>
+        </a>
 
         <h1>Run sales, reps, products, and receipts from one smooth workspace.</h1>
 
@@ -64,10 +76,10 @@
 
     <div class="container">
 
-        <div class="logo">
+        <a class="logo" href="index.html" aria-label="Go to Sales Tracker homepage">
             <span class="logo-mark"><i class="fa-solid fa-chart-simple"></i></span>
             Sales Tracker
-        </div>
+        </a>
 
         <div class="sub">
             Welcome back. Sign in to continue.

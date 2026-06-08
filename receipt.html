@@ -8,10 +8,11 @@
     <meta name="apple-mobile-web-app-title" content="Sales Tracker">
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
     <title>Sales Tracker Receipt</title>
     <script src="pwa.js" defer></script>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+    <link rel="stylesheet" href="app-loader.css">
     <style>
         * {
             box-sizing: border-box;
@@ -174,8 +175,19 @@
             }
         }
     </style>
+    <script src="app-loader.js" defer></script>
 </head>
 <body>
+    <div id="appLoadingScreen" aria-live="polite" aria-label="Loading Sales Tracker">
+        <div class="app-loader-card">
+            <a class="app-loader-logo" href="index.html" aria-label="Go to Sales Tracker homepage"><img src="img/sales-tracker-icon.png" alt="Sales Tracker logo"></a>
+            <div>
+                <strong>Sales Tracker</strong>
+                <span>Preparing your workspace...</span>
+            </div>
+            <div class="app-loader-bar" aria-hidden="true"></div>
+        </div>
+    </div>
     <main id="receiptRoot"></main>
 
     <script>

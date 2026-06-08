@@ -8,9 +8,10 @@
         <meta name="apple-mobile-web-app-title" content="Sales Tracker">
         <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
         <meta charset="UTF-8">
-        <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+        <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
         <!-- <meta http-equiv="refresh" content="2"> -->
         <link rel="stylesheet" href="dashboard.css">
+    <link rel="stylesheet" href="app-loader.css">
         <script src="pwa.js" defer></script>
 
         <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/choices.js/public/assets/styles/choices.min.css">
@@ -23,21 +24,32 @@
         <title>Sales Tracker</title>
 
         <link rel="stylesheet" href="support-widget.css">
+    <script src="app-loader.js" defer></script>
 </head>
     <body>
+    <div id="appLoadingScreen" aria-live="polite" aria-label="Loading Sales Tracker">
+        <div class="app-loader-card">
+            <a class="app-loader-logo" href="index.html" aria-label="Go to Sales Tracker homepage"><img src="img/sales-tracker-icon.png" alt="Sales Tracker logo"></a>
+            <div>
+                <strong>Sales Tracker</strong>
+                <span>Preparing your workspace...</span>
+            </div>
+            <div class="app-loader-bar" aria-hidden="true"></div>
+        </div>
+    </div>
         <!-- BACKGROUND GLOWS -->
 
         <!-- <div class="glow glow1"></div>
         <div class="glow glow2"></div> -->
 
         <header class="sales-topbar">
-            <div class="sales-brand">
+            <a class="sales-brand" href="index.html" aria-label="Go to Sales Tracker homepage">
                 <span class="logo-mark"><i class="fa-solid fa-chart-simple"></i></span>
                 <div>
                     <h2>Sales Tracker</h2>
                     <span id="welcomeName"></span>
                 </div>
-            </div>
+            </a>
 
             <div class="sales-top-meta">
                 <div class="dashboard-clock" aria-live="polite">

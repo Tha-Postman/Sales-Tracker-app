@@ -20,7 +20,26 @@ function createWindow() {
     }
   });
 
-  win.loadURL(liveAppUrl);
+  win.webContents.setVisualZoomLevelLimits(1, 1).catch(() => {});
+  win.webContents.on("did-finish-load", () => {
+    win.webContents.setZoomFactor(1);
+  });
+
+  win.webContents.on("before-input-event", (event, input) => {
+    const key = String(input.key || "").toLowerCase();
+    const isZoomShortcut = (input.control || input.meta) && ["+", "-", "=", "0"].includes(key);
+
+    if (isZoomShortcut) {
+      event.preventDefault();
+      win.webContents.setZoomFactor(1);
+    }
+  });
+
+  win.loadFile(path.join(__dirname, "loading.html"));
+
+  setTimeout(() => {
+    win.loadURL(liveAppUrl);
+  }, 650);
 
   win.webContents.setWindowOpenHandler(({ url }) => {
     if (url.startsWith("https://use-sales-tracker.vercel.app") || url.startsWith("https://sales-tracker-app-cd7k.onrender.com")) {

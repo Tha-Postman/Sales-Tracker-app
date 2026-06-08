@@ -8,24 +8,44 @@
     <meta name="apple-mobile-web-app-title" content="Sales Tracker">
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
     <title>Sales Tracker Developer</title>
     <link rel="stylesheet" href="developer.css">
+    <link rel="stylesheet" href="app-loader.css">
     <script src="pwa.js" defer></script>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <script src="app-loader.js" defer></script>
 </head>
 <body>
+    <div id="appLoadingScreen" aria-live="polite" aria-label="Loading Sales Tracker">
+        <div class="app-loader-card">
+            <a class="app-loader-logo" href="index.html" aria-label="Go to Sales Tracker homepage"><img src="img/sales-tracker-icon.png" alt="Sales Tracker logo"></a>
+            <div>
+                <strong>Sales Tracker</strong>
+                <span>Preparing your workspace...</span>
+            </div>
+            <div class="app-loader-bar" aria-hidden="true"></div>
+        </div>
+    </div>
     <div id="notificationContainer"></div>
 
     <main class="dev-shell">
+        <button class="dev-sidebar-backdrop" type="button" onclick="closeDeveloperSidebar()" aria-label="Close developer menu"></button>
+
         <aside class="dev-sidebar">
-            <div class="dev-brand">
-                <span><i class="fa-solid fa-chart-simple"></i></span>
-                <div>
-                    <strong>Sales Tracker</strong>
-                    <small>Developer Console</small>
-                </div>
+            <div class="dev-sidebar-head">
+                <a class="dev-brand" href="index.html" aria-label="Go to Sales Tracker homepage">
+                    <span><i class="fa-solid fa-chart-simple"></i></span>
+                    <div>
+                        <strong>Sales Tracker</strong>
+                        <small>Developer Console</small>
+                    </div>
+                </a>
+
+                <button class="dev-sidebar-close" type="button" onclick="closeDeveloperSidebar()" aria-label="Close developer menu">
+                    <i class="fa-solid fa-xmark"></i>
+                </button>
             </div>
 
             <button class="active" type="button" data-section-target="overview" onclick="scrollToSection('overview')">
@@ -56,9 +76,14 @@
 
         <section class="dev-main">
             <header class="dev-topbar">
-                <div>
-                    <p>Platform Owner</p>
-                    <h1>Developer Dashboard</h1>
+                <div class="dev-topbar-title">
+                    <button class="dev-menu-toggle" type="button" onclick="toggleDeveloperSidebar()" aria-label="Toggle developer menu" aria-expanded="true">
+                        <i class="fa-solid fa-bars-staggered"></i>
+                    </button>
+                    <div>
+                        <p>Platform Owner</p>
+                        <h1>Developer Dashboard</h1>
+                    </div>
                 </div>
                 <div class="dev-status">
                     <span></span>
@@ -518,6 +543,59 @@ function openPricingPage(){
     window.open("pricing.html", "_blank", "noopener");
 }
 
+function isDeveloperMobileNav(){
+    return window.matchMedia("(max-width: 980px)").matches;
+}
+
+function isDeveloperSidebarOpen(){
+    if(isDeveloperMobileNav()){
+        return document.body.classList.contains("developer-sidebar-open");
+    }
+
+    return !document.body.classList.contains("developer-sidebar-collapsed");
+}
+
+function syncDeveloperSidebarButton(){
+    const toggle = document.querySelector(".dev-menu-toggle");
+    if(toggle){
+        toggle.setAttribute("aria-expanded", String(isDeveloperSidebarOpen()));
+    }
+}
+
+function setDeveloperSidebar(open){
+    if(isDeveloperMobileNav()){
+        document.body.classList.toggle("developer-sidebar-open", open);
+        document.body.classList.remove("developer-sidebar-collapsed");
+    } else {
+        document.body.classList.remove("developer-sidebar-open");
+        document.body.classList.toggle("developer-sidebar-collapsed", !open);
+    }
+
+    syncDeveloperSidebarButton();
+}
+
+function toggleDeveloperSidebar(){
+    setDeveloperSidebar(!isDeveloperSidebarOpen());
+}
+
+function closeDeveloperSidebar(){
+    setDeveloperSidebar(false);
+}
+
+window.addEventListener("resize", () => {
+    if(!isDeveloperMobileNav()){
+        document.body.classList.remove("developer-sidebar-open");
+    }
+
+    syncDeveloperSidebarButton();
+});
+
+window.addEventListener("keydown", event => {
+    if(event.key === "Escape" && isDeveloperSidebarOpen()){
+        closeDeveloperSidebar();
+    }
+});
+
 
 function setActiveDevNav(id){
     document.querySelectorAll(".dev-sidebar [data-section-target]").forEach(button => {
@@ -559,6 +637,9 @@ function setupDeveloperNavObserver(){
 function scrollToSection(id){
     setActiveDevNav(id);
     document.getElementById(id)?.scrollIntoView({ behavior: "smooth", block: "start" });
+    if(isDeveloperMobileNav()){
+        closeDeveloperSidebar();
+    }
 }
 
 
@@ -620,6 +701,7 @@ async function logout(){
 
 setupDeveloperNavObserver();
 setActiveDevNav("overview");
+syncDeveloperSidebarButton();
 loadDeveloperDashboard();
 </script>
 </body>
