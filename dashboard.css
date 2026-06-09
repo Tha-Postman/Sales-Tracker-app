@@ -3710,3 +3710,14 @@ body {
         font-size: clamp(1.2rem, 7vw, 1.6rem);
     }
 }
+
+@media (display-mode: standalone) {
+    body {
+        padding-top: calc(16px + env(safe-area-inset-top));
+    }
+
+    .intro,
+    .top-bar {
+        margin-top: max(4px, env(safe-area-inset-top));
+    }
+}

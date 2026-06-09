@@ -6029,3 +6029,134 @@ body:not(.sidebar-collapsed) .main {
         grid-template-columns: 1fr;
     }
 }
+
+/* Final scroll containment for long admin records */
+.customer-database-list,
+.expense-list,
+.audit-log-list,
+.rep-grid,
+.business-tools-grid,
+#productList.panel-body,
+.report-table-wrap {
+    max-height: min(620px, 64vh);
+    overflow-y: auto;
+    overflow-x: hidden;
+    overscroll-behavior: contain;
+    -webkit-overflow-scrolling: touch;
+    padding-right: 6px;
+    scrollbar-width: thin;
+    scrollbar-color: rgba(56, 189, 248, 0.58) rgba(15, 23, 42, 0.5);
+}
+
+.report-table-wrap {
+    overflow-x: auto;
+}
+
+.customer-database-list::-webkit-scrollbar,
+.expense-list::-webkit-scrollbar,
+.audit-log-list::-webkit-scrollbar,
+.rep-grid::-webkit-scrollbar,
+.business-tools-grid::-webkit-scrollbar,
+#productList.panel-body::-webkit-scrollbar,
+.report-table-wrap::-webkit-scrollbar {
+    width: 8px;
+    height: 8px;
+}
+
+.customer-database-list::-webkit-scrollbar-track,
+.expense-list::-webkit-scrollbar-track,
+.audit-log-list::-webkit-scrollbar-track,
+.rep-grid::-webkit-scrollbar-track,
+.business-tools-grid::-webkit-scrollbar-track,
+#productList.panel-body::-webkit-scrollbar-track,
+.report-table-wrap::-webkit-scrollbar-track {
+    background: rgba(15, 23, 42, 0.5);
+    border-radius: 999px;
+}
+
+.customer-database-list::-webkit-scrollbar-thumb,
+.expense-list::-webkit-scrollbar-thumb,
+.audit-log-list::-webkit-scrollbar-thumb,
+.rep-grid::-webkit-scrollbar-thumb,
+.business-tools-grid::-webkit-scrollbar-thumb,
+#productList.panel-body::-webkit-scrollbar-thumb,
+.report-table-wrap::-webkit-scrollbar-thumb {
+    background: linear-gradient(180deg, rgba(59, 130, 246, 0.86), rgba(20, 184, 166, 0.76));
+    border: 2px solid rgba(2, 6, 23, 0.76);
+    border-radius: 999px;
+}
+
+.customer-database-list::-webkit-scrollbar-thumb:hover,
+.expense-list::-webkit-scrollbar-thumb:hover,
+.audit-log-list::-webkit-scrollbar-thumb:hover,
+.rep-grid::-webkit-scrollbar-thumb:hover,
+.business-tools-grid::-webkit-scrollbar-thumb:hover,
+#productList.panel-body::-webkit-scrollbar-thumb:hover,
+.report-table-wrap::-webkit-scrollbar-thumb:hover {
+    background: linear-gradient(180deg, rgba(147, 197, 253, 0.95), rgba(45, 212, 191, 0.88));
+}
+
+.report-date-field {
+    min-width: 0;
+    display: grid;
+    gap: 6px;
+}
+
+.report-date-field span {
+    display: none;
+    color: #93c5fd;
+    font-size: 11px;
+    font-weight: 900;
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+}
+
+.report-date-field input {
+    width: 100%;
+}
+
+@media (max-width: 720px) {
+    .customer-database-list,
+    .expense-list,
+    .audit-log-list,
+    .rep-grid,
+    .business-tools-grid,
+    #productList.panel-body,
+    .report-table-wrap {
+        max-height: min(560px, 58vh) !important;
+        padding-right: 4px;
+    }
+
+    .report-date-field span {
+        display: block;
+    }
+
+    .report-filters {
+        gap: 12px;
+    }
+}
+
+@media (max-width: 430px) {
+    .customer-database-list,
+    .expense-list,
+    .audit-log-list,
+    .rep-grid,
+    .business-tools-grid,
+    #productList.panel-body {
+        max-height: min(500px, 54vh) !important;
+    }
+}
+
+@media (display-mode: standalone) {
+    body {
+        padding-top: env(safe-area-inset-top);
+    }
+
+    .sidebar {
+        padding-top: calc(18px + env(safe-area-inset-top));
+    }
+
+    .admin-topbar {
+        margin-top: max(6px, env(safe-area-inset-top));
+    }
+}

@@ -493,8 +493,14 @@
             </div>
 
             <div class="report-filters">
-                <input id="reportFrom" type="date" title="From date">
-                <input id="reportTo" type="date" title="To date">
+                <label class="report-date-field" for="reportFrom">
+                    <span>From date</span>
+                    <input id="reportFrom" type="date" title="From date" aria-label="From date">
+                </label>
+                <label class="report-date-field" for="reportTo">
+                    <span>To date</span>
+                    <input id="reportTo" type="date" title="To date" aria-label="To date">
+                </label>
                 <select id="reportRep" title="Sales rep"></select>
                 <select id="reportStatus" title="Status">
                     <option>All</option>
@@ -4743,12 +4749,12 @@ function renderRevenueChart() {
 
     const ctx = canvas.getContext("2d");
     const gradient = ctx.createLinearGradient(0, 0, 0, canvas.clientHeight || 320);
-    gradient.addColorStop(0, "rgba(37, 99, 235, 0.42)");
-    gradient.addColorStop(0.55, "rgba(20, 184, 166, 0.16)");
-    gradient.addColorStop(1, "rgba(20, 184, 166, 0.02)");
+    gradient.addColorStop(0, "rgba(96, 165, 250, 0.98)");
+    gradient.addColorStop(0.55, "rgba(37, 99, 235, 0.82)");
+    gradient.addColorStop(1, "rgba(29, 78, 216, 0.58)");
 
     revenueChart = new Chart(ctx, {
-        type: "line",
+        type: "bar",
         data: {
             labels: labels.map(label => formatRevenueLabel(label, revenuePeriod)),
 
@@ -4756,16 +4762,16 @@ function renderRevenueChart() {
                 {
                     label: `${revenuePeriod.charAt(0).toUpperCase()}${revenuePeriod.slice(1)} Revenue`,
                     data: values,
-                    fill: true,
                     backgroundColor: gradient,
-                    borderColor: "rgba(96, 165, 250, 1)",
-                    borderWidth: 3,
-                    pointRadius: 4,
-                    pointHoverRadius: 6,
-                    pointBackgroundColor: "#14b8a6",
-                    pointBorderColor: "#ffffff",
-                    pointBorderWidth: 2,
-                    tension: 0.38
+                    borderColor: "rgba(191, 219, 254, 0.92)",
+                    borderWidth: 1,
+                    borderRadius: 0,
+                    borderSkipped: false,
+                    barPercentage: 0.72,
+                    categoryPercentage: 0.68,
+                    hoverBackgroundColor: "rgba(125, 211, 252, 0.95)",
+                    hoverBorderColor: "#ffffff",
+                    maxBarThickness: 58
                 }
             ]
         },
