@@ -28,10 +28,21 @@ function createWindow() {
   win.webContents.on("before-input-event", (event, input) => {
     const key = String(input.key || "").toLowerCase();
     const isZoomShortcut = (input.control || input.meta) && ["+", "-", "=", "0"].includes(key);
+    const isRefreshShortcut = key === "f5" || ((input.control || input.meta) && key === "r");
 
     if (isZoomShortcut) {
       event.preventDefault();
       win.webContents.setZoomFactor(1);
+      return;
+    }
+
+    if (isRefreshShortcut) {
+      event.preventDefault();
+      if (input.shift) {
+        win.webContents.reloadIgnoringCache();
+      } else {
+        win.webContents.reload();
+      }
     }
   });
 

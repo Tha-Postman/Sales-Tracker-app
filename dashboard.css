@@ -140,6 +140,34 @@ body {
     background: rgba(127,29,29,0.28);
     border: 1px solid rgba(248,113,113,0.35);
 }
+
+.admin-return-btn {
+    flex: 1 1 168px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    min-height: 44px;
+    padding: 10px 14px;
+    border: 1px solid rgba(125, 211, 252, 0.26);
+    border-radius: 14px;
+    color: #e0f2fe;
+    background: linear-gradient(135deg, rgba(37, 99, 235, 0.26), rgba(20, 184, 166, 0.18));
+    box-shadow: 0 12px 28px rgba(14, 165, 233, 0.12);
+    cursor: pointer;
+    font-weight: 900;
+    transition: transform 0.2s ease, border-color 0.2s ease, background 0.2s ease;
+}
+
+.admin-return-btn:hover {
+    transform: translateY(-2px);
+    border-color: rgba(125, 211, 252, 0.46);
+    background: linear-gradient(135deg, rgba(37, 99, 235, 0.36), rgba(20, 184, 166, 0.26));
+}
+
+.admin-return-btn.hidden {
+    display: none !important;
+}
 input, select, button {
     /* width: 10%; */
     /* padding: 10px; */

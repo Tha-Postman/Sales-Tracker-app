@@ -374,6 +374,28 @@
             return "";
         }
 
+        function getFriendlyAuthError(message){
+            const text = String(message || "").toLowerCase();
+
+            if(text.includes("email rate limit exceeded") || text.includes("rate limit")){
+                return "Too many signup emails were requested in a short time. Please wait a few minutes, then try again. If you already signed up, check your email or spam folder.";
+            }
+
+            if(text.includes("already registered") || text.includes("already exists")){
+                return "This email already has an account. Please sign in instead, or use Forgot password if you cannot remember your password.";
+            }
+
+            if(text.includes("password")){
+                return "Password does not meet the required format. Use at least 8 characters with lowercase, uppercase, number, and symbol.";
+            }
+
+            if(text.includes("invalid email")){
+                return "Please enter a valid email address.";
+            }
+
+            return message || "Authentication failed. Please try again.";
+        }
+
         function setButtonLoading(button, loading, text){
             if(!button) return;
 
@@ -412,7 +434,7 @@
             const { error } = await supabaseClient.auth.resetPasswordForEmail(email, { redirectTo });
 
             if(error){
-                showToast(error.message, "error");
+                showToast(getFriendlyAuthError(error.message), "error", 8500);
                 return;
             }
 
@@ -671,7 +693,7 @@
             });
 
             if(error){
-                showToast(error.message, "error");
+                showToast(getFriendlyAuthError(error.message), "error", 8500);
                 setButtonLoading(submitBtn, false);
                 return;
             }
@@ -759,7 +781,7 @@
                 const { data, error } = await supabaseClient.auth.signInWithPassword({ email, password });
 
                 if(error){
-                    showToast(error.message, "error");
+                    showToast(getFriendlyAuthError(error.message), "error", 7000);
                     setButtonLoading(submitBtn, false);
                     return;
                 }

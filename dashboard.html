@@ -59,6 +59,10 @@
             </div>
 
             <div class="account-actions">
+                <button onclick="goToAdminDashboard()" class="admin-return-btn admin-only hidden" type="button">
+                    <i class="fa-solid fa-gauge-high"></i>
+                    <span>Admin Dashboard</span>
+                </button>
                 <button onclick="openPasswordModal()" class="account-btn" type="button">
                     <i class="fa-solid fa-key"></i>
                     Password
@@ -710,15 +714,22 @@ function ensureOfflineCacheOwner(){
 
 function applyPermissions(role){
 
-    if(role !== "admin"){
-
-        document
-        .querySelectorAll(".admin-only")
-        .forEach(btn => {
-
+    document
+    .querySelectorAll(".admin-only")
+    .forEach(btn => {
+        if(role === "admin"){
+            btn.style.display = "";
+            btn.classList.remove("hidden");
+        } else {
             btn.style.display = "none";
-        });
-    }
+            btn.classList.add("hidden");
+        }
+    });
+}
+
+function goToAdminDashboard(){
+
+    window.location.href = "admin.html";
 }
 
 function hasActiveSubscription(profile){
