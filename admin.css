@@ -6148,8 +6148,18 @@ body:not(.sidebar-collapsed) .main {
 }
 
 @media (display-mode: standalone) {
+    html {
+        min-height: 100%;
+        background: #07111f;
+    }
+
     body {
-        padding-top: env(safe-area-inset-top);
+        min-height: 100dvh;
+        background:
+            linear-gradient(135deg, rgba(37,99,235,0.12), transparent 32%),
+            radial-gradient(circle at top right, rgba(20,184,166,0.12), transparent 28%),
+            #07111f;
+        padding-top: calc(14px + env(safe-area-inset-top));
     }
 
     .sidebar {
@@ -6157,6 +6167,6 @@ body:not(.sidebar-collapsed) .main {
     }
 
     .admin-topbar {
-        margin-top: max(6px, env(safe-area-inset-top));
+        margin-top: 0;
     }
 }

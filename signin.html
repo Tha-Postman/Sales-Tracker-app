@@ -174,12 +174,33 @@
                     type="password"
                     id="signup-password"
                     placeholder="Create Password"
-                    minlength="6"
+                    minlength="8"
+                    autocomplete="new-password"
+                    aria-describedby="signup-password-help"
                     required
                 >
                 <button class="password-toggle" type="button" onclick="togglePassword('signup-password', this)" aria-label="Show password">
                     <i class="fa-regular fa-eye"></i>
                 </button>
+            </div>
+
+            <div class="input-box">
+                <i class="fa-solid fa-shield-halved"></i>
+                <input
+                    type="password"
+                    id="signup-confirm-password"
+                    placeholder="Confirm Password"
+                    minlength="8"
+                    autocomplete="new-password"
+                    required
+                >
+                <button class="password-toggle" type="button" onclick="togglePassword('signup-confirm-password', this)" aria-label="Show password">
+                    <i class="fa-regular fa-eye"></i>
+                </button>
+            </div>
+
+            <div id="signup-password-help" class="password-help" aria-live="polite">
+                Use at least 8 characters with uppercase, lowercase, number, and symbol.
             </div>
 
             <label class="terms-check" for="signup-terms">
@@ -304,7 +325,7 @@
             return window.location.origin;
         }
 
-        function showToast(message, type = "info"){
+        function showToast(message, type = "info", duration){
             const toast = document.getElementById("toast");
             const normalized = String(message).toLowerCase();
 
@@ -320,9 +341,37 @@
             toast.className = type;
             toast.classList.add("show");
 
-            setTimeout(() => {
+            clearTimeout(toast.hideTimer);
+            const displayTime = duration || (type === "error" ? 6500 : 2800);
+            toast.style.setProperty("--toast-duration", displayTime + "ms");
+
+            toast.hideTimer = setTimeout(() => {
                 toast.classList.remove("show");
-            }, 2500);
+            }, displayTime);
+        }
+
+        function getPasswordValidationMessage(password){
+            if(password.length < 8){
+                return "Password must be at least 8 characters long.";
+            }
+
+            if(!/[A-Z]/.test(password)){
+                return "Password must include at least one uppercase letter.";
+            }
+
+            if(!/[a-z]/.test(password)){
+                return "Password must include at least one lowercase letter.";
+            }
+
+            if(!/[0-9]/.test(password)){
+                return "Password must include at least one number.";
+            }
+
+            if(!/[^A-Za-z0-9]/.test(password)){
+                return "Password must include at least one symbol, like @, #, !, or $.";
+            }
+
+            return "";
         }
 
         function setButtonLoading(button, loading, text){
@@ -582,11 +631,27 @@
 
             const email = document.getElementById("signup-email").value.trim();
             const password = document.getElementById("signup-password").value;
+            const confirmPassword = document.getElementById("signup-confirm-password").value;
             const name = document.getElementById("signup-name").value.trim();
             const acceptedTerms = document.getElementById("signup-terms").checked;
+            const passwordMessage = getPasswordValidationMessage(password);
 
-            if(!name || !email || password.length < 6){
-                showToast("Enter valid details. Password needs 6+ characters.", "error");
+            if(!name || !email){
+                showToast("Enter your full name and a valid email address.", "error");
+                setButtonLoading(submitBtn, false);
+                return;
+            }
+
+            if(passwordMessage){
+                showToast(passwordMessage + " Use uppercase, lowercase, number, and symbol.", "error", 8000);
+                document.getElementById("signup-password").focus();
+                setButtonLoading(submitBtn, false);
+                return;
+            }
+
+            if(password !== confirmPassword){
+                showToast("Passwords do not match. Please confirm the same password before signing up.", "error", 7000);
+                document.getElementById("signup-confirm-password").focus();
                 setButtonLoading(submitBtn, false);
                 return;
             }

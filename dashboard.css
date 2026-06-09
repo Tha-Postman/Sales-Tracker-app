@@ -3712,12 +3712,22 @@ body {
 }
 
 @media (display-mode: standalone) {
+    html {
+        min-height: 100%;
+        background: #07111f;
+    }
+
     body {
-        padding-top: calc(16px + env(safe-area-inset-top));
+        min-height: 100dvh;
+        background:
+            radial-gradient(circle at top left, rgba(37,99,235,0.18), transparent 34%),
+            radial-gradient(circle at top right, rgba(20,184,166,0.12), transparent 30%),
+            #07111f;
+        padding-top: calc(18px + env(safe-area-inset-top));
     }
 
     .intro,
     .top-bar {
-        margin-top: max(4px, env(safe-area-inset-top));
+        margin-top: 0;
     }
 }
