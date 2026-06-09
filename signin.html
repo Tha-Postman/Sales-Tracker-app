@@ -425,7 +425,7 @@
             const email = emailInput.value.trim();
 
             if(!email){
-                showToast("Enter your email address first", "error");
+                showToast("Enter the email address you used to create your Sales Tracker account.", "error", 7000);
                 emailInput.focus();
                 return;
             }
@@ -438,7 +438,7 @@
                 return;
             }
 
-            showToast("Password reset link sent. Check your email.", "success");
+            showToast("If this email is registered with Sales Tracker, a password reset link has been sent.", "success", 6500);
         }
 
         async function getProfileForUser(user){
