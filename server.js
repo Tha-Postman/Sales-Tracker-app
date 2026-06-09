@@ -2004,25 +2004,53 @@ app.post("/api/developer/businesses/:id/status", async (req, res) => {
         const developer = await requireDeveloperProfile(req);
         const businessId = req.params.id;
         const status = String(req.body?.status || "").toLowerCase();
+        const planKey = req.body?.plan ? getPlanKey(req.body.plan) : "";
+        const billingCycle = String(req.body?.billing_cycle || req.body?.billingCycle || "monthly").toLowerCase();
+        const expiresAt = String(req.body?.subscription_expires_at || req.body?.expires_at || "").trim();
 
         if (!["active", "inactive", "suspended"].includes(status)) {
             res.status(400).json({ error: "Use active, inactive, or suspended" });
             return;
         }
 
+        if (planKey && !["starter", "business", "pro", "enterprise"].includes(planKey)) {
+            res.status(400).json({ error: "Use starter, business, pro, or enterprise plan" });
+            return;
+        }
+
+        if (!["monthly", "yearly"].includes(billingCycle)) {
+            res.status(400).json({ error: "Use monthly or yearly billing cycle" });
+            return;
+        }
+
         const subscriptionStatus = status === "active" ? "active" : "inactive";
+        const updatePayload = {
+            status,
+            subscription_status: subscriptionStatus
+        };
+
+        if (planKey) {
+            updatePayload.plan = `${planKey}-${billingCycle}`;
+        }
+
+        if (expiresAt) {
+            updatePayload.subscription_expires_at = new Date(expiresAt).toISOString();
+        }
 
         let { data: business, error } = await supabaseAdmin
             .from("businesses")
-            .update({ status, subscription_status: subscriptionStatus })
+            .update(updatePayload)
             .eq("id", businessId)
             .select("*")
             .single();
 
         if (error && String(error.message || "").includes("status")) {
+            const fallbackPayload = { ...updatePayload };
+            delete fallbackPayload.status;
+
             const retry = await supabaseAdmin
                 .from("businesses")
-                .update({ subscription_status: subscriptionStatus })
+                .update(fallbackPayload)
                 .eq("id", businessId)
                 .select("*")
                 .single();
@@ -2038,11 +2066,18 @@ app.post("/api/developer/businesses/:id/status", async (req, res) => {
             .from("profiles")
             .update({
                 status: status === "active" ? "active" : "inactive",
-                is_active: status === "active"
+                is_active: status === "active",
+                subscription_status: subscriptionStatus,
+                ...(planKey ? { subscription_plan: `${planKey}-${billingCycle}` } : {}),
+                ...(expiresAt ? { subscription_expires_at: new Date(expiresAt).toISOString() } : {})
             })
             .eq("business_id", businessId);
 
-        await logPlatformAudit(developer, "business_status_changed", "business", businessId, { status });
+        await logPlatformAudit(developer, "business_status_changed", "business", businessId, {
+            status,
+            plan: planKey ? `${planKey}-${billingCycle}` : undefined,
+            subscription_expires_at: expiresAt || undefined
+        });
 
         res.json({ ok: true, business });
     } catch (error) {

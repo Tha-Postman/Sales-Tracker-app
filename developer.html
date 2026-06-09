@@ -345,6 +345,12 @@ function renderBusinesses(){
     document.getElementById("businessList").innerHTML = filtered.map(business => {
         const status = business.status || business.subscription_status || "inactive";
         const displayStatus = status === "suspended" ? "suspended" : status;
+        const planKey = getBusinessPlanKey(business.plan);
+        const billingCycle = getBusinessBillingCycle(business.plan);
+        const expiryValue = business.subscription_expires_at
+            ? new Date(business.subscription_expires_at).toISOString().slice(0, 10)
+            : "";
+
         return `
             <article class="business-card ${displayStatus}">
                 <div>
@@ -363,9 +369,47 @@ function renderBusinesses(){
                     <button type="button" onclick="updateBusinessStatus('${business.id}', 'suspended')">Suspend</button>
                     <button type="button" class="danger" onclick="updateBusinessStatus('${business.id}', 'inactive')">Deactivate</button>
                 </div>
+                <div class="business-plan-control">
+                    <label>
+                        Plan
+                        <select id="plan-${business.id}">
+                            <option value="starter" ${planKey === "starter" ? "selected" : ""}>Starter</option>
+                            <option value="business" ${planKey === "business" ? "selected" : ""}>Business</option>
+                            <option value="pro" ${planKey === "pro" ? "selected" : ""}>Pro</option>
+                            <option value="enterprise" ${planKey === "enterprise" ? "selected" : ""}>Enterprise</option>
+                        </select>
+                    </label>
+                    <label>
+                        Billing
+                        <select id="cycle-${business.id}">
+                            <option value="monthly" ${billingCycle === "monthly" ? "selected" : ""}>Monthly</option>
+                            <option value="yearly" ${billingCycle === "yearly" ? "selected" : ""}>Yearly</option>
+                        </select>
+                    </label>
+                    <label>
+                        Ends
+                        <input id="expires-${business.id}" type="date" value="${expiryValue}">
+                    </label>
+                    <button type="button" onclick="updateBusinessPlan('${business.id}', '${displayStatus}')">
+                        Apply Plan
+                    </button>
+                </div>
             </article>
         `;
     }).join("") || `<div class="empty-state">No businesses found.</div>`;
+}
+
+function getBusinessPlanKey(plan){
+    const normalized = String(plan || "").toLowerCase();
+
+    if(normalized.includes("enterprise")) return "enterprise";
+    if(normalized.includes("pro")) return "pro";
+    if(normalized.includes("business")) return "business";
+    return "starter";
+}
+
+function getBusinessBillingCycle(plan){
+    return String(plan || "").toLowerCase().includes("yearly") ? "yearly" : "monthly";
 }
 
 async function updateBusinessStatus(id, status){
@@ -375,6 +419,31 @@ async function updateBusinessStatus(id, status){
             body: JSON.stringify({ status })
         });
         showNotification("Business status updated", "success");
+        await loadDeveloperDashboard();
+    } catch(error) {
+        showNotification(error.message, "error");
+    }
+}
+
+async function updateBusinessPlan(id, fallbackStatus = "active"){
+    const plan = document.getElementById(`plan-${id}`)?.value || "starter";
+    const billing_cycle = document.getElementById(`cycle-${id}`)?.value || "monthly";
+    const subscription_expires_at = document.getElementById(`expires-${id}`)?.value || "";
+    const business = allBusinesses.find(item => String(item.id) === String(id));
+    const rawStatus = String(business?.status || business?.subscription_status || fallbackStatus || "active").toLowerCase();
+    const status = ["active", "inactive", "suspended"].includes(rawStatus) ? rawStatus : "active";
+
+    try {
+        await devFetch(`/api/developer/businesses/${id}/status`, {
+            method: "POST",
+            body: JSON.stringify({
+                status,
+                plan,
+                billing_cycle,
+                subscription_expires_at
+            })
+        });
+        showNotification("Business plan updated", "success");
         await loadDeveloperDashboard();
     } catch(error) {
         showNotification(error.message, "error");
