@@ -200,7 +200,7 @@
             </div>
 
             <div id="signup-password-help" class="password-help" aria-live="polite">
-                Use at least 8 characters with uppercase, lowercase, number, and symbol.
+                Use at least 8 characters.
             </div>
 
             <label class="terms-check" for="signup-terms">
@@ -353,22 +353,6 @@
         function getPasswordValidationMessage(password){
             if(password.length < 8){
                 return "Password must be at least 8 characters long.";
-            }
-
-            if(!/[A-Z]/.test(password)){
-                return "Password must include at least one uppercase letter.";
-            }
-
-            if(!/[a-z]/.test(password)){
-                return "Password must include at least one lowercase letter.";
-            }
-
-            if(!/[0-9]/.test(password)){
-                return "Password must include at least one number.";
-            }
-
-            if(!/[^A-Za-z0-9]/.test(password)){
-                return "Password must include at least one symbol, like @, #, !, or $.";
             }
 
             return "";
@@ -643,7 +627,7 @@
             }
 
             if(passwordMessage){
-                showToast(passwordMessage + " Use uppercase, lowercase, number, and symbol.", "error", 8000);
+                showToast(passwordMessage, "error", 6500);
                 document.getElementById("signup-password").focus();
                 setButtonLoading(submitBtn, false);
                 return;
