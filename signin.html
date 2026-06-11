@@ -4,6 +4,7 @@
     <link rel="icon" type="image/svg+xml" href="img/favicon.svg">
     <link rel="manifest" href="manifest.webmanifest">
     <meta name="theme-color" content="#07111f">
+    <meta name="mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-title" content="Sales Tracker">
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
@@ -377,6 +378,10 @@
         function getFriendlyAuthError(message){
             const text = String(message || "").toLowerCase();
 
+            if(text.includes("504") || text.includes("gateway timeout") || text.includes("timeout") || text.includes("failed to fetch") || text.includes("network")){
+                return "Signup service took too long to respond. Please wait a moment and try again. If it continues, check your internet connection or try again shortly.";
+            }
+
             if(text.includes("email rate limit exceeded") || text.includes("rate limit")){
                 return "Too many signup emails were requested in a short time. Please wait a few minutes, then try again. If you already signed up, check your email or spam folder.";
             }
@@ -405,6 +410,8 @@
                 error.message ||
                 error.error_description ||
                 error.error ||
+                error.status ||
+                error.code ||
                 error.details ||
                 fallback
             );
