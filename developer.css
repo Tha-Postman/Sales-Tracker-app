@@ -1356,12 +1356,23 @@ body.developer-sidebar-collapsed .dev-sidebar {
 /* Final developer list containment and manual plan controls */
 .business-list,
 .activity-list {
-    max-height: min(680px, 66vh);
-    overflow-y: auto;
+    height: clamp(360px, 58vh, 620px);
+    max-height: 620px;
+    overflow-y: scroll;
     overflow-x: hidden;
     overscroll-behavior: contain;
     -webkit-overflow-scrolling: touch;
     padding-right: 6px;
+    scrollbar-gutter: stable;
+    border: 1px solid rgba(148, 163, 184, 0.1);
+    border-radius: 18px;
+    background: rgba(2, 6, 23, 0.18);
+    padding: 12px;
+}
+
+.activity-list {
+    height: clamp(320px, 52vh, 560px);
+    max-height: 560px;
 }
 
 .business-card {
@@ -1428,7 +1439,8 @@ body.developer-sidebar-collapsed .dev-sidebar {
 @media (max-width: 980px) {
     .business-list,
     .activity-list {
-        max-height: min(620px, 62vh);
+        height: min(560px, 58vh);
+        max-height: 560px;
     }
 
     .business-card,
@@ -1440,7 +1452,8 @@ body.developer-sidebar-collapsed .dev-sidebar {
 @media (max-width: 520px) {
     .business-list,
     .activity-list {
-        max-height: min(560px, 58vh);
+        height: min(500px, 54vh);
+        max-height: 500px;
         padding-right: 4px;
     }
 }
