@@ -705,57 +705,61 @@
                 return;
             }
 
-            const { data, error } = await supabaseClient.auth.signUp({
-                email,
-                password,
-                options: {
-                    data: { full_name: name }
+            try {
+                const signupResponse = await fetch(`${AUTH_API_URL}/api/auth/signup`, {
+                    method: "POST",
+                    headers: {
+                        "Content-Type": "application/json"
+                    },
+                    body: JSON.stringify({
+                        email,
+                        password,
+                        full_name: name
+                    })
+                });
+
+                const signupResult = await signupResponse.json().catch(() => ({}));
+
+                if(!signupResponse.ok){
+                    showToast(
+                        getFriendlyErrorMessage(signupResult.error || signupResult, "Could not create account. Please try again."),
+                        "error",
+                        9000
+                    );
+                    setButtonLoading(submitBtn, false);
+                    return;
                 }
-            });
 
-            if(error){
-                showToast(getFriendlyErrorMessage(error, "Could not create account. Please try again."), "error", 8500);
-                setButtonLoading(submitBtn, false);
-                return;
-            }
-
-            if(!data?.user?.id){
-                showToast("Account request was received, but setup could not finish. Please check your email or try signing in.", "error", 8500);
-                setButtonLoading(submitBtn, false);
-                return;
-            }
-
-            const { error: profileError } = await supabaseClient
-                .from("profiles")
-                .insert([{
-                    id: data.user.id,
+                const { data: signInData, error: signInError } =
+                await supabaseClient.auth.signInWithPassword({
                     email,
-                    full_name: name,
-                    role: "admin",
-                    subscription_status: "inactive",
-                    status: "active",
-                    is_active: true
-                }]);
+                    password
+                });
 
-            if(profileError){
-                console.log("Signup profile creation failed:", profileError);
-                showToast(getFriendlyErrorMessage(profileError, "Account was created, but profile setup failed. Please contact support."), "error", 9000);
+                showToast("Account created successfully!", "success");
+                document.getElementById("signup-form").reset();
                 setButtonLoading(submitBtn, false);
-                return;
+
+                if(signInError || !signInData?.user){
+                    showToast("Account created. Please sign in to continue.", "success", 6500);
+                    switchTab("signin-form");
+                    return;
+                }
+
+                const profile = await getProfileForUser(signInData.user);
+                setTimeout(() => redirectAfterAuth(profile || {
+                    role: "admin",
+                    subscription_status: "inactive"
+                }), 900);
+            } catch(error) {
+                console.log("Signup request failed:", error);
+                showToast(
+                    getFriendlyErrorMessage(error, "Signup service is not responding. Please try again shortly."),
+                    "error",
+                    9000
+                );
+                setButtonLoading(submitBtn, false);
             }
-
-            showToast("Account created successfully!", "success");
-            document.getElementById("signup-form").reset();
-            setButtonLoading(submitBtn, false);
-
-            if(data.session){
-                const profile = await getProfileForUser(data.user);
-                setTimeout(() => redirectAfterAuth(profile || { role: "rep", subscription_status: "inactive" }), 900);
-                return;
-            }
-
-            showToast("Account created. Sign in to continue payment.", "success");
-            switchTab("signin-form");
         });
 
         const resetPasswordForm = document.getElementById("reset-password-form");

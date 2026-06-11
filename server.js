@@ -375,6 +375,81 @@ app.post(
 
 app.use(express.json({ limit: "1mb" }));
 
+app.post("/api/auth/signup", sensitiveLimiter, async (req, res) => {
+    try {
+        const email = String(req.body?.email || "").trim().toLowerCase();
+        const password = String(req.body?.password || "");
+        const fullName = String(req.body?.full_name || req.body?.fullName || "").trim();
+
+        if (!fullName || !email || !password) {
+            res.status(400).json({ error: "Full name, email, and password are required" });
+            return;
+        }
+
+        if (password.length < 8) {
+            res.status(400).json({ error: "Password must be at least 8 characters long" });
+            return;
+        }
+
+        const { data: createdUser, error: createUserError } = await supabaseAdmin.auth.admin.createUser({
+            email,
+            password,
+            email_confirm: true,
+            user_metadata: {
+                full_name: fullName
+            }
+        });
+
+        if (createUserError) {
+            const message = String(createUserError.message || "").toLowerCase();
+
+            if (message.includes("already") || message.includes("registered") || message.includes("exists")) {
+                res.status(409).json({ error: "This email already has an account. Please sign in instead." });
+                return;
+            }
+
+            throw createUserError;
+        }
+
+        const user = createdUser?.user;
+
+        if (!user?.id) {
+            res.status(500).json({ error: "Account was created, but user setup could not finish" });
+            return;
+        }
+
+        const { error: profileError } = await supabaseAdmin
+            .from("profiles")
+            .upsert({
+                id: user.id,
+                email,
+                full_name: fullName,
+                role: "admin",
+                subscription_status: "inactive",
+                status: "active",
+                is_active: true
+            }, { onConflict: "id" });
+
+        if (profileError) {
+            throw profileError;
+        }
+
+        res.status(201).json({
+            ok: true,
+            message: "Account created. You can now sign in.",
+            user: {
+                id: user.id,
+                email: user.email
+            }
+        });
+    } catch (error) {
+        console.error("Backend signup failed:", error);
+        res.status(error.status || 500).json({
+            error: error.message || "Could not create account. Please try again."
+        });
+    }
+});
+
 app.post("/api/verify-payment", sensitiveLimiter, async (req, res) => {
     const { reference } = req.body;
     const authHeader = req.headers.authorization || "";
