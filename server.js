@@ -1918,6 +1918,22 @@ app.get("/api/developer/overview", async (req, res) => {
             return counts;
         }, {});
 
+        const pricing = await loadPlatformPricing();
+        const getPlanMonthlyAmount = business => {
+            const plan = getPlanKey(business.plan || "starter");
+            return Number(pricing[plan]?.monthly_ngn || DEFAULT_PLAN_PRICING[plan]?.monthly_ngn || 0);
+        };
+        const isYearlyPlan = business =>
+            String(business.plan || "").toLowerCase().includes("yearly");
+        const platformEarningsMrr = activeBusinesses.reduce((sum, business) => {
+            const monthlyAmount = getPlanMonthlyAmount(business);
+            return sum + (isYearlyPlan(business) ? Math.round((monthlyAmount * 11) / 12) : monthlyAmount);
+        }, 0);
+        const activeSubscriptionValue = activeBusinesses.reduce((sum, business) => {
+            const monthlyAmount = getPlanMonthlyAmount(business);
+            return sum + (isYearlyPlan(business) ? monthlyAmount * 11 : monthlyAmount);
+        }, 0);
+
         res.json({
             metrics: {
                 total_businesses: businesses.length,
@@ -1927,6 +1943,8 @@ app.get("/api/developer/overview", async (req, res) => {
                 total_users: profiles.length,
                 total_reps: profiles.filter(profile => profile.role === "rep").length,
                 total_sales: customers.length,
+                platform_earnings_mrr: platformEarningsMrr,
+                active_subscription_value: activeSubscriptionValue,
                 paid_revenue: revenue,
                 total_products: products.length,
                 low_stock_products: lowStockProducts

@@ -305,13 +305,15 @@ function renderMetrics(metrics){
         ["Users", metrics.total_users, "fa-users"],
         ["Sales", metrics.total_sales, "fa-receipt"],
         ["Paid Revenue", formatMoney(metrics.paid_revenue), "fa-money-bill-trend-up"],
+        ["Your Earnings", formatMoney(metrics.platform_earnings_mrr), "fa-sack-dollar"],
+        ["Active Plan Value", formatMoney(metrics.active_subscription_value), "fa-chart-line"],
         ["Low Stock", metrics.low_stock_products, "fa-box-open"],
         ["Suspended", metrics.suspended_businesses, "fa-ban"],
         ["Inactive", metrics.inactive_businesses, "fa-circle-xmark"]
     ];
 
     document.getElementById("metricsGrid").innerHTML = cards.map(([label, value, icon]) => `
-        <article class="metric-card ${label === "Paid Revenue" ? "metric-card-revenue" : ""}">
+        <article class="metric-card ${["Paid Revenue", "Your Earnings", "Active Plan Value"].includes(label) ? "metric-card-revenue" : ""}">
             <i class="fa-solid ${icon}"></i>
             <span>${label}</span>
             <strong>${value ?? 0}</strong>
