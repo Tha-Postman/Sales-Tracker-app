@@ -3708,7 +3708,7 @@ async function loadReports(){
             </table>
         ` : `<div class="empty-state">No report data for this filter.</div>`;
     } catch(error) {
-        summary.innerHTML = `<div class="empty-state">${escapeHtml(error.message)}</div>`;
+        summary.innerHTML = `<div class="empty-state">${escapeHtml(getFriendlyUserMessage(error.message))}</div>`;
     }
 }
 
@@ -3934,8 +3934,53 @@ async function loadAuditLogs(){
             </article>
         `).join("") : `<div class="empty-state">No activity has been logged yet.</div>`;
     } catch(error) {
-        container.innerHTML = `<div class="empty-state">${escapeHtml(error.message)}</div>`;
+        container.innerHTML = `<div class="empty-state">${escapeHtml(getFriendlyUserMessage(error.message))}</div>`;
     }
+}
+
+function getFriendlyUserMessage(message){
+    const original = String(message || "").trim();
+    const text = original.toLowerCase();
+
+    if(!original) return "Something went wrong. Please try again.";
+
+    if(text.includes("failed to fetch") || text.includes("networkerror") || text.includes("network error")){
+        return "Connection problem. Please check your internet and try again.";
+    }
+
+    if(text.includes("timeout") || text.includes("504") || text.includes("gateway")){
+        return "This is taking longer than expected. Please try again shortly.";
+    }
+
+    if(text.includes("404") || text.includes("route not found") || text.includes("request failed")){
+        return "This feature is temporarily unavailable. Please refresh and try again.";
+    }
+
+    if(text.includes("401") || text.includes("jwt") || text.includes("token") || text.includes("session")){
+        return "Your session has expired. Please sign in again.";
+    }
+
+    if(text.includes("403") || text.includes("permission denied") || text.includes("row-level") || text.includes("rls")){
+        return "You do not have permission to complete this action.";
+    }
+
+    if(
+        text.includes("supabase") ||
+        text.includes("backend") ||
+        text.includes("api") ||
+        text.includes("foreign key") ||
+        text.includes("constraint") ||
+        text.includes("violates") ||
+        text.includes("column") ||
+        text.includes("relation") ||
+        text.includes("schema") ||
+        text.includes("duplicate key") ||
+        text.includes("invalid input syntax")
+    ){
+        return "We could not complete that action. Please try again or contact support.";
+    }
+
+    return original;
 }
 
 // NOTIFICATION
@@ -3943,6 +3988,8 @@ function showNotification(message, type = "info"){
 
     const container =
     document.getElementById("notificationContainer");
+
+    message = getFriendlyUserMessage(message);
 
     const div =
     document.createElement("div");
@@ -4643,7 +4690,7 @@ async function loadTeamChat(){
 
         renderChatMessages(result.messages || []);
     } catch(error) {
-        container.innerHTML = `<div class="empty-state">${escapeHtml(error.message)}</div>`;
+        container.innerHTML = `<div class="empty-state">${escapeHtml(getFriendlyUserMessage(error.message))}</div>`;
     }
 }
 

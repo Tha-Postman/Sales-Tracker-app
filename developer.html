@@ -233,9 +233,55 @@ function formatConvertedMoney(amount, currency){
     }).format(Number(amount || 0));
 }
 
+function getFriendlyUserMessage(message){
+    const original = String(message || "").trim();
+    const text = original.toLowerCase();
+
+    if(!original) return "Something went wrong. Please try again.";
+
+    if(text.includes("failed to fetch") || text.includes("networkerror") || text.includes("network error")){
+        return "Connection problem. Please check your internet and try again.";
+    }
+
+    if(text.includes("timeout") || text.includes("504") || text.includes("gateway")){
+        return "This is taking longer than expected. Please try again shortly.";
+    }
+
+    if(text.includes("404") || text.includes("route not found") || text.includes("request failed")){
+        return "This feature is temporarily unavailable. Please refresh and try again.";
+    }
+
+    if(text.includes("401") || text.includes("jwt") || text.includes("token") || text.includes("session")){
+        return "Your session has expired. Please sign in again.";
+    }
+
+    if(text.includes("403") || text.includes("permission denied") || text.includes("row-level") || text.includes("rls")){
+        return "You do not have permission to complete this action.";
+    }
+
+    if(
+        text.includes("supabase") ||
+        text.includes("backend") ||
+        text.includes("api") ||
+        text.includes("foreign key") ||
+        text.includes("constraint") ||
+        text.includes("violates") ||
+        text.includes("column") ||
+        text.includes("relation") ||
+        text.includes("schema") ||
+        text.includes("duplicate key") ||
+        text.includes("invalid input syntax")
+    ){
+        return "We could not complete that action. Please try again or contact support.";
+    }
+
+    return original;
+}
+
 function showNotification(message, type = "info"){
     const container = document.getElementById("notificationContainer");
     const item = document.createElement("div");
+    message = getFriendlyUserMessage(message);
     item.className = `notification ${type}`;
     item.textContent = message;
     container.appendChild(item);

@@ -328,6 +328,7 @@
 
         function showToast(message, type = "info", duration){
             const toast = document.getElementById("toast");
+            message = getFriendlyErrorMessage(message, message || "Something went wrong. Please try again.");
             const normalized = String(message).toLowerCase();
 
             if(type === "info"){
@@ -378,8 +379,24 @@
         function getFriendlyAuthError(message){
             const text = String(message || "").toLowerCase();
 
+            if(text.includes("failed to fetch") || text.includes("networkerror") || text.includes("network error")){
+                return "Connection problem. Please check your internet and try again.";
+            }
+
             if(text.includes("504") || text.includes("gateway timeout") || text.includes("timeout") || text.includes("failed to fetch") || text.includes("network")){
                 return "Signup service took too long to respond. Please wait a moment and try again. If it continues, check your internet connection or try again shortly.";
+            }
+
+            if(text.includes("404") || text.includes("route not found") || text.includes("request failed")){
+                return "This feature is temporarily unavailable. Please refresh and try again.";
+            }
+
+            if(text.includes("401") || text.includes("jwt") || text.includes("token") || text.includes("session")){
+                return "Your session has expired. Please sign in again.";
+            }
+
+            if(text.includes("403") || text.includes("permission denied") || text.includes("row-level") || text.includes("rls")){
+                return "You do not have permission to complete this action.";
             }
 
             if(text.includes("email rate limit exceeded") || text.includes("rate limit")){
@@ -396,6 +413,22 @@
 
             if(text.includes("invalid email")){
                 return "Please enter a valid email address.";
+            }
+
+            if(
+                text.includes("supabase") ||
+                text.includes("backend") ||
+                text.includes("api") ||
+                text.includes("foreign key") ||
+                text.includes("constraint") ||
+                text.includes("violates") ||
+                text.includes("column") ||
+                text.includes("relation") ||
+                text.includes("schema") ||
+                text.includes("duplicate key") ||
+                text.includes("invalid input syntax")
+            ){
+                return "We could not complete that action. Please try again or contact support.";
             }
 
             return message || "Authentication failed. Please try again.";
