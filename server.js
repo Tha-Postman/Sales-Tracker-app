@@ -103,6 +103,7 @@ app.get("/api/health", async (req, res) => {
     const checkedAt = new Date().toISOString();
     const services = {
         backend: true,
+        signup_route: true,
         supabase: false,
         paystack: Boolean(paystackSecretKey),
         app_url: Boolean(appUrl)
