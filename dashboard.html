@@ -737,11 +737,19 @@ function hasActiveSubscription(profile){
 
     if(!profile) return false;
 
-    if(profile.subscription_status !== "active") return false;
+    const status = String(profile.subscription_status || profile.status || "").toLowerCase();
 
-    if(!profile.subscription_expires_at) return true;
+    if(status === "active"){
+        if(!profile.subscription_expires_at) return true;
+        return new Date(profile.subscription_expires_at) > new Date();
+    }
 
-    return new Date(profile.subscription_expires_at) > new Date();
+    if(status === "trialing"){
+        const trialEnd = profile.trial_ends_at || profile.subscription_expires_at;
+        return Boolean(trialEnd) && new Date(trialEnd) > new Date();
+    }
+
+    return false;
 }
 
 function getBusinessId(){

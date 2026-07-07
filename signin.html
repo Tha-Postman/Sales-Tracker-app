@@ -539,10 +539,16 @@
             const status =
             String(profile.subscription_status || profile.status || "").toLowerCase();
 
-            if(status !== "active") return false;
-            if(!profile.subscription_expires_at) return true;
+            if(status === "active"){
+                if(!profile.subscription_expires_at) return true;
+                return new Date(profile.subscription_expires_at) > new Date();
+            }
 
-            return new Date(profile.subscription_expires_at) > new Date();
+            if(status === "trialing"){
+                return Boolean(profile.subscription_expires_at) && new Date(profile.subscription_expires_at) > new Date();
+            }
+
+            return false;
         }
 
         async function getBusinessForProfile(profile){
@@ -580,19 +586,32 @@
             if(!business) return false;
 
             const status = String(business.subscription_status || business.status || "").toLowerCase();
-            if(status !== "active") return false;
-            if(!business.subscription_expires_at) return true;
 
-            return new Date(business.subscription_expires_at) > new Date();
+            if(status === "active"){
+                if(!business.subscription_expires_at) return true;
+                return new Date(business.subscription_expires_at) > new Date();
+            }
+
+            if(status === "trialing"){
+                const trialEnd = business.trial_ends_at || business.subscription_expires_at;
+                return Boolean(trialEnd) && new Date(trialEnd) > new Date();
+            }
+
+            return false;
         }
 
         function getAuthIntent(){
             const params = new URLSearchParams(window.location.search);
             const plan = params.get("plan");
             const tab = params.get("tab");
+            const trial = params.get("trial");
 
             if(plan){
                 localStorage.setItem("pendingPlan", plan);
+            }
+
+            if(trial === "1"){
+                localStorage.setItem("pendingTrial", "1");
             }
 
             return {
@@ -620,8 +639,9 @@
                     return false;
                 }
 
-                if(result.access === "active"){
+                if(result.access === "active" || result.access === "trialing"){
                     localStorage.removeItem("pendingPlan");
+                    localStorage.removeItem("pendingTrial");
                     window.location.href = result.destination || "dashboard.html";
                     return true;
                 }
@@ -646,6 +666,11 @@
             if(isDeveloperProfile(profile)){
                 localStorage.removeItem("pendingPlan");
                 window.location.href = "developer.html";
+                return;
+            }
+
+            if(localStorage.getItem("pendingTrial") === "1"){
+                window.location.href = "pricing.html?trial=1";
                 return;
             }
 

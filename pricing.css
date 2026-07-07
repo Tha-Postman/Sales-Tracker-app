@@ -60,3 +60,44 @@ body {
     text-decoration: none;
     font-weight: 800;
 }
+
+.plan-actions {
+    display: grid;
+    gap: 12px;
+    margin-top: auto;
+    padding-top: 20px;
+}
+
+.plan-actions .plan-btn {
+    align-items: center;
+    display: inline-flex;
+    justify-content: center;
+    min-height: 48px;
+    width: 100%;
+    margin: 0 !important;
+    position: relative;
+}
+
+.trial-btn {
+    box-shadow: 0 10px 22px rgba(34, 211, 238, 0.18) !important;
+}
+
+.plan-actions .secondary-plan-btn {
+    background: rgba(15, 23, 42, 0.82) !important;
+    border: 1px solid rgba(148, 163, 184, 0.22) !important;
+    color: #dbeafe !important;
+    box-shadow: none !important;
+}
+
+.plan-actions .secondary-plan-btn:hover {
+    background: rgba(30, 41, 59, 0.92) !important;
+    border-color: rgba(125, 211, 252, 0.34) !important;
+    box-shadow: 0 10px 22px rgba(15, 23, 42, 0.22) !important;
+}
+
+@media (max-width: 640px) {
+    .plan-actions {
+        gap: 10px;
+        padding-top: 16px;
+    }
+}

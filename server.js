@@ -56,6 +56,43 @@ const DEFAULT_PLAN_PRICING = {
     pro: { name: "Pro", monthly_ngn: 50000 }
 };
 
+const TRIAL_DAYS = 7;
+const TRIAL_PLAN = "business-monthly";
+
+function getTrialEndDate(startDate = new Date()) {
+    const date = new Date(startDate);
+    date.setDate(date.getDate() + TRIAL_DAYS);
+    return date;
+}
+
+function isFutureDate(value) {
+    return Boolean(value) && new Date(value) > new Date();
+}
+
+function isActiveOrTrialing(record = {}) {
+    const status = String(record.subscription_status || record.status || "").toLowerCase();
+
+    if (status === "active") {
+        return !record.subscription_expires_at || isFutureDate(record.subscription_expires_at);
+    }
+
+    if (status === "trialing") {
+        return isFutureDate(record.trial_ends_at || record.subscription_expires_at);
+    }
+
+    return false;
+}
+
+function getAccessStatus(record = {}) {
+    const status = String(record.subscription_status || record.status || "inactive").toLowerCase();
+
+    if (status === "trialing" && !isActiveOrTrialing(record)) {
+        return "expired";
+    }
+
+    return status;
+}
+
 app.set("trust proxy", 1);
 
 app.use(helmet({
@@ -259,24 +296,20 @@ app.get("/api/auth/access", async (req, res) => {
             business = data;
         }
 
-        const profileActive =
-            String(profile.subscription_status || profile.status || "").toLowerCase() === "active"
-            && (!profile.subscription_expires_at || new Date(profile.subscription_expires_at) > new Date());
+        const profileActive = isActiveOrTrialing(profile);
 
         if (!business && profile.role === "admin" && profileActive) {
             business = await createBusinessForActiveAdmin(profile, user.id);
         }
 
-        const businessActive =
-            String(business?.subscription_status || business?.status || "").toLowerCase() === "active"
-            && (!business?.subscription_expires_at || new Date(business.subscription_expires_at) > new Date());
+        const businessActive = isActiveOrTrialing(business);
 
         if (business && businessActive) {
             const updates = {
                 business_id: business.id,
-                subscription_status: "active",
-                subscription_plan: business.plan || profile.subscription_plan || "starter-monthly",
-                subscription_expires_at: business.subscription_expires_at || profile.subscription_expires_at || null,
+                subscription_status: getAccessStatus(business),
+                subscription_plan: business.plan || profile.subscription_plan || TRIAL_PLAN,
+                subscription_expires_at: business.subscription_expires_at || business.trial_ends_at || profile.subscription_expires_at || null,
                 is_active: true,
                 status: "active"
             };
@@ -448,6 +481,156 @@ app.post("/api/auth/signup", sensitiveLimiter, async (req, res) => {
         res.status(error.status || 500).json({
             error: error.message || "Could not create account. Please try again."
         });
+    }
+});
+
+app.post("/api/auth/start-trial", sensitiveLimiter, async (req, res) => {
+    try {
+        const authHeader = req.headers.authorization || "";
+        const token = authHeader.startsWith("Bearer ") ? authHeader.slice(7) : null;
+
+        if (!token) {
+            res.status(401).json({ error: "Login required" });
+            return;
+        }
+
+        const { data: { user }, error: userError } = await supabaseAdmin.auth.getUser(token);
+
+        if (userError || !user) {
+            res.status(401).json({ error: "Invalid login session" });
+            return;
+        }
+
+        let { data: profile, error: profileError } = await supabaseAdmin
+            .from("profiles")
+            .select("*")
+            .eq("id", user.id)
+            .maybeSingle();
+
+        if (profileError) throw profileError;
+
+        if (!profile) {
+            const fullName = user.user_metadata?.full_name || user.email?.split("@")[0] || "User";
+            const { data: createdProfile, error: createProfileError } = await supabaseAdmin
+                .from("profiles")
+                .insert({
+                    id: user.id,
+                    email: user.email,
+                    full_name: fullName,
+                    role: "admin",
+                    subscription_status: "trialing",
+                    subscription_plan: TRIAL_PLAN,
+                    status: "active",
+                    is_active: true
+                })
+                .select("*")
+                .single();
+
+            if (createProfileError) throw createProfileError;
+            profile = createdProfile;
+        }
+
+        let business = null;
+
+        if (profile.business_id) {
+            const { data, error } = await supabaseAdmin
+                .from("businesses")
+                .select("*")
+                .eq("id", profile.business_id)
+                .maybeSingle();
+            if (error) throw error;
+            business = data;
+        }
+
+        if (!business) {
+            const { data, error } = await supabaseAdmin
+                .from("businesses")
+                .select("*")
+                .eq("owner_id", user.id)
+                .maybeSingle();
+            if (error) throw error;
+            business = data;
+        }
+
+        if (business && isActiveOrTrialing(business)) {
+            res.json({ ok: true, access: getAccessStatus(business), destination: "admin.html", business, profile });
+            return;
+        }
+
+        const trialStartedAt = new Date();
+        const trialEndsAt = getTrialEndDate(trialStartedAt);
+        const businessName = profile.business_name
+            || (profile.full_name ? profile.full_name + "'s Business" : "Sales Tracker Business");
+
+        if (!business) {
+            const { data: createdBusiness, error: businessError } = await supabaseAdmin
+                .from("businesses")
+                .insert({
+                    business_name: businessName,
+                    owner_id: user.id,
+                    plan: TRIAL_PLAN,
+                    subscription_status: "trialing",
+                    subscription_expires_at: trialEndsAt.toISOString(),
+                    trial_started_at: trialStartedAt.toISOString(),
+                    trial_ends_at: trialEndsAt.toISOString(),
+                    trial_status: "active",
+                    currency: profile.subscription_currency || "NGN",
+                    receipt_footer: DEFAULT_RECEIPT_FOOTER,
+                    low_stock_threshold: 5
+                })
+                .select("*")
+                .single();
+
+            if (businessError) throw businessError;
+            business = createdBusiness;
+        } else {
+            const { data: updatedBusiness, error: businessError } = await supabaseAdmin
+                .from("businesses")
+                .update({
+                    plan: business.plan || TRIAL_PLAN,
+                    subscription_status: "trialing",
+                    subscription_expires_at: trialEndsAt.toISOString(),
+                    trial_started_at: trialStartedAt.toISOString(),
+                    trial_ends_at: trialEndsAt.toISOString(),
+                    trial_status: "active"
+                })
+                .eq("id", business.id)
+                .select("*")
+                .single();
+
+            if (businessError) throw businessError;
+            business = updatedBusiness;
+        }
+
+        const { data: updatedProfile, error: updateProfileError } = await supabaseAdmin
+            .from("profiles")
+            .update({
+                business_id: business.id,
+                role: "admin",
+                subscription_status: "trialing",
+                subscription_plan: TRIAL_PLAN,
+                subscription_expires_at: trialEndsAt.toISOString(),
+                status: "active",
+                is_active: true
+            })
+            .eq("id", user.id)
+            .select("*")
+            .single();
+
+        if (updateProfileError) throw updateProfileError;
+
+        res.json({
+            ok: true,
+            access: "trialing",
+            destination: "admin.html",
+            trial_days: TRIAL_DAYS,
+            trial_ends_at: trialEndsAt.toISOString(),
+            business,
+            profile: updatedProfile
+        });
+    } catch (error) {
+        console.error("Start trial failed:", error);
+        res.status(error.status || 500).json({ error: error.message || "Could not start free trial" });
     }
 });
 
@@ -1404,8 +1587,7 @@ async function getOrCreateBusinessForProfile(profile) {
 async function hasActiveBusinessSubscription(profile) {
     if (!profile?.business_id) return false;
 
-    const profileActive = profile.subscription_status === "active"
-        && (!profile.subscription_expires_at || new Date(profile.subscription_expires_at) > new Date());
+    const profileActive = isActiveOrTrialing(profile);
 
     if (profileActive) return true;
 
@@ -1415,8 +1597,7 @@ async function hasActiveBusinessSubscription(profile) {
         .eq("id", profile.business_id)
         .maybeSingle();
 
-    return business?.subscription_status === "active"
-        && (!business.subscription_expires_at || new Date(business.subscription_expires_at) > new Date());
+    return isActiveOrTrialing(business);
 }
 
 async function logAudit(profile, action, targetType, targetId, details = {}) {

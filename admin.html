@@ -1222,9 +1222,13 @@ function renderSubscriptionPanel(){
     const planName = getPlanName(plan);
     const billingCycle = getBillingCycle(plan);
     const status = currentProfile?.subscription_status || businessSettings?.subscription_status || "inactive";
-    const activatedAt = businessSettings?.created_at || currentProfile?.created_at || null;
-    const endsAt = getSubscriptionEndDate();
-    const isActive = String(status).toLowerCase() === "active";
+    const normalizedStatus = String(status).toLowerCase();
+    const activatedAt = businessSettings?.trial_started_at || businessSettings?.created_at || currentProfile?.created_at || null;
+    const endsAt = businessSettings?.trial_ends_at || getSubscriptionEndDate();
+    const daysLeft = endsAt ? Math.ceil((new Date(endsAt) - new Date()) / (1000 * 60 * 60 * 24)) : null;
+    const isTrial = normalizedStatus === "trialing" && daysLeft > 0;
+    const isActive = normalizedStatus === "active" || isTrial;
+    const statusLabel = isTrial ? "Free trial" : isActive ? "Active" : "Inactive";
 
     panel.innerHTML = `
         <div class="subscription-card">
@@ -1233,7 +1237,7 @@ function renderSubscriptionPanel(){
                 <div>
                     <p class="section-kicker">Subscription</p>
                     <h3>${planName} <span>${billingCycle}</span></h3>
-                    <small class="${isActive ? "sub-active" : "sub-inactive"}">${isActive ? "Active" : "Inactive"}</small>
+                    <small class="${isActive ? "sub-active" : "sub-inactive"}">${statusLabel}${isTrial ? " - " + daysLeft + " day" + (daysLeft === 1 ? "" : "s") + " left" : ""}</small>
                 </div>
             </div>
 
@@ -1272,19 +1276,20 @@ function renderSubscriptionPanel(){
 
 function getSubscriptionHealthLabel() {
     const status = currentProfile?.subscription_status || businessSettings?.subscription_status || "inactive";
-    const endsAt = getSubscriptionEndDate();
-    const active = String(status).toLowerCase() === "active";
+    const endsAt = businessSettings?.trial_ends_at || getSubscriptionEndDate();
+    const normalizedStatus = String(status).toLowerCase();
+    const active = normalizedStatus === "active" || normalizedStatus === "trialing";
 
-    if(!active) return { state: "bad", label: "Subscription inactive", detail: "Payment access needs attention." };
-    if(!endsAt) return { state: "good", label: "Subscription active", detail: "No end date is currently set." };
+    if(!active) return { state: "bad", label: "Subscription inactive", detail: "Choose a plan to continue using Sales Tracker." };
+    if(!endsAt) return { state: "good", label: normalizedStatus === "trialing" ? "Free trial active" : "Subscription active", detail: "No end date is currently set." };
 
     const daysLeft = Math.ceil((new Date(endsAt) - new Date()) / (1000 * 60 * 60 * 24));
-    if(daysLeft <= 0) return { state: "bad", label: "Subscription expired", detail: "Renew access to avoid interruption." };
-    if(daysLeft <= 7) return { state: "warn", label: "Billing due soon", detail: `${daysLeft} day${daysLeft === 1 ? "" : "s"} remaining.` };
+    if(daysLeft <= 0) return { state: "bad", label: normalizedStatus === "trialing" ? "Free trial ended" : "Subscription expired", detail: "Choose a plan to avoid interruption." };
+    if(normalizedStatus === "trialing") return { state: daysLeft <= 2 ? "warn" : "good", label: "Free trial active", detail: daysLeft + " day" + (daysLeft === 1 ? "" : "s") + " left to test Sales Tracker." };
+    if(daysLeft <= 7) return { state: "warn", label: "Billing due soon", detail: daysLeft + " day" + (daysLeft === 1 ? "" : "s") + " remaining." };
 
-    return { state: "good", label: "Subscription active", detail: `Renews/ends ${formatDate(endsAt)}.` };
+    return { state: "good", label: "Subscription active", detail: "Renews/ends " + formatDate(endsAt) + "." };
 }
-
 function renderOperationsHealth(apiHealth = null) {
     const container = document.getElementById("operationsHealth");
     if(!container) return;
@@ -1513,11 +1518,19 @@ function hasActiveSubscription(profile){
 
     if(!profile) return false;
 
-    if(profile.subscription_status !== "active") return false;
+    const status = String(profile.subscription_status || profile.status || "").toLowerCase();
 
-    if(!profile.subscription_expires_at) return true;
+    if(status === "active"){
+        if(!profile.subscription_expires_at) return true;
+        return new Date(profile.subscription_expires_at) > new Date();
+    }
 
-    return new Date(profile.subscription_expires_at) > new Date();
+    if(status === "trialing"){
+        const trialEnd = profile.trial_ends_at || profile.subscription_expires_at;
+        return Boolean(trialEnd) && new Date(trialEnd) > new Date();
+    }
+
+    return false;
 }
 
 function getBusinessId(){

@@ -14,6 +14,7 @@
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
     <link rel="stylesheet" href="app-loader.css">
     <link rel="stylesheet" href="public.css">
+    <link rel="stylesheet" href="pricing.css">
     <script src="pwa.js" defer></script>
     <link rel="stylesheet" href="support-widget.css">
     <script>
@@ -60,7 +61,7 @@
         <div class="section-title reveal-up">
             <span>Business-ready pricing</span>
             <h2>Pick the plan that fits your sales team.</h2>
-            <p>Start with sales tracking, grow into team management and reports, then unlock Pro tools like team chat, custom receipt branding, stock intelligence, and advanced business control. Every higher plan includes the features from the lower plans.</p>
+            <p>Start with sales tracking, grow into team management and reports, then unlock Pro tools like team chat, custom receipt branding, stock intelligence, and advanced business control. Every higher plan includes the features from the lower plans. Start with a 7-day free trial. No payment required.</p>
         </div>
 
         <div class="pricing-controls reveal-up" aria-label="Pricing options">
@@ -99,7 +100,10 @@
                     <li>CSV/Excel product import</li>
                     <li>Basic admin overview</li>
                 </ul>
-                <button class="plan-btn" onclick="choosePlan('starter')">Starter</button>
+                <div class="plan-actions">
+                    <button class="plan-btn trial-btn" onclick="startFreeTrial()">Start 7-Day Free Trial</button>
+                    <button class="plan-btn secondary-plan-btn" onclick="choosePlan('starter')">Subscribe Starter</button>
+                </div>
             </article>
 
             <article class="pricing-card featured reveal-up">
@@ -430,6 +434,50 @@
             return params.get("checkout") === "1" || params.get("resumeCheckout") === "1";
         }
 
+        async function startFreeTrial() {
+            const user = await getSessionUser();
+
+            if (!user) {
+                localStorage.setItem("pendingTrial", "1");
+                window.location.href = "signin.html?tab=signup&trial=1";
+                return;
+            }
+
+            const { data: { session } } = await supabaseClient.auth.getSession();
+
+            if (!session?.access_token) {
+                localStorage.setItem("pendingTrial", "1");
+                window.location.href = "signin.html?tab=signin&trial=1";
+                return;
+            }
+
+            try {
+                const response = await fetch(PAYMENT_API_URL + "/api/auth/start-trial", {
+                    method: "POST",
+                    headers: {
+                        "Content-Type": "application/json",
+                        Authorization: "Bearer " + session.access_token
+                    }
+                });
+
+                const result = await response.json().catch(() => ({}));
+
+                if (!response.ok) {
+                    showToast(result.error || "Could not start free trial yet");
+                    return;
+                }
+
+                localStorage.removeItem("pendingTrial");
+                showToast("Your 7-day free trial is active");
+
+                setTimeout(() => {
+                    window.location.href = result.destination || "admin.html";
+                }, 900);
+            } catch (error) {
+                showToast("Connection problem. Please try again.");
+            }
+        }
+
         async function choosePlan(plan) {
             const user = await getSessionUser();
 
@@ -475,6 +523,10 @@
             });
 
             handler.openIframe();
+        }
+
+        if(localStorage.getItem("pendingTrial") === "1"){
+            setTimeout(() => startFreeTrial(), 600);
         }
 
         selectedCurrency = detectCurrency();
@@ -541,3 +593,4 @@
     </footer>
 </body>
 </html>
+
