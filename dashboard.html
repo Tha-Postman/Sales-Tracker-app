@@ -3293,6 +3293,10 @@ function getFriendlyUserMessage(message){
         return "This is taking longer than expected. Please try again shortly.";
     }
 
+    if(text.includes("rate limit") || text.includes("too many") || text.includes("email rate")){
+        return "Too many email requests were made in a short time. Please wait a few minutes before trying again.";
+    }
+
     if(text.includes("404") || text.includes("route not found") || text.includes("request failed")){
         return "This feature is temporarily unavailable. Please refresh and try again.";
     }

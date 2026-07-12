@@ -405,7 +405,7 @@
             }
 
             if(text.includes("email rate limit exceeded") || text.includes("rate limit")){
-                return "Too many signup emails were requested in a short time. Please wait a few minutes, then try again. If you already signed up, check your email or spam folder.";
+                return "Too many email requests were made in a short time. Please wait 10-30 minutes before trying again, and check your inbox, spam, and promotions folders.";
             }
 
             if(text.includes("already registered") || text.includes("already exists")){
@@ -509,7 +509,7 @@
                 return;
             }
 
-            showToast("Confirmation email sent. Check your inbox and spam folder.", "success", 7500);
+            showToast("Confirmation email requested. It may take a few minutes to arrive. Check inbox, spam, and promotions folders.", "success", 9500);
         }
 
         async function sendPasswordReset(){
@@ -961,7 +961,7 @@
                     return;
                 }
 
-                showToast("Check your email to confirm your Sales Tracker account, then sign in.", "success", 9000);
+                showToast("Check your email to confirm your Sales Tracker account. It may take a few minutes to arrive. Also check spam or promotions.", "success", 10000);
                 switchTab("signin-form");
             } catch(error) {
                 console.log("Signup request failed:", error);
