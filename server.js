@@ -15,6 +15,7 @@ const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const app = express();
 const port = process.env.PORT || 4242;
 const appUrl = process.env.APP_URL || "https://sales-tracker-app-cd7k.onrender.com";
+const frontendAppUrl = process.env.FRONTEND_APP_URL || process.env.PUBLIC_APP_URL || "https://use-sales-tracker.vercel.app";
 const supabaseUrl = process.env.SUPABASE_URL;
 const supabaseServiceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
 const paystackSecretKey = process.env.PAYSTACK_SECRET_KEY;
@@ -831,7 +832,7 @@ app.post("/api/team/invites", sensitiveLimiter, async (req, res) => {
             rep_email: normalizedEmail
         });
 
-        const inviteUrl = appUrl.replace(/\/$/, "") + "/signin.html?invite=" + encodeURIComponent(token);
+        const inviteUrl = frontendAppUrl.replace(/\/$/, "") + "/signin.html?invite=" + encodeURIComponent(token);
 
         res.json({ ok: true, invite, invite_url: inviteUrl });
     } catch (error) {

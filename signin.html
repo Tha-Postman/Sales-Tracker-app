@@ -660,7 +660,8 @@
                 if(!response.ok || !result.invite){
                     if(note){
                         note.hidden = false;
-                        note.innerHTML = "<strong>Invite unavailable</strong><span>Ask your admin to send a fresh invite link.</span>";
+                        const fallbackMessage = result.error || "Ask your admin to send a fresh invite link.";
+                        note.innerHTML = "<strong>Invite unavailable</strong><span>" + escapeHtml(fallbackMessage) + "</span>";
                     }
                     return;
                 }
@@ -683,6 +684,10 @@
                 }
             } catch(error) {
                 console.log("Invite preview unavailable:", error);
+                if(note){
+                    note.hidden = false;
+                    note.innerHTML = "<strong>Invite unavailable</strong><span>Connection problem. Refresh the page or ask your admin for a fresh invite.</span>";
+                }
             }
         }
 
