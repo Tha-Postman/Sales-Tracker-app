@@ -150,11 +150,11 @@
         <form class="form" id="signup-form" action="javascript:void(0)">
 
             <div class="input-box">
-                <i class="fa-regular fa-user"></i>
+                <i class="fa-regular fa-building"></i>
                 <input
                     type="text"
                     id="signup-name"
-                    placeholder="Full Name"
+                    placeholder="Business Name"
                     required
                 >
             </div>
@@ -484,7 +484,7 @@
                 return;
             }
 
-            const redirectTo = new URL("signin.html", getPublicAppUrl()).href;
+            const redirectTo = new URL("signin.html?type=recovery", getPublicAppUrl()).href;
             const { error } = await supabaseClient.auth.resetPasswordForEmail(email, { redirectTo });
 
             if(error){
@@ -511,7 +511,12 @@
 
             if(profile) return profile;
 
-            const fullName = user.user_metadata?.full_name || user.email?.split("@")[0] || "User";
+            const intendedRole = user.user_metadata?.intended_role === "rep" ? "rep" : "admin";
+            const fullName =
+            user.user_metadata?.business_name ||
+            user.user_metadata?.full_name ||
+            user.email?.split("@")[0] ||
+            "User";
 
             const { data: createdProfile, error: createError } = await supabaseClient
                 .from("profiles")
@@ -519,8 +524,10 @@
                     id: user.id,
                     email: user.email,
                     full_name: fullName,
-                    role: "rep",
-                    subscription_status: "inactive"
+                    role: intendedRole,
+                    subscription_status: "inactive",
+                    status: "active",
+                    is_active: true
                 }])
                 .select("*")
                 .single();
@@ -610,6 +617,11 @@
                 localStorage.setItem("pendingPlan", plan);
             }
 
+            const invite = params.get("invite");
+            if(invite){
+                localStorage.setItem("pendingInviteToken", invite);
+            }
+
             if(trial === "1"){
                 localStorage.setItem("pendingTrial", "1");
             }
@@ -618,6 +630,50 @@
                 plan: plan || localStorage.getItem("pendingPlan"),
                 tab
             };
+        }
+
+        function getInviteToken(){
+            const params = new URLSearchParams(window.location.search);
+            const token = params.get("invite") || localStorage.getItem("pendingInviteToken") || "";
+
+            if(token){
+                localStorage.setItem("pendingInviteToken", token);
+            }
+
+            return token;
+        }
+
+        async function acceptPendingInvite(){
+            const inviteToken = getInviteToken();
+            if(!inviteToken) return false;
+
+            const { data: { session } } = await supabaseClient.auth.getSession();
+            if(!session?.access_token) return false;
+
+            try {
+                const response = await fetch(AUTH_API_URL + "/api/team/invites/accept", {
+                    method: "POST",
+                    headers: {
+                        "Content-Type": "application/json",
+                        Authorization: "Bearer " + session.access_token
+                    },
+                    body: JSON.stringify({ token: inviteToken })
+                });
+
+                const result = await response.json().catch(() => ({}));
+
+                if(!response.ok){
+                    showToast(getFriendlyErrorMessage(result.error || result, "Invite could not be accepted."), "error", 8500);
+                    return false;
+                }
+
+                localStorage.removeItem("pendingInviteToken");
+                window.location.href = result.destination || "dashboard.html";
+                return true;
+            } catch(error) {
+                console.log("Invite accept failed:", error);
+                return false;
+            }
         }
 
         async function redirectAfterBackendAccess(){
@@ -666,6 +722,10 @@
             if(isDeveloperProfile(profile)){
                 localStorage.removeItem("pendingPlan");
                 window.location.href = "developer.html";
+                return;
+            }
+
+            if(await acceptPendingInvite()){
                 return;
             }
 
@@ -730,15 +790,16 @@
             const submitBtn = e.currentTarget.querySelector(".auth-btn");
             setButtonLoading(submitBtn, true, "Creating account...");
 
-            const email = document.getElementById("signup-email").value.trim();
+            const email = document.getElementById("signup-email").value.trim().toLowerCase();
             const password = document.getElementById("signup-password").value;
             const confirmPassword = document.getElementById("signup-confirm-password").value;
-            const name = document.getElementById("signup-name").value.trim();
+            const businessName = document.getElementById("signup-name").value.trim();
             const acceptedTerms = document.getElementById("signup-terms").checked;
             const passwordMessage = getPasswordValidationMessage(password);
+            const inviteToken = getInviteToken();
 
-            if(!name || !email){
-                showToast("Enter your full name and a valid email address.", "error");
+            if(!businessName || !email){
+                showToast("Enter your business name and a valid email address.", "error");
                 setButtonLoading(submitBtn, false);
                 return;
             }
@@ -764,58 +825,46 @@
             }
 
             try {
-                const signupResponse = await fetch(`${AUTH_API_URL}/api/auth/signup`, {
-                    method: "POST",
-                    headers: {
-                        "Content-Type": "application/json"
-                    },
-                    body: JSON.stringify({
-                        email,
-                        password,
-                        full_name: name
-                    })
+                const redirectUrl = new URL("signin.html", getPublicAppUrl());
+
+                if(inviteToken){
+                    redirectUrl.searchParams.set("invite", inviteToken);
+                }
+
+                const { data, error } = await supabaseClient.auth.signUp({
+                    email,
+                    password,
+                    options: {
+                        emailRedirectTo: redirectUrl.href,
+                        data: {
+                            full_name: businessName,
+                            business_name: businessName,
+                            invite_token: inviteToken || null,
+                            intended_role: inviteToken ? "rep" : "admin"
+                        }
+                    }
                 });
 
-                const signupResult = await signupResponse.json().catch(() => ({}));
-
-                if(!signupResponse.ok){
-                    showToast(
-                        getFriendlyErrorMessage(signupResult.error || signupResult, "Could not create account. Please try again."),
-                        "error",
-                        9000
-                    );
+                if(error){
+                    showToast(getFriendlyErrorMessage(error, "Could not create account. Please try again."), "error", 9000);
                     setButtonLoading(submitBtn, false);
                     return;
                 }
 
-                const { data: signInData, error: signInError } =
-                await supabaseClient.auth.signInWithPassword({
-                    email,
-                    password
-                });
-
-                showToast("Account created successfully!", "success");
                 document.getElementById("signup-form").reset();
                 setButtonLoading(submitBtn, false);
 
-                if(signInError || !signInData?.user){
-                    showToast("Account created. Please sign in to continue.", "success", 6500);
-                    switchTab("signin-form");
+                if(data?.session?.user){
+                    const profile = await getProfileForUser(data.session.user);
+                    setTimeout(() => redirectAfterAuth(profile || { role: inviteToken ? "rep" : "admin", subscription_status: "inactive" }), 900);
                     return;
                 }
 
-                const profile = await getProfileForUser(signInData.user);
-                setTimeout(() => redirectAfterAuth(profile || {
-                    role: "admin",
-                    subscription_status: "inactive"
-                }), 900);
+                showToast("Check your email to confirm your Sales Tracker account, then sign in.", "success", 9000);
+                switchTab("signin-form");
             } catch(error) {
                 console.log("Signup request failed:", error);
-                showToast(
-                    getFriendlyErrorMessage(error, "Signup service is not responding. Please try again shortly."),
-                    "error",
-                    9000
-                );
+                showToast(getFriendlyErrorMessage(error, "Signup service is not responding. Please try again shortly."), "error", 9000);
                 setButtonLoading(submitBtn, false);
             }
         });
@@ -830,8 +879,10 @@
             const nextPassword = document.getElementById("reset-new-password").value;
             const confirmPassword = document.getElementById("reset-confirm-password").value;
 
-            if(nextPassword.length < 6){
-                showToast("Password needs 6+ characters.", "error");
+            const passwordMessage = getPasswordValidationMessage(nextPassword);
+
+            if(passwordMessage){
+                showToast(passwordMessage, "error", 7500);
                 return;
             }
 
@@ -920,6 +971,8 @@
 
         if(isPasswordRecoveryUrl()){
             showPasswordResetForm();
+        } else if(getInviteToken()){
+            switchTab("signup-form");
         } else if(authIntent.tab === "signup"){
             switchTab("signup-form");
         } else {

@@ -410,6 +410,9 @@ app.post(
 app.use(express.json({ limit: "1mb" }));
 
 app.post("/api/auth/signup", sensitiveLimiter, async (req, res) => {
+    res.status(410).json({ error: "Backend signup endpoint disabled. Please use email confirmation signup." });
+    return;
+
     try {
         const email = String(req.body?.email || "").trim().toLowerCase();
         const password = String(req.body?.password || "");
@@ -761,6 +764,154 @@ app.post("/api/sales/submit", sensitiveLimiter, async (req, res) => {
         res.status(error.status || 500).json({ error: error.message || "Sale could not be saved" });
     }
 });
+
+app.post("/api/team/invites", sensitiveLimiter, async (req, res) => {
+    try {
+        const adminProfile = await requireAdminProfile(req);
+        const { email, full_name } = req.body;
+        const normalizedEmail = String(email || "").trim().toLowerCase();
+        const repName = String(full_name || "").trim();
+
+        if (!normalizedEmail || !repName) {
+            res.status(400).json({ error: "Rep name and email are required" });
+            return;
+        }
+
+        const repLimit = getRepLimit(adminProfile);
+        const { data: currentReps, error: countError } = await supabaseAdmin
+            .from("profiles")
+            .select("id, status, is_active")
+            .eq("business_id", adminProfile.business_id)
+            .eq("role", "rep");
+
+        if (countError) throw countError;
+
+        const activeRepCount = (currentReps || []).filter(profile =>
+            profile.is_active !== false && profile.status !== "inactive"
+        ).length;
+
+        if (Number.isFinite(repLimit) && activeRepCount >= repLimit) {
+            res.status(402).json({ error: "Your current plan has reached its sales rep limit. Upgrade to add more reps." });
+            return;
+        }
+
+        const token = crypto.randomBytes(24).toString("hex");
+        const expiresAt = new Date();
+        expiresAt.setDate(expiresAt.getDate() + 7);
+
+        const { data: invite, error } = await supabaseAdmin
+            .from("rep_invites")
+            .insert({
+                business_id: adminProfile.business_id,
+                invited_by: adminProfile.id,
+                email: normalizedEmail,
+                full_name: repName,
+                role: "rep",
+                token,
+                status: "pending",
+                expires_at: expiresAt.toISOString()
+            })
+            .select("*")
+            .single();
+
+        if (error) throw error;
+
+        await logAudit(adminProfile, "rep_invite_created", "rep_invite", invite.id, {
+            rep_name: repName,
+            rep_email: normalizedEmail
+        });
+
+        const inviteUrl = appUrl.replace(/\/$/, "") + "/signin.html?invite=" + encodeURIComponent(token);
+
+        res.json({ ok: true, invite, invite_url: inviteUrl });
+    } catch (error) {
+        console.error("Create rep invite failed:", error);
+        res.status(error.status || 500).json({ error: error.message || "Could not create invite" });
+    }
+});
+
+app.post("/api/team/invites/accept", sensitiveLimiter, async (req, res) => {
+    try {
+        const { token } = req.body;
+        const authHeader = req.headers.authorization || "";
+        const accessToken = authHeader.startsWith("Bearer ") ? authHeader.slice(7) : null;
+
+        if (!token || !accessToken) {
+            res.status(400).json({ error: "Invite link is invalid or expired" });
+            return;
+        }
+
+        const { data: { user }, error: userError } = await supabaseAdmin.auth.getUser(accessToken);
+        if (userError || !user) {
+            res.status(401).json({ error: "Please sign in again to accept this invite" });
+            return;
+        }
+
+        const { data: invite, error: inviteError } = await supabaseAdmin
+            .from("rep_invites")
+            .select("*")
+            .eq("token", token)
+            .maybeSingle();
+
+        if (inviteError) throw inviteError;
+
+        if (!invite || invite.status !== "pending" || new Date(invite.expires_at) <= new Date()) {
+            res.status(410).json({ error: "This invite link has expired. Ask your admin for a new invite." });
+            return;
+        }
+
+        if (String(user.email || "").toLowerCase() !== String(invite.email || "").toLowerCase()) {
+            res.status(403).json({ error: "This invite was sent to a different email address." });
+            return;
+        }
+
+        const { data: business, error: businessError } = await supabaseAdmin
+            .from("businesses")
+            .select("*")
+            .eq("id", invite.business_id)
+            .maybeSingle();
+
+        if (businessError) throw businessError;
+        if (!business || !isActiveOrTrialing(business)) {
+            res.status(403).json({ error: "This business is not active right now." });
+            return;
+        }
+
+        const fullName = invite.full_name || user.user_metadata?.full_name || user.email?.split("@")[0] || "Sales Rep";
+
+        const { data: profile, error: profileError } = await supabaseAdmin
+            .from("profiles")
+            .upsert({
+                id: user.id,
+                email: user.email,
+                full_name: fullName,
+                role: "rep",
+                business_id: invite.business_id,
+                subscription_status: getAccessStatus(business),
+                subscription_plan: business.plan || "starter-monthly",
+                subscription_expires_at: business.subscription_expires_at || business.trial_ends_at || null,
+                is_active: true,
+                status: "active"
+            }, { onConflict: "id" })
+            .select("*")
+            .single();
+
+        if (profileError) throw profileError;
+
+        await supabaseAdmin
+            .from("rep_invites")
+            .update({ status: "accepted", accepted_at: new Date().toISOString() })
+            .eq("id", invite.id);
+
+        await logAudit(profile, "rep_invite_accepted", "rep_invite", invite.id, { rep_email: user.email });
+
+        res.json({ ok: true, destination: "dashboard.html", profile });
+    } catch (error) {
+        console.error("Accept rep invite failed:", error);
+        res.status(error.status || 500).json({ error: error.message || "Could not accept invite" });
+    }
+});
+
 
 app.post("/api/team/reps", sensitiveLimiter, async (req, res) => {
     try {
@@ -2360,6 +2511,115 @@ app.post("/api/developer/businesses/:id/status", async (req, res) => {
         res.status(error.status || 500).json({ error: error.message || "Could not update business status" });
     }
 });
+
+app.delete("/api/developer/businesses/:id", async (req, res) => {
+    try {
+        const developer = await requireDeveloperProfile(req);
+        const businessId = req.params.id;
+        const confirmation = String(req.body?.confirmation || "").trim().toUpperCase();
+
+        if (confirmation !== "DELETE") {
+            res.status(400).json({ error: "Type DELETE to confirm business deletion" });
+            return;
+        }
+
+        const { data: business, error: businessLoadError } = await supabaseAdmin
+            .from("businesses")
+            .select("*")
+            .eq("id", businessId)
+            .maybeSingle();
+
+        if (businessLoadError) throw businessLoadError;
+        if (!business) {
+            res.status(404).json({ error: "Business not found" });
+            return;
+        }
+
+        const { data: businessProfiles, error: profileLoadError } = await supabaseAdmin
+            .from("profiles")
+            .select("id, email, role")
+            .eq("business_id", businessId);
+
+        if (profileLoadError) throw profileLoadError;
+
+        const authUserIds = Array.from(new Set([
+            ...(businessProfiles || []).map(profile => profile.id),
+            business.owner_id
+        ].filter(Boolean)));
+
+        const cleanupTables = [
+            "team_chat_reactions",
+            "team_chat_messages",
+            "team_chat_settings",
+            "rep_invites",
+            "audit_logs",
+            "expenses",
+            "customers",
+            "products"
+        ];
+
+        for (const table of cleanupTables) {
+            const { error } = await supabaseAdmin
+                .from(table)
+                .delete()
+                .eq("business_id", businessId);
+
+            if (error && !isMissingTableError(error)) {
+                throw error;
+            }
+        }
+
+        const { error: profileDeleteError } = await supabaseAdmin
+            .from("profiles")
+            .delete()
+            .eq("business_id", businessId);
+
+        if (profileDeleteError) throw profileDeleteError;
+
+        const { error: businessDeleteError } = await supabaseAdmin
+            .from("businesses")
+            .delete()
+            .eq("id", businessId);
+
+        if (businessDeleteError) throw businessDeleteError;
+
+        const authDeleteResults = [];
+
+        for (const userId of authUserIds) {
+            if (userId === developer.id) {
+                authDeleteResults.push({ user_id: userId, skipped: true, reason: "developer_account" });
+                continue;
+            }
+
+            const { error: authDeleteError } = await supabaseAdmin.auth.admin.deleteUser(userId);
+            authDeleteResults.push({
+                user_id: userId,
+                deleted: !authDeleteError,
+                error: authDeleteError?.message || null
+            });
+
+            if (authDeleteError) {
+                console.warn("Business auth user delete skipped:", userId, authDeleteError.message);
+            }
+        }
+
+        await logPlatformAudit(developer, "business_deleted", "business", businessId, {
+            business_name: business.business_name || business.name || "Unnamed business",
+            auth_users: authDeleteResults
+        });
+
+        res.json({
+            ok: true,
+            deleted_business_id: businessId,
+            auth_users_deleted: authDeleteResults.filter(result => result.deleted).length,
+            auth_users_skipped: authDeleteResults.filter(result => !result.deleted).length
+        });
+    } catch (error) {
+        console.error("Developer business delete failed:", error);
+        res.status(error.status || 500).json({ error: error.message || "Could not delete business" });
+    }
+});
+
 
 app.get("/api/developer/pricing", async (req, res) => {
     try {

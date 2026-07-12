@@ -1457,3 +1457,99 @@ body.developer-sidebar-collapsed .dev-sidebar {
         padding-right: 4px;
     }
 }
+
+.business-group {
+    border: 1px solid rgba(148, 163, 184, 0.14);
+    border-radius: 18px;
+    background: rgba(2, 6, 23, 0.24);
+    padding: 14px;
+    min-width: 0;
+}
+
+.business-group + .business-group {
+    margin-top: 14px;
+}
+
+.business-group-header {
+    align-items: center;
+    display: flex;
+    justify-content: space-between;
+    margin-bottom: 12px;
+}
+
+.business-group-header div {
+    align-items: center;
+    display: flex;
+    gap: 10px;
+    min-width: 0;
+}
+
+.business-group-header span {
+    color: #bfdbfe;
+    font-size: 12px;
+    font-weight: 900;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+}
+
+.business-group-header strong {
+    align-items: center;
+    background: rgba(37, 99, 235, 0.18);
+    border: 1px solid rgba(96, 165, 250, 0.24);
+    border-radius: 999px;
+    color: #f8fafc;
+    display: inline-flex;
+    font-size: 12px;
+    justify-content: center;
+    min-width: 30px;
+    padding: 5px 9px;
+}
+
+.business-group-list {
+    display: grid;
+    gap: 12px;
+}
+
+.business-card.expired {
+    border-color: rgba(248, 113, 113, 0.32);
+    background: linear-gradient(135deg, rgba(127, 29, 29, 0.22), rgba(2, 6, 23, 0.48));
+}
+
+.business-card.deactivated,
+.business-card.inactive {
+    border-color: rgba(148, 163, 184, 0.2);
+    opacity: 0.82;
+}
+
+.status-pill.expired {
+    background: rgba(239, 68, 68, 0.15);
+    color: #fecaca;
+}
+
+.status-pill.deactivated,
+.status-pill.inactive {
+    background: rgba(100, 116, 139, 0.16);
+    color: #cbd5e1;
+}
+
+@media (max-width: 760px) {
+    .business-group {
+        padding: 12px;
+    }
+
+    .business-group-header div {
+        align-items: flex-start;
+        flex-direction: column;
+        gap: 6px;
+    }
+}
+
+.business-actions .hard-delete {
+    background: linear-gradient(135deg, #7f1d1d, #dc2626) !important;
+    border-color: rgba(248, 113, 113, 0.35) !important;
+    color: #fff !important;
+}
+
+.business-actions .hard-delete:hover {
+    box-shadow: 0 14px 30px rgba(220, 38, 38, 0.24) !important;
+}

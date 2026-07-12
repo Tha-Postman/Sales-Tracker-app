@@ -342,15 +342,12 @@
                 <input id="repEmail" type="email" placeholder="rep@email.com" required>
             </div>
 
-            <div>
-                <label for="repPassword">Temporary password</label>
-                <input id="repPassword" type="text" placeholder="Minimum 6 characters" required>
-            </div>
-
             <button type="submit">
-                <i class="fa-solid fa-user-plus"></i>
-                Add Rep
+                <i class="fa-solid fa-link"></i>
+                Create Invite Link
             </button>
+
+            <div id="repInviteResult" class="invite-result" hidden></div>
         </form>
 
         <div id="repStats" class="rep-grid"></div>
@@ -4445,23 +4442,56 @@ function setRevenuePeriod(period){
     renderRevenueChart();
 }
 
-function openRepInviteEmail(email, password, name){
-    const subject = encodeURIComponent("Your Sales Tracker team access");
+function openRepInviteEmail(email, inviteUrl, name){
+    const subject = encodeURIComponent("Your Sales Tracker team invite");
     const body = encodeURIComponent([
-        `Hi ${name || "there"},`,
+        "Hi " + (name || "there") + ",",
         "",
-        "You have been added to Sales Tracker.",
-        `Login email: ${email}`,
-        `Temporary password: ${password}`,
+        "You have been invited to join a Sales Tracker business team.",
+        "Open this invite link to create your account and join the team:",
+        inviteUrl,
         "",
-        `Open: ${window.location.origin}/signin.html`,
-        "",
-        "Please sign in and change your password."
+        "This invite link expires in 7 days."
     ].join("\n"));
 
-    window.open(`mailto:${encodeURIComponent(email)}?subject=${subject}&body=${body}`, "_blank");
+    window.open("mailto:" + encodeURIComponent(email) + "?subject=" + subject + "&body=" + body, "_blank");
 }
 
+async function copyInviteLink(inviteUrl){
+    try {
+        await navigator.clipboard.writeText(inviteUrl);
+        showNotification("Invite link copied", "success");
+    } catch(error) {
+        showNotification("Invite link ready. Copy it from the box.", "info");
+    }
+}
+
+function renderInviteResult(email, name, inviteUrl){
+    const result = document.getElementById("repInviteResult");
+    if(!result) return;
+
+    result.hidden = false;
+    result.innerHTML = `
+        <div class="invite-result-card">
+            <div>
+                <strong>Invite created for ${escapeHtml(name)}</strong>
+                <p>Send this link to ${escapeHtml(email)}. It expires in 7 days.</p>
+            </div>
+            <input type="text" readonly value="${escapeHtml(inviteUrl)}" onclick="this.select()">
+            <div class="invite-result-actions">
+                <button type="button" data-invite-copy>
+                    <i class="fa-regular fa-copy"></i> Copy Link
+                </button>
+                <button type="button" data-invite-email>
+                    <i class="fa-regular fa-envelope"></i> Email Invite
+                </button>
+            </div>
+        </div>
+    `;
+
+    result.querySelector("[data-invite-copy]")?.addEventListener("click", () => copyInviteLink(inviteUrl));
+    result.querySelector("[data-invite-email]")?.addEventListener("click", () => openRepInviteEmail(email, inviteUrl, name));
+}
 function bindTeamForm(){
     const form = document.getElementById("repInviteForm");
 
@@ -4474,41 +4504,33 @@ function bindTeamForm(){
 
         const name = document.getElementById("repName").value.trim();
         const email = document.getElementById("repEmail").value.trim().toLowerCase();
-        const password = document.getElementById("repPassword").value.trim();
         const button = form.querySelector("button");
 
-        if(!name || !email || password.length < 6){
-            showNotification("Enter rep name, email, and a 6+ character password", "error");
+        if(!name || !email){
+            showNotification("Enter rep name and email", "error");
             return;
         }
 
         button.disabled = true;
-        button.innerHTML = `<i class="fa-solid fa-spinner fa-spin"></i> Adding...`;
+        button.innerHTML = `<i class="fa-solid fa-spinner fa-spin"></i> Creating invite...`;
 
         try {
-            const result = await callTeamApi("/api/team/reps", {
+            const result = await callTeamApi("/api/team/invites", {
                 full_name: name,
-                email,
-                password
+                email
             });
 
+            renderInviteResult(email, name, result.invite_url);
             form.reset();
-            showNotification("Rep added successfully");
-            openRepInviteEmail(email, password, full_name);
-            await loadProfiles();
-            if(result.profile && !profiles.some(profile => profile.id === result.profile.id)){
-                profiles.push(result.profile);
-            }
-            loadRepStats();
+            showNotification("Invite link created", "success");
         } catch(error) {
             showNotification(error.message, "error");
         } finally {
             button.disabled = false;
-            button.innerHTML = `<i class="fa-solid fa-user-plus"></i> Add Rep`;
+            button.innerHTML = `<i class="fa-solid fa-link"></i> Create Invite Link`;
         }
     });
 }
-
 let pendingRepActionId = null;
 
 function deactivateRep(repId){

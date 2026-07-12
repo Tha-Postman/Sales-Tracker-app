@@ -378,6 +378,87 @@ function renderPlans(planCounts){
     `).join("");
 }
 
+function getBusinessGroupKey(business){
+    const status = String(business.status || business.subscription_status || "inactive").toLowerCase();
+    const expiresAt = business.subscription_expires_at ? new Date(business.subscription_expires_at) : null;
+
+    if(status === "suspended") return "suspended";
+    if(status === "inactive" || status === "deactivated" || status === "cancelled") return "deactivated";
+    if(status === "expired") return "expired";
+    if(status === "trialing" && expiresAt && expiresAt <= new Date()) return "expired";
+    if(status === "active" && expiresAt && expiresAt <= new Date()) return "expired";
+    return "active";
+}
+
+function getBusinessGroupLabel(group){
+    const labels = {
+        active: "Active businesses",
+        expired: "Expired access",
+        suspended: "Suspended businesses",
+        deactivated: "Deactivated businesses"
+    };
+
+    return labels[group] || "Other businesses";
+}
+
+function renderBusinessCard(business){
+    const status = business.status || business.subscription_status || "inactive";
+    const group = getBusinessGroupKey(business);
+    const displayStatus = group === "deactivated" ? "deactivated" : group === "expired" ? "expired" : status;
+    const planKey = getBusinessPlanKey(business.plan);
+    const billingCycle = getBusinessBillingCycle(business.plan);
+    const expiryValue = business.subscription_expires_at
+        ? new Date(business.subscription_expires_at).toISOString().slice(0, 10)
+        : "";
+
+    return `
+        <article class="business-card ${displayStatus}">
+            <div>
+                <span class="status-pill ${displayStatus}">${displayStatus}</span>
+                <h3>${business.business_name || "Unnamed business"}</h3>
+                <p>${business.plan || "No plan"} - expires ${business.subscription_expires_at ? new Date(business.subscription_expires_at).toLocaleDateString() : "not set"}</p>
+            </div>
+            <div class="business-metrics">
+                <span>${business.user_count || 0} users</span>
+                <span>${business.rep_count || 0} reps</span>
+                <span>${business.sale_count || 0} sales</span>
+                <span>${formatMoney(business.paid_revenue)}</span>
+            </div>
+            <div class="business-actions">
+                <button type="button" onclick="updateBusinessStatus('${business.id}', 'active')">Activate</button>
+                <button type="button" onclick="updateBusinessStatus('${business.id}', 'suspended')">Suspend</button>
+                <button type="button" class="danger" onclick="updateBusinessStatus('${business.id}', 'inactive')">Deactivate</button>
+                <button type="button" class="danger hard-delete" onclick="deleteBusiness('${business.id}', this.closest('.business-card')?.querySelector('h3')?.textContent || 'this business')">Delete</button>
+            </div>
+            <div class="business-plan-control">
+                <label>
+                    Plan
+                    <select id="plan-${business.id}">
+                        <option value="starter" ${planKey === "starter" ? "selected" : ""}>Starter</option>
+                        <option value="business" ${planKey === "business" ? "selected" : ""}>Business</option>
+                        <option value="pro" ${planKey === "pro" ? "selected" : ""}>Pro</option>
+                        <option value="enterprise" ${planKey === "enterprise" ? "selected" : ""}>Enterprise</option>
+                    </select>
+                </label>
+                <label>
+                    Billing
+                    <select id="cycle-${business.id}">
+                        <option value="monthly" ${billingCycle === "monthly" ? "selected" : ""}>Monthly</option>
+                        <option value="yearly" ${billingCycle === "yearly" ? "selected" : ""}>Yearly</option>
+                    </select>
+                </label>
+                <label>
+                    Ends
+                    <input id="expires-${business.id}" type="date" value="${expiryValue}">
+                </label>
+                <button type="button" onclick="updateBusinessPlan('${business.id}', '${displayStatus}')">
+                    Apply Plan
+                </button>
+            </div>
+        </article>
+    `;
+}
+
 function renderBusinesses(){
     const query = document.getElementById("businessSearch").value.toLowerCase().trim();
     const filtered = allBusinesses.filter(business => {
@@ -391,63 +472,38 @@ function renderBusinesses(){
         return text.includes(query);
     });
 
-    document.getElementById("businessList").innerHTML = filtered.map(business => {
-        const status = business.status || business.subscription_status || "inactive";
-        const displayStatus = status === "suspended" ? "suspended" : status;
-        const planKey = getBusinessPlanKey(business.plan);
-        const billingCycle = getBusinessBillingCycle(business.plan);
-        const expiryValue = business.subscription_expires_at
-            ? new Date(business.subscription_expires_at).toISOString().slice(0, 10)
-            : "";
+    if(filtered.length === 0){
+        document.getElementById("businessList").innerHTML = `<div class="empty-state">No businesses found.</div>`;
+        return;
+    }
 
-        return `
-            <article class="business-card ${displayStatus}">
-                <div>
-                    <span class="status-pill ${displayStatus}">${displayStatus}</span>
-                    <h3>${business.business_name || "Unnamed business"}</h3>
-                    <p>${business.plan || "No plan"} • expires ${business.subscription_expires_at ? new Date(business.subscription_expires_at).toLocaleDateString() : "not set"}</p>
+    const groups = {
+        active: [],
+        expired: [],
+        suspended: [],
+        deactivated: []
+    };
+
+    filtered.forEach(business => {
+        groups[getBusinessGroupKey(business)].push(business);
+    });
+
+    document.getElementById("businessList").innerHTML = Object.entries(groups)
+        .filter(([, rows]) => rows.length > 0)
+        .map(([group, rows]) => `
+            <section class="business-group business-group-${group}">
+                <div class="business-group-header">
+                    <div>
+                        <span>${getBusinessGroupLabel(group)}</span>
+                        <strong>${rows.length}</strong>
+                    </div>
                 </div>
-                <div class="business-metrics">
-                    <span>${business.user_count || 0} users</span>
-                    <span>${business.rep_count || 0} reps</span>
-                    <span>${business.sale_count || 0} sales</span>
-                    <span>${formatMoney(business.paid_revenue)}</span>
+                <div class="business-group-list">
+                    ${rows.map(renderBusinessCard).join("")}
                 </div>
-                <div class="business-actions">
-                    <button type="button" onclick="updateBusinessStatus('${business.id}', 'active')">Activate</button>
-                    <button type="button" onclick="updateBusinessStatus('${business.id}', 'suspended')">Suspend</button>
-                    <button type="button" class="danger" onclick="updateBusinessStatus('${business.id}', 'inactive')">Deactivate</button>
-                </div>
-                <div class="business-plan-control">
-                    <label>
-                        Plan
-                        <select id="plan-${business.id}">
-                            <option value="starter" ${planKey === "starter" ? "selected" : ""}>Starter</option>
-                            <option value="business" ${planKey === "business" ? "selected" : ""}>Business</option>
-                            <option value="pro" ${planKey === "pro" ? "selected" : ""}>Pro</option>
-                            <option value="enterprise" ${planKey === "enterprise" ? "selected" : ""}>Enterprise</option>
-                        </select>
-                    </label>
-                    <label>
-                        Billing
-                        <select id="cycle-${business.id}">
-                            <option value="monthly" ${billingCycle === "monthly" ? "selected" : ""}>Monthly</option>
-                            <option value="yearly" ${billingCycle === "yearly" ? "selected" : ""}>Yearly</option>
-                        </select>
-                    </label>
-                    <label>
-                        Ends
-                        <input id="expires-${business.id}" type="date" value="${expiryValue}">
-                    </label>
-                    <button type="button" onclick="updateBusinessPlan('${business.id}', '${displayStatus}')">
-                        Apply Plan
-                    </button>
-                </div>
-            </article>
-        `;
-    }).join("") || `<div class="empty-state">No businesses found.</div>`;
+            </section>
+        `).join("");
 }
-
 function getBusinessPlanKey(plan){
     const normalized = String(plan || "").toLowerCase();
 
@@ -459,6 +515,30 @@ function getBusinessPlanKey(plan){
 
 function getBusinessBillingCycle(plan){
     return String(plan || "").toLowerCase().includes("yearly") ? "yearly" : "monthly";
+}
+
+async function deleteBusiness(id, businessName){
+    const firstConfirm = confirm("Permanently delete " + (businessName || "this business") + "? This removes its products, sales, team records, chat, expenses, and settings from Sales Tracker.");
+    if(!firstConfirm) return;
+
+    const confirmation = prompt("Type DELETE to confirm permanent deletion.");
+    if(String(confirmation || "").trim().toUpperCase() !== "DELETE"){
+        showNotification("Business deletion cancelled", "info");
+        return;
+    }
+
+    try {
+        await devFetch("/api/developer/businesses/" + encodeURIComponent(id), {
+            method: "DELETE",
+            body: JSON.stringify({ confirmation: "DELETE" })
+        });
+
+        allBusinesses = allBusinesses.filter(business => business.id !== id);
+        renderBusinesses();
+        showNotification("Business deleted", "success");
+    } catch(error) {
+        showNotification(error.message, "error");
+    }
 }
 
 async function updateBusinessStatus(id, status){
