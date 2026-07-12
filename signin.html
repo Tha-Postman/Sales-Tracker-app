@@ -645,20 +645,53 @@
             return token;
         }
 
+        function getInvitePrefill(){
+            const params = new URLSearchParams(window.location.search);
+            return {
+                email: params.get("email") || "",
+                full_name: params.get("name") || "",
+                business_name: params.get("business") || ""
+            };
+        }
+
+        function applyInvitePrefill(invite = {}){
+            const note = document.getElementById("inviteSignupNote");
+            const nameInput = document.getElementById("signup-name");
+            const emailInput = document.getElementById("signup-email");
+            const hasPrefill = Boolean(invite.email || invite.full_name || invite.business_name);
+
+            if(nameInput && invite.full_name){
+                nameInput.value = invite.full_name;
+                nameInput.placeholder = "Your Name";
+                nameInput.closest(".input-box")?.querySelector("i")?.classList.replace("fa-building", "fa-user");
+            }
+
+            if(emailInput && invite.email){
+                emailInput.value = invite.email;
+                emailInput.readOnly = true;
+            }
+
+            if(note && hasPrefill){
+                note.hidden = false;
+                note.innerHTML = "<strong>Team invite</strong><span>You are joining " + escapeHtml(invite.business_name || "this business") + ". Confirm your details and create a password.</span>";
+            }
+
+            return hasPrefill;
+        }
+
         async function hydrateInviteSignup(){
             const inviteToken = getInviteToken();
             if(!inviteToken) return;
 
             const note = document.getElementById("inviteSignupNote");
-            const nameInput = document.getElementById("signup-name");
-            const emailInput = document.getElementById("signup-email");
+            const hasUrlPrefill = applyInvitePrefill(getInvitePrefill());
 
             try {
                 const response = await fetch(AUTH_API_URL + "/api/team/invites/" + encodeURIComponent(inviteToken));
                 const result = await response.json().catch(() => ({}));
 
                 if(!response.ok || !result.invite){
-                    if(note){
+                    if(note && !hasUrlPrefill){
                         note.hidden = false;
                         const fallbackMessage = result.error || "Ask your admin to send a fresh invite link.";
                         note.innerHTML = "<strong>Invite unavailable</strong><span>" + escapeHtml(fallbackMessage) + "</span>";
@@ -666,31 +699,15 @@
                     return;
                 }
 
-                const invite = result.invite;
-                if(nameInput && invite.full_name){
-                    nameInput.value = invite.full_name;
-                    nameInput.placeholder = "Your Name";
-                    nameInput.closest(".input-box")?.querySelector("i")?.classList.replace("fa-building", "fa-user");
-                }
-
-                if(emailInput && invite.email){
-                    emailInput.value = invite.email;
-                    emailInput.readOnly = true;
-                }
-
-                if(note){
-                    note.hidden = false;
-                    note.innerHTML = "<strong>Team invite</strong><span>You are joining " + escapeHtml(invite.business_name || "this business") + ". Confirm your details and create a password.</span>";
-                }
+                applyInvitePrefill(result.invite);
             } catch(error) {
                 console.log("Invite preview unavailable:", error);
-                if(note){
+                if(note && !hasUrlPrefill){
                     note.hidden = false;
                     note.innerHTML = "<strong>Invite unavailable</strong><span>Connection problem. Refresh the page or ask your admin for a fresh invite.</span>";
                 }
             }
         }
-
         async function acceptPendingInvite(){
             const inviteToken = getInviteToken();
             if(!inviteToken) return false;

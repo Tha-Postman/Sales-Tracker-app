@@ -832,7 +832,20 @@ app.post("/api/team/invites", sensitiveLimiter, async (req, res) => {
             rep_email: normalizedEmail
         });
 
-        const inviteUrl = frontendAppUrl.replace(/\/$/, "") + "/signin.html?invite=" + encodeURIComponent(token);
+        const { data: inviteBusiness } = await supabaseAdmin
+            .from("businesses")
+            .select("business_name, name")
+            .eq("id", adminProfile.business_id)
+            .maybeSingle();
+
+        const inviteParams = new URLSearchParams({
+            invite: token,
+            email: normalizedEmail,
+            name: repName,
+            business: inviteBusiness?.business_name || inviteBusiness?.name || "this business"
+        });
+
+        const inviteUrl = frontendAppUrl.replace(/\/$/, "") + "/signin.html?" + inviteParams.toString();
 
         res.json({ ok: true, invite, invite_url: inviteUrl });
     } catch (error) {
