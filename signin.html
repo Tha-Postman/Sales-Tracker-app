@@ -129,6 +129,9 @@
                 <button class="text-btn" type="button" onclick="sendPasswordReset()">
                     Forgot password?
                 </button>
+                <button class="text-btn" type="button" onclick="resendConfirmationEmail()">
+                    Resend confirmation
+                </button>
             </div>
 
             <button class="auth-btn" type="submit">
@@ -474,6 +477,39 @@
             button.innerHTML = visible
                 ? '<i class="fa-regular fa-eye"></i>'
                 : '<i class="fa-regular fa-eye-slash"></i>';
+        }
+
+        async function resendConfirmationEmail(){
+            const emailInput = document.getElementById("signin-email");
+            const email = emailInput.value.trim().toLowerCase();
+
+            if(!email){
+                showToast("Enter the email address you used to sign up, then request confirmation again.", "error", 7000);
+                emailInput.focus();
+                return;
+            }
+
+            const redirectUrl = new URL("signin.html", getPublicAppUrl());
+            const inviteToken = getInviteToken();
+
+            if(inviteToken){
+                redirectUrl.searchParams.set("invite", inviteToken);
+            }
+
+            const { error } = await supabaseClient.auth.resend({
+                type: "signup",
+                email,
+                options: {
+                    emailRedirectTo: redirectUrl.href
+                }
+            });
+
+            if(error){
+                showToast(getFriendlyAuthError(error.message), "error", 8500);
+                return;
+            }
+
+            showToast("Confirmation email sent. Check your inbox and spam folder.", "success", 7500);
         }
 
         async function sendPasswordReset(){
