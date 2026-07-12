@@ -814,7 +814,17 @@ app.post("/api/team/invites", sensitiveLimiter, async (req, res) => {
             .select("*")
             .single();
 
-        if (error) throw error;
+        if (error) {
+            if (isMissingTableError(error)) {
+                res.status(503).json({
+                    error: "Team invite setup is not ready yet. Please contact support to finish setup.",
+                    code: "REP_INVITES_SETUP_REQUIRED"
+                });
+                return;
+            }
+
+            throw error;
+        }
 
         await logAudit(adminProfile, "rep_invite_created", "rep_invite", invite.id, {
             rep_name: repName,
@@ -853,7 +863,17 @@ app.post("/api/team/invites/accept", sensitiveLimiter, async (req, res) => {
             .eq("token", token)
             .maybeSingle();
 
-        if (inviteError) throw inviteError;
+        if (inviteError) {
+            if (isMissingTableError(inviteError)) {
+                res.status(503).json({
+                    error: "Team invite setup is not ready yet. Please contact support to finish setup.",
+                    code: "REP_INVITES_SETUP_REQUIRED"
+                });
+                return;
+            }
+
+            throw inviteError;
+        }
 
         if (!invite || invite.status !== "pending" || new Date(invite.expires_at) <= new Date()) {
             res.status(410).json({ error: "This invite link has expired. Ask your admin for a new invite." });
