@@ -693,3 +693,25 @@ button {
         padding-top: calc(18px + env(safe-area-inset-top));
     }
 }
+
+.invite-signup-note {
+    border: 1px solid rgba(96, 165, 250, 0.24);
+    border-radius: 16px;
+    background: linear-gradient(135deg, rgba(37, 99, 235, 0.14), rgba(20, 184, 166, 0.08));
+    color: #dbeafe;
+    display: grid;
+    gap: 5px;
+    margin-bottom: 14px;
+    padding: 12px 14px;
+}
+
+.invite-signup-note strong {
+    color: #f8fafc;
+    font-size: 14px;
+}
+
+.invite-signup-note span {
+    color: #cbd5e1;
+    font-size: 13px;
+    line-height: 1.45;
+}

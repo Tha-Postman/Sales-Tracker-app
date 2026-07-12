@@ -149,6 +149,8 @@
 
         <form class="form" id="signup-form" action="javascript:void(0)">
 
+            <div id="inviteSignupNote" class="invite-signup-note" hidden></div>
+
             <div class="input-box">
                 <i class="fa-regular fa-building"></i>
                 <input
@@ -643,6 +645,47 @@
             return token;
         }
 
+        async function hydrateInviteSignup(){
+            const inviteToken = getInviteToken();
+            if(!inviteToken) return;
+
+            const note = document.getElementById("inviteSignupNote");
+            const nameInput = document.getElementById("signup-name");
+            const emailInput = document.getElementById("signup-email");
+
+            try {
+                const response = await fetch(AUTH_API_URL + "/api/team/invites/" + encodeURIComponent(inviteToken));
+                const result = await response.json().catch(() => ({}));
+
+                if(!response.ok || !result.invite){
+                    if(note){
+                        note.hidden = false;
+                        note.innerHTML = "<strong>Invite unavailable</strong><span>Ask your admin to send a fresh invite link.</span>";
+                    }
+                    return;
+                }
+
+                const invite = result.invite;
+                if(nameInput && invite.full_name){
+                    nameInput.value = invite.full_name;
+                    nameInput.placeholder = "Your Name";
+                    nameInput.closest(".input-box")?.querySelector("i")?.classList.replace("fa-building", "fa-user");
+                }
+
+                if(emailInput && invite.email){
+                    emailInput.value = invite.email;
+                    emailInput.readOnly = true;
+                }
+
+                if(note){
+                    note.hidden = false;
+                    note.innerHTML = "<strong>Team invite</strong><span>You are joining " + escapeHtml(invite.business_name || "this business") + ". Confirm your details and create a password.</span>";
+                }
+            } catch(error) {
+                console.log("Invite preview unavailable:", error);
+            }
+        }
+
         async function acceptPendingInvite(){
             const inviteToken = getInviteToken();
             if(!inviteToken) return false;
@@ -968,6 +1011,7 @@
         }
 
         const authIntent = getAuthIntent();
+        hydrateInviteSignup();
 
         if(isPasswordRecoveryUrl()){
             showPasswordResetForm();

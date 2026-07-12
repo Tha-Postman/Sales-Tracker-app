@@ -840,6 +840,63 @@ app.post("/api/team/invites", sensitiveLimiter, async (req, res) => {
     }
 });
 
+app.get("/api/team/invites/:token", async (req, res) => {
+    try {
+        const token = String(req.params.token || "").trim();
+
+        if (!token) {
+            res.status(400).json({ error: "Invite link is invalid" });
+            return;
+        }
+
+        const { data: invite, error: inviteError } = await supabaseAdmin
+            .from("rep_invites")
+            .select("id, business_id, email, full_name, role, status, expires_at")
+            .eq("token", token)
+            .maybeSingle();
+
+        if (inviteError) {
+            if (isMissingTableError(inviteError)) {
+                res.status(503).json({
+                    error: "Team invite setup is not ready yet. Please contact support to finish setup.",
+                    code: "REP_INVITES_SETUP_REQUIRED"
+                });
+                return;
+            }
+
+            throw inviteError;
+        }
+
+        if (!invite || invite.status !== "pending" || new Date(invite.expires_at) <= new Date()) {
+            res.status(410).json({ error: "This invite link has expired. Ask your admin for a new invite." });
+            return;
+        }
+
+        const { data: business, error: businessError } = await supabaseAdmin
+            .from("businesses")
+            .select("id, business_name, name")
+            .eq("id", invite.business_id)
+            .maybeSingle();
+
+        if (businessError) throw businessError;
+
+        res.json({
+            ok: true,
+            invite: {
+                email: invite.email,
+                full_name: invite.full_name,
+                role: invite.role || "rep",
+                expires_at: invite.expires_at,
+                business_name: business?.business_name || business?.name || "Sales Tracker business"
+            }
+        });
+    } catch (error) {
+        console.error("Load rep invite failed:", error);
+        res.status(error.status || 500).json({ error: error.message || "Could not load invite" });
+    }
+});
+
+
 app.post("/api/team/invites/accept", sensitiveLimiter, async (req, res) => {
     try {
         const { token } = req.body;
