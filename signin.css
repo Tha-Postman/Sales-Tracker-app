@@ -406,6 +406,9 @@ body::before {
 
 .form-row {
     display: flex;
+    align-items: flex-end;
+    flex-direction: column;
+    gap: 8px;
     justify-content: flex-end;
     margin: -6px 0 14px;
 }
