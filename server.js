@@ -719,10 +719,11 @@ app.post("/api/auth/signup", sensitiveLimiter, async (req, res) => {
                     has_number: /[0-9]/.test(password),
                     has_symbol: /[^A-Za-z0-9]/.test(password)
                 });
+                const supportMessage = createUserError.message || "No extra detail was provided.";
                 res.status(400).json({
-                    error: "Password was not accepted by the account service.",
+                    error: "Password was not accepted by the account service. Reason: " + supportMessage,
                     code: "AUTH_PASSWORD_REJECTED",
-                    support_message: createUserError.message || "No extra detail was provided.",
+                    support_message: supportMessage,
                     password_check: {
                         received_length: password.length,
                         has_lowercase: /[a-z]/.test(password),
