@@ -484,32 +484,30 @@
             const email = emailInput.value.trim().toLowerCase();
 
             if(!email){
-                showToast("Enter the email address you used to sign up, then request confirmation again.", "error", 7000);
+                showToast("Enter the email address you used to sign up, then request verification again.", "error", 7000);
                 emailInput.focus();
                 return;
             }
 
-            const redirectUrl = new URL("signin.html", getPublicAppUrl());
-            const inviteToken = getInviteToken();
+            try {
+                const response = await fetch(`${AUTH_API_URL}/api/auth/resend-verification`, {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify({ email })
+                });
 
-            if(inviteToken){
-                redirectUrl.searchParams.set("invite", inviteToken);
-            }
+                const result = await response.json().catch(() => ({}));
 
-            const { error } = await supabaseClient.auth.resend({
-                type: "signup",
-                email,
-                options: {
-                    emailRedirectTo: redirectUrl.href
+                if(!response.ok){
+                    showToast(getFriendlyErrorMessage(result.error || result, "Could not send verification email. Please try again."), "error", 9000);
+                    return;
                 }
-            });
 
-            if(error){
-                showToast(getFriendlyAuthError(error.message), "error", 8500);
-                return;
+                showToast(result.message || "Verification email sent. Please check your inbox and spam folder.", "success", 9000);
+            } catch(error) {
+                console.log("Resend verification failed:", error);
+                showToast("Verification service is not responding. Please try again shortly.", "error", 9000);
             }
-
-            showToast("Confirmation email requested. It may take a few minutes to arrive. Check inbox, spam, and promotions folders.", "success", 9500);
         }
 
         async function sendPasswordReset(){
@@ -796,6 +794,13 @@
                     return false;
                 }
 
+                if(result.access === "unverified"){
+                    await supabaseClient.auth.signOut();
+                    showToast(result.message || "Please verify your email before opening your dashboard.", "error", 10000);
+                    switchTab("signin-form");
+                    return true;
+                }
+
                 if(result.access === "active" || result.access === "trialing"){
                     localStorage.removeItem("pendingPlan");
                     localStorage.removeItem("pendingTrial");
@@ -826,16 +831,23 @@
                 return;
             }
 
+            if(profile?.email_verified === false){
+                await supabaseClient.auth.signOut();
+                showToast("Please verify your email before opening your dashboard. Use Resend verification if the email did not arrive.", "error", 10000);
+                switchTab("signin-form");
+                return;
+            }
+
+            if(await redirectAfterBackendAccess()){
+                return;
+            }
+
             if(await acceptPendingInvite()){
                 return;
             }
 
             if(localStorage.getItem("pendingTrial") === "1"){
                 window.location.href = "pricing.html?trial=1";
-                return;
-            }
-
-            if(await redirectAfterBackendAccess()){
                 return;
             }
 
@@ -926,42 +938,29 @@
             }
 
             try {
-                const redirectUrl = new URL("signin.html", getPublicAppUrl());
-
-                if(inviteToken){
-                    redirectUrl.searchParams.set("invite", inviteToken);
-                }
-
-                const { data, error } = await supabaseClient.auth.signUp({
-                    email,
-                    password,
-                    options: {
-                        emailRedirectTo: redirectUrl.href,
-                        data: {
-                            full_name: businessName,
-                            business_name: businessName,
-                            invite_token: inviteToken || null,
-                            intended_role: inviteToken ? "rep" : "admin"
-                        }
-                    }
+                const response = await fetch(`${AUTH_API_URL}/api/auth/signup`, {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify({
+                        email,
+                        password,
+                        full_name: businessName,
+                        business_name: businessName,
+                        invite_token: inviteToken || null
+                    })
                 });
 
-                if(error){
-                    showToast(getFriendlyErrorMessage(error, "Could not create account. Please try again."), "error", 9000);
+                const result = await response.json().catch(() => ({}));
+
+                if(!response.ok){
+                    showToast(getFriendlyErrorMessage(result.error || result, "Could not create account. Please try again."), "error", 9000);
                     setButtonLoading(submitBtn, false);
                     return;
                 }
 
                 document.getElementById("signup-form").reset();
                 setButtonLoading(submitBtn, false);
-
-                if(data?.session?.user){
-                    const profile = await getProfileForUser(data.session.user);
-                    setTimeout(() => redirectAfterAuth(profile || { role: inviteToken ? "rep" : "admin", subscription_status: "inactive" }), 900);
-                    return;
-                }
-
-                showToast("Check your email to confirm your Sales Tracker account. It may take a few minutes to arrive. Also check spam or promotions.", "success", 10000);
+                showToast(result.message || "Account created. Please check your email to verify your Sales Tracker account.", "success", 10000);
                 switchTab("signin-form");
             } catch(error) {
                 console.log("Signup request failed:", error);
@@ -1039,8 +1038,7 @@
                     return;
                 }
 
-                showToast("Login successful!", "success");
-                setTimeout(() => redirectAfterAuth(profile), 500);
+                setTimeout(() => redirectAfterAuth(profile), 300);
             } catch(error) {
                 console.log("Signin submit failed:", error);
                 showToast(error.message || "Signin failed. Please try again.", "error");
@@ -1069,6 +1067,18 @@
         }
 
         const authIntent = getAuthIntent();
+        const verifyStatus = new URLSearchParams(window.location.search).get("verify");
+        const verifiedStatus = new URLSearchParams(window.location.search).get("verified");
+
+        if(verifiedStatus === "1"){
+            showToast("Email verified. Your 7-day trial is ready. Please sign in to continue.", "success", 10000);
+        } else if(verifyStatus){
+            const message = verifyStatus === "expired"
+                ? "That verification link has expired. Enter your email and request a new verification email."
+                : "We could not verify that link. Please request a new verification email.";
+            showToast(message, "error", 10000);
+        }
+
         hydrateInviteSignup();
 
         if(isPasswordRecoveryUrl()){

@@ -19,6 +19,9 @@ const frontendAppUrl = process.env.FRONTEND_APP_URL || process.env.PUBLIC_APP_UR
 const supabaseUrl = process.env.SUPABASE_URL;
 const supabaseServiceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
 const paystackSecretKey = process.env.PAYSTACK_SECRET_KEY;
+const brevoApiKey = process.env.BREVO_API_KEY;
+const emailFrom = process.env.EMAIL_FROM || "Sales Tracker <noreply@sales-tracker.local>";
+const verificationTokenHours = Number(process.env.VERIFICATION_TOKEN_HOURS || 24);
 
 if (!supabaseUrl || !supabaseServiceRoleKey || !paystackSecretKey) {
     console.error("\nPayment backend setup is incomplete.");
@@ -92,6 +95,122 @@ function getAccessStatus(record = {}) {
     }
 
     return status;
+}
+
+function parseSender(value) {
+    const match = String(value || "").match(/^(.*?)\s*<([^>]+)>$/);
+
+    if (match) {
+        return {
+            name: match[1].trim() || "Sales Tracker",
+            email: match[2].trim()
+        };
+    }
+
+    return {
+        name: "Sales Tracker",
+        email: String(value || "").trim()
+    };
+}
+
+function hashToken(token) {
+    return crypto.createHash("sha256").update(token).digest("hex");
+}
+
+function buildFrontendUrl(pathname, params = {}) {
+    const url = new URL(pathname, frontendAppUrl);
+
+    Object.entries(params).forEach(([key, value]) => {
+        if (value !== undefined && value !== null && value !== "") {
+            url.searchParams.set(key, value);
+        }
+    });
+
+    return url.href;
+}
+
+function getVerificationExpiry() {
+    return new Date(Date.now() + verificationTokenHours * 60 * 60 * 1000).toISOString();
+}
+
+async function sendBrevoEmail({ to, subject, htmlContent, textContent }) {
+    if (!brevoApiKey) {
+        const error = new Error("Email service is not configured yet. Add BREVO_API_KEY on Render.");
+        error.status = 503;
+        throw error;
+    }
+
+    const sender = parseSender(emailFrom);
+
+    if (!sender.email || !sender.email.includes("@")) {
+        const error = new Error("Email sender is not configured correctly. Add EMAIL_FROM on Render.");
+        error.status = 503;
+        throw error;
+    }
+
+    const response = await fetch("https://api.brevo.com/v3/smtp/email", {
+        method: "POST",
+        headers: {
+            accept: "application/json",
+            "api-key": brevoApiKey,
+            "content-type": "application/json"
+        },
+        body: JSON.stringify({
+            sender,
+            to: [{ email: to.email, name: to.name || to.email }],
+            subject,
+            htmlContent,
+            textContent
+        })
+    });
+
+    if (!response.ok) {
+        const details = await response.text().catch(() => "");
+        console.error("Brevo email failed:", details);
+        const error = new Error("We could not send the verification email. Please try again shortly.");
+        error.status = 502;
+        throw error;
+    }
+}
+
+async function createEmailVerificationToken({ userId, email, purpose = "signup", inviteToken = null }) {
+    const token = crypto.randomBytes(32).toString("hex");
+    const tokenHash = hashToken(token);
+
+    const { error } = await supabaseAdmin
+        .from("email_verification_tokens")
+        .insert({
+            user_id: userId,
+            email,
+            token_hash: tokenHash,
+            purpose,
+            invite_token: inviteToken || null,
+            expires_at: getVerificationExpiry()
+        });
+
+    if (error) throw error;
+
+    return token;
+}
+
+async function sendVerificationEmail({ userId, email, name, inviteToken = null, businessName = "Sales Tracker" }) {
+    const token = await createEmailVerificationToken({
+        userId,
+        email,
+        purpose: inviteToken ? "rep_invite" : "signup",
+        inviteToken
+    });
+
+    const verifyUrl = appUrl + "/api/auth/verify-email?token=" + encodeURIComponent(token);
+    const safeName = name || businessName || email;
+    const htmlContent = "<div style=\"font-family:Arial,sans-serif;background:#07111f;padding:28px;color:#eaf2ff;\"><div style=\"max-width:560px;margin:auto;background:#0d1728;border:1px solid #1d3558;border-radius:18px;padding:28px;\"><h1 style=\"margin:0 0 10px;font-size:24px;\">Verify your Sales Tracker account</h1><p style=\"line-height:1.6;color:#b9c7dc;\">Hi " + safeName + ", welcome to Sales Tracker. Confirm this email so we know the account belongs to you.</p><a href=\"" + verifyUrl + "\" style=\"display:inline-block;margin:18px 0;padding:14px 20px;border-radius:12px;background:linear-gradient(135deg,#2f7df4,#20c5b8);color:white;text-decoration:none;font-weight:700;\">Verify email</a><p style=\"line-height:1.6;color:#b9c7dc;\">This link expires in " + verificationTokenHours + " hours. If you did not request this, you can ignore this email.</p></div></div>";
+
+    await sendBrevoEmail({
+        to: { email, name: safeName },
+        subject: "Verify your Sales Tracker account",
+        textContent: "Hi " + safeName + ",\n\nPlease verify your Sales Tracker account by opening this link: " + verifyUrl + "\n\nThis link expires in " + verificationTokenHours + " hours.",
+        htmlContent
+    });
 }
 
 app.set("trust proxy", 1);
@@ -254,13 +373,25 @@ app.get("/api/auth/access", async (req, res) => {
                     role: "rep",
                     subscription_status: "inactive",
                     status: "active",
-                    is_active: true
+                    is_active: true,
+                    email_verified: false
                 })
                 .select("*")
                 .single();
 
             if (createError) throw createError;
             profile = createdProfile;
+        }
+
+        if (profile.email_verified === false && !isDeveloperProfile(profile)) {
+            res.json({
+                ok: true,
+                access: "unverified",
+                destination: "signin.html?verify=pending",
+                profile,
+                message: "Please verify your email before opening your dashboard."
+            });
+            return;
         }
 
         if (isDeveloperProfile(profile)) {
@@ -411,22 +542,60 @@ app.post(
 app.use(express.json({ limit: "1mb" }));
 
 app.post("/api/auth/signup", sensitiveLimiter, async (req, res) => {
-    res.status(410).json({ error: "Backend signup endpoint disabled. Please use email confirmation signup." });
-    return;
-
     try {
         const email = String(req.body?.email || "").trim().toLowerCase();
         const password = String(req.body?.password || "");
-        const fullName = String(req.body?.full_name || req.body?.fullName || "").trim();
+        const fullName = String(req.body?.full_name || req.body?.fullName || req.body?.business_name || "").trim();
+        const businessName = String(req.body?.business_name || fullName || "").trim();
+        const inviteToken = String(req.body?.invite_token || req.body?.inviteToken || "").trim();
 
         if (!fullName || !email || !password) {
-            res.status(400).json({ error: "Full name, email, and password are required" });
+            res.status(400).json({ error: "Name, email, and password are required." });
             return;
         }
 
         if (password.length < 8) {
-            res.status(400).json({ error: "Password must be at least 8 characters long" });
+            res.status(400).json({ error: "Password must be at least 8 characters long." });
             return;
+        }
+
+        let invite = null;
+        let invitedBusiness = null;
+
+        if (inviteToken) {
+            const { data, error } = await supabaseAdmin
+                .from("rep_invites")
+                .select("*")
+                .eq("token", inviteToken)
+                .maybeSingle();
+
+            if (error) throw error;
+
+            if (!data || data.status !== "pending" || new Date(data.expires_at) <= new Date()) {
+                res.status(410).json({ error: "This invite link has expired. Ask your admin for a new invite." });
+                return;
+            }
+
+            if (String(data.email || "").toLowerCase() !== email) {
+                res.status(403).json({ error: "This invite was sent to a different email address." });
+                return;
+            }
+
+            invite = data;
+
+            const { data: business, error: businessError } = await supabaseAdmin
+                .from("businesses")
+                .select("*")
+                .eq("id", invite.business_id)
+                .maybeSingle();
+
+            if (businessError) throw businessError;
+            if (!business || !isActiveOrTrialing(business)) {
+                res.status(403).json({ error: "This business is not active right now. Ask your admin to check the subscription." });
+                return;
+            }
+
+            invitedBusiness = business;
         }
 
         const { data: createdUser, error: createUserError } = await supabaseAdmin.auth.admin.createUser({
@@ -434,7 +603,10 @@ app.post("/api/auth/signup", sensitiveLimiter, async (req, res) => {
             password,
             email_confirm: true,
             user_metadata: {
-                full_name: fullName
+                full_name: fullName,
+                business_name: invite ? invitedBusiness?.business_name : businessName,
+                intended_role: invite ? "rep" : "admin",
+                invite_token: inviteToken || null
             }
         });
 
@@ -442,7 +614,7 @@ app.post("/api/auth/signup", sensitiveLimiter, async (req, res) => {
             const message = String(createUserError.message || "").toLowerCase();
 
             if (message.includes("already") || message.includes("registered") || message.includes("exists")) {
-                res.status(409).json({ error: "This email already has an account. Please sign in instead." });
+                res.status(409).json({ error: "This email already has an account. Please sign in instead, or use Forgot password if you cannot remember your password." });
                 return;
             }
 
@@ -452,33 +624,41 @@ app.post("/api/auth/signup", sensitiveLimiter, async (req, res) => {
         const user = createdUser?.user;
 
         if (!user?.id) {
-            res.status(500).json({ error: "Account was created, but user setup could not finish" });
+            res.status(500).json({ error: "Account was created, but setup could not finish. Please contact support." });
             return;
         }
 
+        const profilePayload = {
+            id: user.id,
+            email,
+            full_name: fullName,
+            business_name: invite ? invitedBusiness?.business_name : businessName,
+            role: invite ? "rep" : "admin",
+            subscription_status: "inactive",
+            status: invite ? "pending" : "active",
+            is_active: false,
+            email_verified: false,
+            email_verified_at: null
+        };
+
         const { error: profileError } = await supabaseAdmin
             .from("profiles")
-            .upsert({
-                id: user.id,
-                email,
-                full_name: fullName,
-                role: "admin",
-                subscription_status: "inactive",
-                status: "active",
-                is_active: true
-            }, { onConflict: "id" });
+            .upsert(profilePayload, { onConflict: "id" });
 
-        if (profileError) {
-            throw profileError;
-        }
+        if (profileError) throw profileError;
+
+        await sendVerificationEmail({
+            userId: user.id,
+            email,
+            name: fullName,
+            inviteToken: inviteToken || null,
+            businessName: invite ? invitedBusiness?.business_name : businessName
+        });
 
         res.status(201).json({
             ok: true,
-            message: "Account created. You can now sign in.",
-            user: {
-                id: user.id,
-                email: user.email
-            }
+            message: "Account created. Please check your email to verify your account.",
+            requiresVerification: true
         });
     } catch (error) {
         console.error("Backend signup failed:", error);
@@ -1988,6 +2168,12 @@ async function requireBusinessProfile(req) {
     if (profileError || !profile) {
         const error = new Error("Profile not found");
         error.status = 404;
+        throw error;
+    }
+
+    if (profile.email_verified === false && !isDeveloperProfile(profile)) {
+        const error = new Error("Please verify your email before using your dashboard.");
+        error.status = 403;
         throw error;
     }
 
