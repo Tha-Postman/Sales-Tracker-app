@@ -402,8 +402,12 @@
                 return "This email already has an account. Please sign in instead, or use Forgot password if you cannot remember your password.";
             }
 
+            if(text.includes("reason:")){
+                return message;
+            }
+
             if(text.includes("right format") || text.includes("account service") || text.includes("this password was not accepted")){
-                return "Password was rejected by the account service. Please contact support if it keeps happening.";
+                return message || "Password was rejected by the account service. Please contact support if it keeps happening.";
             }
 
             if(text.includes("password must include") || text.includes("password must be")){
