@@ -206,7 +206,7 @@
             </div>
 
             <div id="signup-password-help" class="password-help" aria-live="polite">
-                Use at least 8 characters with lowercase, uppercase, number, and symbol.
+                Use at least 8 characters.
             </div>
 
             <label class="terms-check" for="signup-terms">
@@ -368,22 +368,6 @@
                 return "Password must be at least 8 characters long.";
             }
 
-            if(!/[a-z]/.test(password)){
-                return "Password must include at least one lowercase letter.";
-            }
-
-            if(!/[A-Z]/.test(password)){
-                return "Password must include at least one uppercase letter.";
-            }
-
-            if(!/[0-9]/.test(password)){
-                return "Password must include at least one number.";
-            }
-
-            if(!/[^A-Za-z0-9]/.test(password)){
-                return "Password must include at least one symbol, like @, #, !, or $.";
-            }
-
             return "";
         }
 
@@ -419,7 +403,7 @@
             }
 
             if(text.includes("right format") || text.includes("account service") || text.includes("this password was not accepted")){
-                return "That password has the right format, but it was not accepted. Please try another password or contact support if it keeps happening.";
+                return "Password was not accepted. Please use at least 8 characters or contact support if it keeps happening.";
             }
 
             if(text.includes("password must include") || text.includes("password must be")){
