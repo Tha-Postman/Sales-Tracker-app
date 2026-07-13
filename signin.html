@@ -129,8 +129,8 @@
                 <button class="text-btn" type="button" onclick="sendPasswordReset()">
                     Forgot password?
                 </button>
-                <button class="text-btn" type="button" onclick="resendConfirmationEmail()">
-                    Resend confirmation
+                <button class="text-btn" id="resendVerificationBtn" type="button" onclick="resendConfirmationEmail()" hidden>
+                    Resend verification
                 </button>
             </div>
 
@@ -357,7 +357,13 @@
             }, displayTime);
         }
 
+        function cleanPasswordInput(value){
+            return String(value || "").replace(/[\u200B-\u200D\uFEFF]/g, "").trim();
+        }
+
         function getPasswordValidationMessage(password){
+            password = cleanPasswordInput(password);
+
             if(password.length < 8){
                 return "Password must be at least 8 characters long.";
             }
@@ -463,6 +469,22 @@
             );
         }
 
+        function shouldShowResendVerification(){
+            const params = new URLSearchParams(window.location.search);
+            return Boolean(
+                localStorage.getItem("awaitingVerificationEmail") ||
+                params.get("verify") ||
+                params.get("verified") === "0"
+            );
+        }
+
+        function updateResendVerificationVisibility(show = shouldShowResendVerification()){
+            const button = document.getElementById("resendVerificationBtn");
+            if(button){
+                button.hidden = !show;
+            }
+        }
+
         function setButtonLoading(button, loading, text){
             if(!button) return;
 
@@ -511,6 +533,8 @@
                     return;
                 }
 
+                localStorage.setItem("awaitingVerificationEmail", email);
+                updateResendVerificationVisibility(true);
                 showToast(result.message || "Verification email sent. Please check your inbox and spam folder.", "success", 9000);
             } catch(error) {
                 console.log("Resend verification failed:", error);
@@ -841,6 +865,12 @@
 
                 if(result.access === "unverified"){
                     await supabaseClient.auth.signOut();
+                    if(result.profile?.email){
+                        localStorage.setItem("awaitingVerificationEmail", result.profile.email);
+                        const emailInput = document.getElementById("signin-email");
+                        if(emailInput) emailInput.value = result.profile.email;
+                    }
+                    updateResendVerificationVisibility(true);
                     showToast(result.message || "Please verify your email before opening your dashboard.", "error", 10000);
                     switchTab("signin-form");
                     return true;
@@ -878,6 +908,12 @@
 
             if(profile?.email_verified === false){
                 await supabaseClient.auth.signOut();
+                if(profile.email){
+                    localStorage.setItem("awaitingVerificationEmail", profile.email);
+                    const emailInput = document.getElementById("signin-email");
+                    if(emailInput) emailInput.value = profile.email;
+                }
+                updateResendVerificationVisibility(true);
                 showToast("Please verify your email before opening your dashboard. Use Resend verification if the email did not arrive.", "error", 10000);
                 switchTab("signin-form");
                 return;
@@ -949,8 +985,8 @@
             setButtonLoading(submitBtn, true, "Creating account...");
 
             const email = document.getElementById("signup-email").value.trim().toLowerCase();
-            const password = document.getElementById("signup-password").value.trim();
-            const confirmPassword = document.getElementById("signup-confirm-password").value.trim();
+            const password = cleanPasswordInput(document.getElementById("signup-password").value);
+            const confirmPassword = cleanPasswordInput(document.getElementById("signup-confirm-password").value);
             const businessName = document.getElementById("signup-name").value.trim();
             const acceptedTerms = document.getElementById("signup-terms").checked;
             const passwordMessage = getPasswordValidationMessage(password);
@@ -1004,6 +1040,10 @@
                 }
 
                 document.getElementById("signup-form").reset();
+                const signinEmail = document.getElementById("signin-email");
+                if(signinEmail) signinEmail.value = email;
+                localStorage.setItem("awaitingVerificationEmail", email);
+                updateResendVerificationVisibility(true);
                 setButtonLoading(submitBtn, false);
                 showToast(result.message || "Account created. Please check your email to verify your Sales Tracker account.", "success", 10000);
                 switchTab("signin-form");
@@ -1021,8 +1061,8 @@
             e.preventDefault();
 
             const submitBtn = e.currentTarget.querySelector(".auth-btn");
-            const nextPassword = document.getElementById("reset-new-password").value.trim();
-            const confirmPassword = document.getElementById("reset-confirm-password").value.trim();
+            const nextPassword = cleanPasswordInput(document.getElementById("reset-new-password").value);
+            const confirmPassword = cleanPasswordInput(document.getElementById("reset-confirm-password").value);
 
             const passwordMessage = getPasswordValidationMessage(nextPassword);
 
@@ -1138,6 +1178,8 @@
         const verifiedStatus = new URLSearchParams(window.location.search).get("verified");
 
         if(verifiedStatus === "1"){
+            localStorage.removeItem("awaitingVerificationEmail");
+            updateResendVerificationVisibility(false);
             showToast("Email verified. Your 7-day trial is ready. Please sign in to continue.", "success", 10000);
         } else if(verifyStatus){
             const message = verifyStatus === "expired"
@@ -1146,6 +1188,7 @@
             showToast(message, "error", 10000);
         }
 
+        updateResendVerificationVisibility();
         hydrateInviteSignup();
 
         if(isPasswordRecoveryUrl()){

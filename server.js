@@ -133,7 +133,13 @@ function getVerificationExpiry() {
     return new Date(Date.now() + verificationTokenHours * 60 * 60 * 1000).toISOString();
 }
 
+function cleanPasswordInput(value) {
+    return String(value || "").replace(/[\u200B-\u200D\uFEFF]/g, "").trim();
+}
+
 function getPasswordPolicyMessage(password) {
+    password = cleanPasswordInput(password);
+
     if (String(password || "").length < 8) {
         return "Password must be at least 8 characters long.";
     }
@@ -589,7 +595,7 @@ app.use(express.json({ limit: "1mb" }));
 app.post("/api/auth/signup", sensitiveLimiter, async (req, res) => {
     try {
         const email = String(req.body?.email || "").trim().toLowerCase();
-        const password = String(req.body?.password || "").trim();
+        const password = cleanPasswordInput(req.body?.password);
         const fullName = String(req.body?.full_name || req.body?.fullName || req.body?.business_name || "").trim();
         const businessName = String(req.body?.business_name || fullName || "").trim();
         const inviteToken = String(req.body?.invite_token || req.body?.inviteToken || "").trim();
@@ -669,7 +675,12 @@ app.post("/api/auth/signup", sensitiveLimiter, async (req, res) => {
                 console.warn("Signup password rejected by account service:", {
                     status: createUserError.status,
                     code: createUserError.code,
-                    message: createUserError.message
+                    message: createUserError.message,
+                    received_length: password.length,
+                    has_lowercase: /[a-z]/.test(password),
+                    has_uppercase: /[A-Z]/.test(password),
+                    has_number: /[0-9]/.test(password),
+                    has_symbol: /[^A-Za-z0-9]/.test(password)
                 });
                 res.status(400).json({
                     error: "That password has the right format, but it was not accepted by the account service. Please try another password or contact support if it keeps happening."
@@ -766,7 +777,7 @@ app.post("/api/auth/request-password-reset", sensitiveLimiter, async (req, res) 
 app.post("/api/auth/reset-password", sensitiveLimiter, async (req, res) => {
     try {
         const token = String(req.body?.token || "").trim();
-        const password = String(req.body?.password || "").trim();
+        const password = cleanPasswordInput(req.body?.password);
         const passwordPolicyMessage = getPasswordPolicyMessage(password);
 
         if (!token) {
