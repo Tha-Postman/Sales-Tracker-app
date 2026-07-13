@@ -651,9 +651,10 @@ app.post("/api/auth/signup", sensitiveLimiter, async (req, res) => {
             invitedBusiness = business;
         }
 
+        const temporaryPassword = "StTemp" + crypto.randomBytes(18).toString("base64url") + "#9aA";
         const { data: createdUser, error: createUserError } = await supabaseAdmin.auth.admin.createUser({
             email,
-            password,
+            password: temporaryPassword,
             email_confirm: true,
             user_metadata: {
                 full_name: fullName,
@@ -667,6 +668,31 @@ app.post("/api/auth/signup", sensitiveLimiter, async (req, res) => {
             const message = String(createUserError.message || "").toLowerCase();
 
             if (message.includes("already") || message.includes("registered") || message.includes("exists")) {
+                const { data: existingProfile, error: existingProfileError } = await supabaseAdmin
+                    .from("profiles")
+                    .select("*")
+                    .eq("email", email)
+                    .maybeSingle();
+
+                if (existingProfileError) throw existingProfileError;
+
+                if (existingProfile && existingProfile.email_verified !== true) {
+                    await sendVerificationEmail({
+                        userId: existingProfile.id,
+                        email,
+                        name: existingProfile.full_name || fullName,
+                        inviteToken: inviteToken || null,
+                        businessName: existingProfile.business_name || businessName
+                    });
+
+                    res.status(200).json({
+                        ok: true,
+                        requiresVerification: true,
+                        message: "This email already started signup. We sent a fresh verification link."
+                    });
+                    return;
+                }
+
                 res.status(409).json({ error: "This email already has an account. Please sign in instead, or use Forgot password if you cannot remember your password." });
                 return;
             }
@@ -695,6 +721,32 @@ app.post("/api/auth/signup", sensitiveLimiter, async (req, res) => {
 
         if (!user?.id) {
             res.status(500).json({ error: "Account was created, but setup could not finish. Please contact support." });
+            return;
+        }
+
+        const { error: setPasswordError } = await supabaseAdmin.auth.admin.updateUserById(user.id, {
+            password
+        });
+
+        if (setPasswordError) {
+            console.warn("Signup password update rejected by account service:", {
+                status: setPasswordError.status,
+                code: setPasswordError.code,
+                message: setPasswordError.message,
+                received_length: password.length,
+                has_lowercase: /[a-z]/.test(password),
+                has_uppercase: /[A-Z]/.test(password),
+                has_number: /[0-9]/.test(password),
+                has_symbol: /[^A-Za-z0-9]/.test(password)
+            });
+
+            await supabaseAdmin.auth.admin.deleteUser(user.id).catch(error => {
+                console.warn("Could not clean up user after password rejection:", error.message);
+            });
+
+            res.status(400).json({
+                error: "That password has the right format, but the account service still refused it. Please contact support so we can adjust the password rule."
+            });
             return;
         }
 
