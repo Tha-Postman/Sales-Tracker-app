@@ -253,19 +253,47 @@ const sensitiveLimiter = rateLimit({
 
 const allowedOrigins = [
     appUrl,
+    frontendAppUrl,
+    process.env.PUBLIC_APP_URL,
     "https://use-sales-tracker.vercel.app",
     "http://localhost:5500",
     "http://127.0.0.1:5500",
     "http://127.0.0.1:3000"
-];
+].filter(Boolean);
+
+if (process.env.ALLOWED_ORIGINS) {
+    process.env.ALLOWED_ORIGINS
+        .split(",")
+        .map(origin => origin.trim())
+        .filter(Boolean)
+        .forEach(origin => allowedOrigins.push(origin));
+}
+
+function isAllowedOrigin(origin) {
+    if (!origin) return true;
+    if (allowedOrigins.includes(origin)) return true;
+
+    try {
+        const { hostname, protocol } = new URL(origin);
+        return protocol === "https:"
+            && (
+                hostname === "use-sales-tracker.vercel.app"
+                || hostname.endsWith("-tha-postmans-projects.vercel.app")
+                || hostname.endsWith(".vercel.app")
+            );
+    } catch {
+        return false;
+    }
+}
 
 app.use(cors({
     origin(origin, callback) {
-        if (!origin || allowedOrigins.includes(origin)) {
+        if (isAllowedOrigin(origin)) {
             callback(null, true);
             return;
         }
 
+        console.warn("Blocked request from frontend origin:", origin);
         callback(new Error("Origin not allowed"));
     }
 }));
