@@ -407,7 +407,7 @@
             }
 
             if(text.includes("right format") || text.includes("account service") || text.includes("this password was not accepted")){
-                return message || "Password was rejected by the account service. Please contact support if it keeps happening.";
+                return message || "Password was rejected, but no reason was returned by the account service.";
             }
 
             if(text.includes("password must include") || text.includes("password must be")){
@@ -415,7 +415,7 @@
             }
 
             if(text.includes("password")){
-                return "Password was not accepted by the account service. Please contact support if this keeps happening.";
+                return message || "Password was not accepted.";
             }
 
             if(text.includes("invalid email")){
@@ -447,8 +447,11 @@
             if(typeof error === "string") return getFriendlyAuthError(error);
 
             if(error.code === "AUTH_PASSWORD_REJECTED"){
-                const detail = error.support_message ? " Reason: " + error.support_message : "";
-                return "Password was rejected by the account service." + detail;
+                const detail = error.support_message || error.error || "No reason was returned.";
+                const check = error.password_check
+                    ? " Check: length " + error.password_check.received_length
+                    : "";
+                return "Signup password rejected. Reason: " + detail + "." + check;
             }
 
             return getFriendlyAuthError(
