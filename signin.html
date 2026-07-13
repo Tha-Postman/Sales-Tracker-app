@@ -442,6 +442,11 @@
 
             if(typeof error === "string") return getFriendlyAuthError(error);
 
+            if(error.code === "AUTH_PASSWORD_REJECTED"){
+                const detail = error.support_message ? " Reason: " + error.support_message : "";
+                return "Password was rejected by the account service." + detail;
+            }
+
             return getFriendlyAuthError(
                 error.message ||
                 error.error_description ||

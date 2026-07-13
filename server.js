@@ -720,7 +720,16 @@ app.post("/api/auth/signup", sensitiveLimiter, async (req, res) => {
                     has_symbol: /[^A-Za-z0-9]/.test(password)
                 });
                 res.status(400).json({
-                    error: "Password was not accepted. Please use at least 8 characters."
+                    error: "Password was not accepted by the account service.",
+                    code: "AUTH_PASSWORD_REJECTED",
+                    support_message: createUserError.message || "No extra detail was provided.",
+                    password_check: {
+                        received_length: password.length,
+                        has_lowercase: /[a-z]/.test(password),
+                        has_uppercase: /[A-Z]/.test(password),
+                        has_number: /[0-9]/.test(password),
+                        has_symbol: /[^A-Za-z0-9]/.test(password)
+                    }
                 });
                 return;
             }
