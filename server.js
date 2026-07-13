@@ -133,6 +133,30 @@ function getVerificationExpiry() {
     return new Date(Date.now() + verificationTokenHours * 60 * 60 * 1000).toISOString();
 }
 
+function getPasswordPolicyMessage(password) {
+    if (String(password || "").length < 8) {
+        return "Password must be at least 8 characters long.";
+    }
+
+    if (!/[a-z]/.test(password)) {
+        return "Password must include at least one lowercase letter.";
+    }
+
+    if (!/[A-Z]/.test(password)) {
+        return "Password must include at least one uppercase letter.";
+    }
+
+    if (!/[0-9]/.test(password)) {
+        return "Password must include at least one number.";
+    }
+
+    if (!/[^A-Za-z0-9]/.test(password)) {
+        return "Password must include at least one symbol, like @, #, !, or $.";
+    }
+
+    return "";
+}
+
 async function sendBrevoEmail({ to, subject, htmlContent, textContent }) {
     if (!brevoApiKey) {
         const error = new Error("Email service is not configured yet. Add BREVO_API_KEY on Render.");
@@ -554,8 +578,10 @@ app.post("/api/auth/signup", sensitiveLimiter, async (req, res) => {
             return;
         }
 
-        if (password.length < 8) {
-            res.status(400).json({ error: "Password must be at least 8 characters long." });
+        const passwordPolicyMessage = getPasswordPolicyMessage(password);
+
+        if (passwordPolicyMessage) {
+            res.status(400).json({ error: passwordPolicyMessage });
             return;
         }
 
@@ -615,6 +641,11 @@ app.post("/api/auth/signup", sensitiveLimiter, async (req, res) => {
 
             if (message.includes("already") || message.includes("registered") || message.includes("exists")) {
                 res.status(409).json({ error: "This email already has an account. Please sign in instead, or use Forgot password if you cannot remember your password." });
+                return;
+            }
+
+            if (message.includes("password")) {
+                res.status(400).json({ error: "This password was not accepted. Try a more unique password with at least 8 characters, uppercase, lowercase, a number, and a symbol." });
                 return;
             }
 

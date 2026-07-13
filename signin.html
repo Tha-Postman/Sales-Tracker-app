@@ -412,8 +412,16 @@
                 return "This email already has an account. Please sign in instead, or use Forgot password if you cannot remember your password.";
             }
 
+            if(text.includes("this password was not accepted")){
+                return "This password was not accepted. Try a more unique password with uppercase, lowercase, a number, and a symbol.";
+            }
+
+            if(text.includes("password must include") || text.includes("password must be")){
+                return message;
+            }
+
             if(text.includes("password")){
-                return "Password does not meet the required format. Use at least 8 characters with lowercase, uppercase, number, and symbol.";
+                return "Password was not accepted. Use at least 8 characters with lowercase, uppercase, number, and symbol.";
             }
 
             if(text.includes("invalid email")){
