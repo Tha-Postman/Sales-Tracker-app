@@ -403,7 +403,7 @@
             }
 
             if(text.includes("right format") || text.includes("account service") || text.includes("this password was not accepted")){
-                return "Password was not accepted. Please use at least 8 characters or contact support if it keeps happening.";
+                return "Password was rejected by the account service. Please contact support if it keeps happening.";
             }
 
             if(text.includes("password must include") || text.includes("password must be")){
@@ -1023,7 +1023,7 @@
                 const result = await response.json().catch(() => ({}));
 
                 if(!response.ok){
-                    showToast(getFriendlyErrorMessage(result.error || result, "Could not create account. Please try again."), "error", 9000);
+                    showToast(getFriendlyErrorMessage(result, "Could not create account. Please try again."), "error", 9000);
                     setButtonLoading(submitBtn, false);
                     return;
                 }
