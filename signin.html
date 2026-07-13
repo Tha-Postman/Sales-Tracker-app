@@ -412,8 +412,8 @@
                 return "This email already has an account. Please sign in instead, or use Forgot password if you cannot remember your password.";
             }
 
-            if(text.includes("this password was not accepted")){
-                return "This password was not accepted. Try a more unique password with uppercase, lowercase, a number, and a symbol.";
+            if(text.includes("right format") || text.includes("account service") || text.includes("this password was not accepted")){
+                return "That password has the right format, but it was not accepted. Please try another password or contact support if it keeps happening.";
             }
 
             if(text.includes("password must include") || text.includes("password must be")){
@@ -421,7 +421,7 @@
             }
 
             if(text.includes("password")){
-                return "Password was not accepted. Use at least 8 characters with lowercase, uppercase, number, and symbol.";
+                return "Password was not accepted. If it already has uppercase, lowercase, a number, and a symbol, try retyping it without spaces.";
             }
 
             if(text.includes("invalid email")){
@@ -520,7 +520,8 @@
 
         async function sendPasswordReset(){
             const emailInput = document.getElementById("signin-email");
-            const email = emailInput.value.trim();
+            const email = emailInput.value.trim().toLowerCase();
+            const button = document.querySelector('button[onclick="sendPasswordReset()"]');
 
             if(!email){
                 showToast("Enter the email address you used to create your Sales Tracker account.", "error", 7000);
@@ -528,15 +529,36 @@
                 return;
             }
 
-            const redirectTo = new URL("signin.html?type=recovery", getPublicAppUrl()).href;
-            const { error } = await supabaseClient.auth.resetPasswordForEmail(email, { redirectTo });
-
-            if(error){
-                showToast(getFriendlyAuthError(error.message), "error", 8500);
-                return;
+            if(button){
+                button.disabled = true;
+                button.dataset.originalText = button.textContent;
+                button.textContent = "Sending reset link...";
             }
 
-            showToast("If this email is registered with Sales Tracker, a password reset link has been sent.", "success", 6500);
+            try {
+                const response = await fetch(`${AUTH_API_URL}/api/auth/request-password-reset`, {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify({ email })
+                });
+
+                const result = await response.json().catch(() => ({}));
+
+                if(!response.ok){
+                    showToast(getFriendlyErrorMessage(result.error || result, "Could not send reset link. Please try again."), "error", 9000);
+                    return;
+                }
+
+                showToast(result.message || "If this email is registered with Sales Tracker, a password reset link has been sent.", "success", 8500);
+            } catch(error) {
+                console.log("Password reset request failed:", error);
+                showToast("Password reset service is not responding. Please try again shortly.", "error", 9000);
+            } finally {
+                if(button){
+                    button.disabled = false;
+                    button.textContent = button.dataset.originalText || "Forgot password?";
+                }
+            }
         }
 
         async function getProfileForUser(user){
@@ -927,8 +949,8 @@
             setButtonLoading(submitBtn, true, "Creating account...");
 
             const email = document.getElementById("signup-email").value.trim().toLowerCase();
-            const password = document.getElementById("signup-password").value;
-            const confirmPassword = document.getElementById("signup-confirm-password").value;
+            const password = document.getElementById("signup-password").value.trim();
+            const confirmPassword = document.getElementById("signup-confirm-password").value.trim();
             const businessName = document.getElementById("signup-name").value.trim();
             const acceptedTerms = document.getElementById("signup-terms").checked;
             const passwordMessage = getPasswordValidationMessage(password);
@@ -999,8 +1021,8 @@
             e.preventDefault();
 
             const submitBtn = e.currentTarget.querySelector(".auth-btn");
-            const nextPassword = document.getElementById("reset-new-password").value;
-            const confirmPassword = document.getElementById("reset-confirm-password").value;
+            const nextPassword = document.getElementById("reset-new-password").value.trim();
+            const confirmPassword = document.getElementById("reset-confirm-password").value.trim();
 
             const passwordMessage = getPasswordValidationMessage(nextPassword);
 
@@ -1016,20 +1038,42 @@
 
             setButtonLoading(submitBtn, true, "Updating password...");
 
-            const { error } = await supabaseClient.auth.updateUser({
-                password: nextPassword
-            });
+            const resetToken = new URLSearchParams(window.location.search).get("reset_token") || "";
 
-            if(error){
-                showToast(error.message, "error");
+            if(!resetToken){
+                showToast("Password reset link is missing or expired. Please request a new one.", "error", 9000);
                 setButtonLoading(submitBtn, false);
                 return;
             }
 
-            document.getElementById("reset-password-form").reset();
-            showToast("Password updated. You can sign in now.", "success");
-            setButtonLoading(submitBtn, false);
-            switchTab("signin-form");
+            try {
+                const response = await fetch(`${AUTH_API_URL}/api/auth/reset-password`, {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify({
+                        token: resetToken,
+                        password: nextPassword
+                    })
+                });
+
+                const result = await response.json().catch(() => ({}));
+
+                if(!response.ok){
+                    showToast(getFriendlyErrorMessage(result.error || result, "Could not update password. Please try again."), "error", 9000);
+                    setButtonLoading(submitBtn, false);
+                    return;
+                }
+
+                document.getElementById("reset-password-form").reset();
+                showToast(result.message || "Password updated. You can sign in now.", "success");
+                setButtonLoading(submitBtn, false);
+                window.history.replaceState({}, document.title, "signin.html");
+                switchTab("signin-form");
+            } catch(error) {
+                console.log("Password reset failed:", error);
+                showToast("Password reset service is not responding. Please try again shortly.", "error", 9000);
+                setButtonLoading(submitBtn, false);
+            }
         });
         }
 

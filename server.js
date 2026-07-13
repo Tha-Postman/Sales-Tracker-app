@@ -342,6 +342,27 @@ async function loadPlatformPricing() {
 
     return normalizePricingRows(data || []);
 }
+async function sendPasswordResetEmail({ userId, email, name }) {
+    const token = await createEmailVerificationToken({
+        userId,
+        email,
+        purpose: "password_reset"
+    });
+
+    const resetUrl = buildFrontendUrl("signin.html", {
+        type: "recovery",
+        reset_token: token
+    });
+    const safeName = name || email;
+    const htmlContent = "<div style=\"font-family:Arial,sans-serif;background:#07111f;padding:28px;color:#eaf2ff;\"><div style=\"max-width:560px;margin:auto;background:#0d1728;border:1px solid #1d3558;border-radius:18px;padding:28px;\"><h1 style=\"margin:0 0 10px;font-size:24px;\">Reset your Sales Tracker password</h1><p style=\"line-height:1.6;color:#b9c7dc;\">Hi " + safeName + ", open the secure link below to create a new password.</p><a href=\"" + resetUrl + "\" style=\"display:inline-block;margin:18px 0;padding:14px 20px;border-radius:12px;background:linear-gradient(135deg,#2f7df4,#20c5b8);color:white;text-decoration:none;font-weight:700;\">Reset password</a><p style=\"line-height:1.6;color:#b9c7dc;\">This link expires in " + verificationTokenHours + " hours. If you did not request this, you can ignore this email.</p></div></div>";
+
+    await sendBrevoEmail({
+        to: { email, name: safeName },
+        subject: "Reset your Sales Tracker password",
+        textContent: "Hi " + safeName + ",\n\nReset your Sales Tracker password here: " + resetUrl + "\n\nThis link expires in " + verificationTokenHours + " hours.",
+        htmlContent
+    });
+}
 
 app.get("/api/public/pricing", async (req, res) => {
     try {
@@ -568,7 +589,7 @@ app.use(express.json({ limit: "1mb" }));
 app.post("/api/auth/signup", sensitiveLimiter, async (req, res) => {
     try {
         const email = String(req.body?.email || "").trim().toLowerCase();
-        const password = String(req.body?.password || "");
+        const password = String(req.body?.password || "").trim();
         const fullName = String(req.body?.full_name || req.body?.fullName || req.body?.business_name || "").trim();
         const businessName = String(req.body?.business_name || fullName || "").trim();
         const inviteToken = String(req.body?.invite_token || req.body?.inviteToken || "").trim();
@@ -645,7 +666,14 @@ app.post("/api/auth/signup", sensitiveLimiter, async (req, res) => {
             }
 
             if (message.includes("password")) {
-                res.status(400).json({ error: "This password was not accepted. Try a more unique password with at least 8 characters, uppercase, lowercase, a number, and a symbol." });
+                console.warn("Signup password rejected by account service:", {
+                    status: createUserError.status,
+                    code: createUserError.code,
+                    message: createUserError.message
+                });
+                res.status(400).json({
+                    error: "That password has the right format, but it was not accepted by the account service. Please try another password or contact support if it keeps happening."
+                });
                 return;
             }
 
@@ -696,6 +724,272 @@ app.post("/api/auth/signup", sensitiveLimiter, async (req, res) => {
         res.status(error.status || 500).json({
             error: error.message || "Could not create account. Please try again."
         });
+    }
+});
+
+
+app.post("/api/auth/request-password-reset", sensitiveLimiter, async (req, res) => {
+    try {
+        const email = String(req.body?.email || "").trim().toLowerCase();
+
+        if (!email) {
+            res.status(400).json({ error: "Enter the email address on your Sales Tracker account." });
+            return;
+        }
+
+        const { data: profile, error: profileError } = await supabaseAdmin
+            .from("profiles")
+            .select("id, email, full_name")
+            .eq("email", email)
+            .maybeSingle();
+
+        if (profileError) throw profileError;
+
+        if (profile) {
+            await sendPasswordResetEmail({
+                userId: profile.id,
+                email: profile.email,
+                name: profile.full_name
+            });
+        }
+
+        res.json({
+            ok: true,
+            message: "If this email is registered with Sales Tracker, a password reset link has been sent."
+        });
+    } catch (error) {
+        console.error("Password reset request failed:", error);
+        res.status(error.status || 500).json({ error: error.message || "Could not send password reset email. Please try again." });
+    }
+});
+
+app.post("/api/auth/reset-password", sensitiveLimiter, async (req, res) => {
+    try {
+        const token = String(req.body?.token || "").trim();
+        const password = String(req.body?.password || "").trim();
+        const passwordPolicyMessage = getPasswordPolicyMessage(password);
+
+        if (!token) {
+            res.status(400).json({ error: "Password reset link is missing or expired." });
+            return;
+        }
+
+        if (passwordPolicyMessage) {
+            res.status(400).json({ error: passwordPolicyMessage });
+            return;
+        }
+
+        const { data: record, error: tokenError } = await supabaseAdmin
+            .from("email_verification_tokens")
+            .select("*")
+            .eq("token_hash", hashToken(token))
+            .eq("purpose", "password_reset")
+            .is("used_at", null)
+            .maybeSingle();
+
+        if (tokenError) throw tokenError;
+
+        if (!record || new Date(record.expires_at) <= new Date()) {
+            res.status(410).json({ error: "This password reset link has expired. Please request a new one." });
+            return;
+        }
+
+        const { error: updateError } = await supabaseAdmin.auth.admin.updateUserById(record.user_id, {
+            password
+        });
+
+        if (updateError) throw updateError;
+
+        await supabaseAdmin
+            .from("email_verification_tokens")
+            .update({ used_at: new Date().toISOString() })
+            .eq("id", record.id);
+
+        res.json({ ok: true, message: "Password updated. You can sign in now." });
+    } catch (error) {
+        console.error("Password reset failed:", error);
+        res.status(error.status || 500).json({ error: error.message || "Could not update password. Please try again." });
+    }
+});
+
+app.post("/api/auth/resend-verification", sensitiveLimiter, async (req, res) => {
+    try {
+        const email = String(req.body?.email || "").trim().toLowerCase();
+
+        if (!email) {
+            res.status(400).json({ error: "Enter the email address you used to sign up." });
+            return;
+        }
+
+        const { data: profile, error: profileError } = await supabaseAdmin
+            .from("profiles")
+            .select("*")
+            .eq("email", email)
+            .maybeSingle();
+
+        if (profileError) throw profileError;
+
+        if (!profile) {
+            res.json({ ok: true, message: "If this email has an account, a verification link will be sent." });
+            return;
+        }
+
+        if (profile.email_verified === true) {
+            res.json({ ok: true, message: "This email is already verified. You can sign in." });
+            return;
+        }
+
+        await sendVerificationEmail({
+            userId: profile.id,
+            email,
+            name: profile.full_name,
+            businessName: profile.business_name || profile.full_name || "Sales Tracker"
+        });
+
+        res.json({ ok: true, message: "Verification email sent. Please check your inbox and spam folder." });
+    } catch (error) {
+        console.error("Resend verification failed:", error);
+        res.status(error.status || 500).json({ error: error.message || "Could not send verification email. Please try again." });
+    }
+});
+
+app.get("/api/auth/verify-email", async (req, res) => {
+    const fail = reason => res.redirect(buildFrontendUrl("signin.html", { verify: reason || "failed" }));
+
+    try {
+        const token = String(req.query?.token || "").trim();
+        if (!token) return fail("missing");
+
+        const { data: record, error: tokenError } = await supabaseAdmin
+            .from("email_verification_tokens")
+            .select("*")
+            .eq("token_hash", hashToken(token))
+            .is("used_at", null)
+            .maybeSingle();
+
+        if (tokenError) throw tokenError;
+        if (!record || new Date(record.expires_at) <= new Date()) return fail("expired");
+
+        const { data: profile, error: profileError } = await supabaseAdmin
+            .from("profiles")
+            .select("*")
+            .eq("id", record.user_id)
+            .maybeSingle();
+
+        if (profileError) throw profileError;
+        if (!profile) return fail("missing-account");
+
+        const now = new Date();
+        const trialEndsAt = getTrialEndDate(now);
+        const redirectParams = { verified: "1" };
+
+        if (record.invite_token) {
+            const { data: invite, error: inviteError } = await supabaseAdmin
+                .from("rep_invites")
+                .select("*")
+                .eq("token", record.invite_token)
+                .maybeSingle();
+
+            if (inviteError) throw inviteError;
+            if (!invite || invite.status !== "pending" || new Date(invite.expires_at) <= new Date()) return fail("invite-expired");
+
+            const { data: business, error: businessError } = await supabaseAdmin
+                .from("businesses")
+                .select("*")
+                .eq("id", invite.business_id)
+                .maybeSingle();
+
+            if (businessError) throw businessError;
+            if (!business || !isActiveOrTrialing(business)) return fail("business-inactive");
+
+            const { error: updateProfileError } = await supabaseAdmin
+                .from("profiles")
+                .update({
+                    email_verified: true,
+                    email_verified_at: now.toISOString(),
+                    full_name: invite.full_name || profile.full_name,
+                    role: "rep",
+                    business_id: invite.business_id,
+                    subscription_status: getAccessStatus(business),
+                    subscription_plan: business.plan || profile.subscription_plan || "starter-monthly",
+                    subscription_expires_at: business.subscription_expires_at || business.trial_ends_at || null,
+                    is_active: true,
+                    status: "active"
+                })
+                .eq("id", profile.id);
+
+            if (updateProfileError) throw updateProfileError;
+
+            await supabaseAdmin
+                .from("rep_invites")
+                .update({ status: "accepted", accepted_at: now.toISOString() })
+                .eq("id", invite.id);
+        } else {
+            let business = null;
+            const { data: existingBusiness, error: existingBusinessError } = await supabaseAdmin
+                .from("businesses")
+                .select("*")
+                .eq("owner_id", profile.id)
+                .maybeSingle();
+
+            if (existingBusinessError) throw existingBusinessError;
+
+            if (existingBusiness) {
+                const { data: updatedBusiness, error: businessUpdateError } = await supabaseAdmin
+                    .from("businesses")
+                    .update({
+                        subscription_status: "trialing",
+                        plan: TRIAL_PLAN,
+                        subscription_expires_at: trialEndsAt.toISOString(),
+                        trial_started_at: now.toISOString(),
+                        trial_ends_at: trialEndsAt.toISOString(),
+                        trial_status: "active",
+                        status: "active"
+                    })
+                    .eq("id", existingBusiness.id)
+                    .select("*")
+                    .single();
+
+                if (businessUpdateError) throw businessUpdateError;
+                business = updatedBusiness;
+            } else {
+                const trialProfile = {
+                    ...profile,
+                    subscription_status: "trialing",
+                    subscription_plan: TRIAL_PLAN,
+                    subscription_expires_at: trialEndsAt.toISOString()
+                };
+                business = await createBusinessForActiveAdmin(trialProfile, profile.id);
+            }
+
+            const { error: updateProfileError } = await supabaseAdmin
+                .from("profiles")
+                .update({
+                    business_id: business.id,
+                    email_verified: true,
+                    email_verified_at: now.toISOString(),
+                    role: "admin",
+                    subscription_status: "trialing",
+                    subscription_plan: TRIAL_PLAN,
+                    subscription_expires_at: trialEndsAt.toISOString(),
+                    is_active: true,
+                    status: "active"
+                })
+                .eq("id", profile.id);
+
+            if (updateProfileError) throw updateProfileError;
+            redirectParams.trial = "started";
+        }
+
+        await supabaseAdmin
+            .from("email_verification_tokens")
+            .update({ used_at: new Date().toISOString() })
+            .eq("id", record.id);
+
+        res.redirect(buildFrontendUrl("signin.html", redirectParams));
+    } catch (error) {
+        console.error("Email verification failed:", error);
+        fail("failed");
     }
 });
 
